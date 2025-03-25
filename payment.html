@@ -1,10 +1,87 @@
-<html>
-  <head>
-    <title>
-
-    </title>
-  </head>
-  <body>
-    
-  </body>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Payment Page</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #e9e9e9;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 500px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #fff;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    h2 {
+      text-align: center;
+      color: #333;
+    }
+    input[type="text"], input[type="number"] {
+      width: 100%;
+      padding: 10px;
+      margin: 8px 0;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+    }
+    select {
+      width: 100%;
+      padding: 10px;
+      margin: 8px 0;
+      border: 1px solid #ccc;
+    }
+    button {
+      width: 100%;
+      padding: 10px;
+      background: #f44336;
+      border: none;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #da190b;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Payment</h2>
+    <form id="paymentForm">
+      <label for="cardName">Cardholder Name:</label>
+      <input type="text" id="cardName" name="cardName" placeholder="Enter your name on the card" required>
+      
+      <label for="cardNumber">Card Number:</label>
+      <input type="number" id="cardNumber" name="cardNumber" placeholder="Enter your card number" required>
+      
+      <label for="expiry">Expiry Date:</label>
+      <input type="text" id="expiry" name="expiry" placeholder="MM/YY" required>
+      
+      <label for="cvv">CVV:</label>
+      <input type="number" id="cvv" name="cvv" placeholder="Enter CVV" required>
+      
+      <label for="paymentMethod">Payment Method:</label>
+      <select id="paymentMethod" name="paymentMethod" required>
+        <option value="Credit Card">Credit Card</option>
+        <option value="Debit Card">Debit Card</option>
+        <option value="E-Wallet">E-Wallet</option>
+        <option value="Bank Transfer">Bank Transfer</option>
+      </select>
+      
+      <button type="submit">Submit Payment</button>
+    </form>
+  </div>
+  
+  <script>
+    // Simple payment form handling
+    document.getElementById('paymentForm').addEventListener('submit', function(e){
+      e.preventDefault();
+      alert('Payment form submitted! (This is a frontend simulation)');
+    });
+  </script>
+</body>
 </html>
