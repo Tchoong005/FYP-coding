@@ -1,81 +1,105 @@
 <?php
 session_start();
-// If already logged in, redirect to user home
+require_once 'connection.php';  // Ensure this file sets up $conn to fast_food DB
+
+// If the user is already logged in, redirect them (optional)
 if (isset($_SESSION['user_id'])) {
     header("Location: index_user.php");
     exit();
 }
 
 $error = '';
-// Server-side validation for password conditions in registration
+$success = '';
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Retrieve form inputs
     $firstName = trim($_POST['first_name']);
     $lastName  = trim($_POST['last_name']);
     $mobile    = trim($_POST['mobile']);
     $email     = trim($_POST['email']);
     $password  = $_POST['password'];
     $confirm   = $_POST['confirm_password'];
-    $dob       = trim($_POST['dob']);
+    $dob       = trim($_POST['dob']); // "DD-MM-YYYY" from user input
     
-    // Combine first and last name to get full name
+    // Combine first and last name
     $fullName = $firstName . ' ' . $lastName;
-    
-    // Validate password length exactly 12 characters
-    if (strlen($password) !== 12) {
-        $error = "Password must be exactly 12 characters.";
-    }
-    // Validate password contains at least one letter
-    elseif (!preg_match('/[A-Za-z]/', $password)) {
-        $error = "Password must contain at least one letter.";
-    }
-    // Validate password contains at least one digit
-    elseif (!preg_match('/[0-9]/', $password)) {
-        $error = "Password must contain at least one digit.";
-    }
-    // Validate password contains at least one symbol (non-alphanumeric)
-    elseif (!preg_match('/[^A-Za-z0-9]/', $password)) {
-        $error = "Password must contain at least one symbol.";
-    }
-    // Check if passwords match
-    elseif ($password !== $confirm) {
-        $error = "Passwords do not match.";
-    }
-    
-    // If no error, store user in the simulated "database" (session array)
-    if (empty($error)) {
-        // Simulate a database by using $_SESSION['users'] array
-        if (!isset($_SESSION['users'])) {
-            $_SESSION['users'] = array();
+
+    // --- Validate required fields ---
+    if (empty($firstName) || empty($lastName) || empty($mobile) || empty($email) || empty($password) || empty($confirm)) {
+        $error = "Please fill in all required fields.";
+    } else {
+        // --- Validate password rules ---
+        if (strlen($password) !== 12) {
+            $error = "Password must be exactly 12 characters.";
+        } elseif (!preg_match('/[A-Za-z]/', $password)) {
+            $error = "Password must contain at least one letter.";
+        } elseif (!preg_match('/[0-9]/', $password)) {
+            $error = "Password must contain at least one digit.";
+        } elseif (!preg_match('/[^A-Za-z0-9]/', $password)) {
+            $error = "Password must contain at least one symbol.";
+        } elseif ($password !== $confirm) {
+            $error = "Passwords do not match.";
         }
-        // Optionally check if user already exists (by full name)
-        if (isset($_SESSION['users'][$fullName])) {
-            $error = "User already exists. Please log in.";
+    }
+
+    // If no error so far, proceed with DB insertion
+    if (empty($error)) {
+        // Hash the password for security
+        $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+
+        // Convert DOB from "DD-MM-YYYY" to "YYYY-MM-DD" if not empty
+        $dobSQL = null;
+        if (!empty($dob)) {
+            $parts = explode('-', $dob); // expect [DD, MM, YYYY]
+            if (count($parts) === 3) {
+                $dobSQL = $parts[2] . '-' . $parts[1] . '-' . $parts[0]; // "YYYY-MM-DD"
+            }
+        }
+
+        // Prepare the INSERT statement (adjust columns if your table differs)
+        $stmt = $conn->prepare("
+            INSERT INTO Users 
+            (Full_name, User_password, User_Email, User_phone_num, User_DOB)
+            VALUES (?,?,?,?,?)
+        ");
+
+        if (!$stmt) {
+            $error = "Database error: " . $conn->error;
         } else {
-            // Store the user; hash the password for security
-            $_SESSION['users'][$fullName] = array(
-                'first_name' => $firstName,
-                'last_name'  => $lastName,
-                'mobile'     => $mobile,
-                'email'      => $email,
-                'password'   => password_hash($password, PASSWORD_DEFAULT),
-                'dob'        => $dob
+            $stmt->bind_param(
+                "sssss", 
+                $fullName,
+                $hashedPassword,
+                $email,
+                $mobile,
+                $dobSQL
             );
-            // Redirect to login page after successful registration
-            header("Location: login_user.php");
-            exit();
+
+            if ($stmt->execute()) {
+                // Registration successful
+                $stmt->close();
+                // Optionally set a success message or redirect
+                header("Location: login_user.php"); 
+                exit();
+            } else {
+                $error = "Failed to register user: " . $stmt->error;
+                $stmt->close();
+            }
         }
     }
 }
+
+// Close DB connection
+$conn->close();
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <title>Register</title>
-  <!-- Link to the separate register CSS -->
   <link rel="stylesheet" href="register_style.css">
   <script>
-    // Client-side password validation for register page
+    // Optional client-side password checks
     function validateRegisterForm() {
       var pwd = document.getElementById("password").value;
       var confirmPwd = document.getElementById("confirmPassword").value;
@@ -105,7 +129,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 <body>
 
-<!-- Include your existing header -->
+<!-- Optionally include a user header if needed -->
 <?php include 'header.php'; ?>
 
 <div class="register-container">
@@ -115,6 +139,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     It's absolutely free!
   </p>
 
+  <!-- Display any error message -->
   <?php if (!empty($error)): ?>
     <div class="error-msg"><?php echo $error; ?></div>
   <?php endif; ?>
@@ -156,21 +181,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <div class="small-note">Date of birth can't be changed once submitted.</div>
     </div>
 
-    <div class="checkbox-group">
+    <!-- Additional checkboxes if needed -->
+    <!-- <div class="checkbox-group">
       <input type="checkbox" id="news" name="news">
       <label for="news">I want the latest news and promotions!</label>
     </div>
-
     <div class="checkbox-group">
       <input type="checkbox" id="terms" name="terms" required>
       <label for="terms">
         I accept the <strong>Terms and Condition</strong> and Privacy Policy.
       </label>
-    </div>
+    </div> -->
 
-    <div class="recaptcha-box">
+    <!-- <div class="recaptcha-box">
       [ reCAPTCHA widget goes here ]
-    </div>
+    </div> -->
 
     <button type="submit" class="register-btn">Register Now</button>
   </form>

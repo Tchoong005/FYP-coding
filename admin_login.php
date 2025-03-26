@@ -1,5 +1,6 @@
 <?php
 session_start();
+require_once 'connection.php';  // connection.php returns $conn for database connection
 
 // If already logged in, redirect to the appropriate dashboard
 if (isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'] !== false) {
@@ -13,41 +14,48 @@ if (isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'] !== fals
 
 $error = '';
 
-// On form submission, check credentials
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = trim($_POST['username']);
     $password = $_POST['password'];
     
-    // 1) Superadmin check
-    if ($username === 'admin' && $password === 'admin@12345678') {
-        $_SESSION['admin_logged_in'] = 'superadmin';
-        $_SESSION['admin_username'] = 'admin';
-        header("Location: superadmin_dashboard.php");
-        exit();
+    // Query the Admins table to check if the username exists
+    $stmt = $conn->prepare("SELECT admin_password, admin_role FROM Admins WHERE admin_username = ?");
+    if (!$stmt) {
+        $error = "Database error: " . $conn->error;
     } else {
-        // 2) Normal admin check from session-based "database"
-        if (isset($_SESSION['admin_users']) && isset($_SESSION['admin_users'][$username])) {
-            $storedHash = $_SESSION['admin_users'][$username];
-            if (password_verify($password, $storedHash)) {
-                $_SESSION['admin_logged_in'] = 'admin';
+        $stmt->bind_param("s", $username);
+        $stmt->execute();
+        $stmt->store_result();
+        
+        if ($stmt->num_rows === 0) {
+            $error = "Admin user not found.";
+        } else {
+            $stmt->bind_result($storedPassword, $adminRole);
+            $stmt->fetch();
+            // Directly compare plain text passwords
+            if ($password === $storedPassword) {
+                $_SESSION['admin_logged_in'] = ($adminRole === 'superadmin') ? 'superadmin' : 'admin';
                 $_SESSION['admin_username'] = $username;
-                header("Location: admin_dashboard.php");
+                if ($_SESSION['admin_logged_in'] === 'superadmin') {
+                    header("Location: superadmin_dashboard.php");
+                } else {
+                    header("Location: admin_dashboard.php");
+                }
                 exit();
             } else {
                 $error = "Invalid password for admin user.";
             }
-        } else {
-            $error = "Admin user not found.";
         }
+        $stmt->close();
     }
 }
+$conn->close();
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <title>Admin Login</title>
-  <!-- Link to your admin_login.css -->
   <link rel="stylesheet" href="admin_login.css">
   <script>
     function validateAdminForm() {
@@ -62,9 +70,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   </script>
 </head>
 <body>
-
-<!-- No header here, so we don't auto-skip to superadmin -->
-
 <div class="admin-login-container">
   <h2>Admin Login</h2>
   <p>Please enter your admin credentials.</p>
@@ -76,32 +81,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <form method="post" onsubmit="return validateAdminForm();">
     <div class="input-group">
       <label for="username">Username</label>
-      <input 
-        type="text" 
-        name="username" 
-        id="username" 
-        placeholder="Enter admin username" 
-        required
-      >
+      <input type="text" name="username" id="username" placeholder="Enter admin username" required>
     </div>
     <div class="input-group">
       <label for="password">Password</label>
-      <input 
-        type="password" 
-        name="password" 
-        id="password" 
-        placeholder="Enter admin password" 
-        required
-      >
+      <input type="password" name="password" id="password" placeholder="Enter admin password" required>
     </div>
     <button type="submit" class="login-btn">Login</button>
   </form>
-
-  <!-- Optional link back to the normal user site -->
+  
   <div class="bottom-links">
     <p><a href="index.php">Return to Index</a></p>
   </div>
 </div>
-
 </body>
 </html>

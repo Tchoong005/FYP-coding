@@ -15,7 +15,21 @@ if (!isset($_SESSION['user_id'])) {
 </head>
 <body>
 
-<?php include 'header.php'; ?>
+<!-- Example top bar / header -->
+<div class="topbar">
+  <div class="container">
+    <a href="index_user.php" class="logo">Fast Food Ordering</a>
+    <ul class="topbar-links">
+      <li><a href="#">Order Now</a></li>
+      <li><a href="logout.php">Logout</a></li>  <!-- Logout link -->
+    </ul>
+  </div>
+</div>
+
+<!-- Alternatively, if you have a separate header.php, include it and 
+     add the logout link there, for example:
+<?php // include 'header.php'; ?>
+-->
 
 <!-- Hero / Banner -->
 <div class="hero-section">
@@ -36,33 +50,4 @@ if (!isset($_SESSION['user_id'])) {
       <p>K-Town</p>
     </li>
     <li>
-      <img src="images/giftvoucher.png" alt="Gift Voucher">
-      <p>Gift Voucher</p>
-    </li>
-    <li>
-      <img src="images/catering.png" alt="Catering">
-      <p>Catering</p>
-    </li>
-    <li>
-      <img src="images/party.png" alt="Party">
-      <p>Party</p>
-    </li>
-  </ul>
-</div>
-
-<!-- Promotions Section -->
-<div class="promotions-section">
-  <ul>
-    <li>
-      <img src="images/promo1.jpg" alt="Promo 1">
-      <p>RM 17 OFF All Day</p>
-    </li>
-    <li>
-      <img src="images/promo2.jpg" alt="Promo 2">
-      <p>RM 7 OFF from 2-5 PM</p>
-    </li>
-  </ul>
-</div>
-
-</body>
-</html>
+      <img src

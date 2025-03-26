@@ -1,5 +1,7 @@
 <?php
 session_start();
+require_once 'connection.php'; // This file should create a $conn connection object
+
 // If already logged in, redirect to user home
 if (isset($_SESSION['user_id'])) {
     header("Location: index_user.php");
@@ -8,31 +10,43 @@ if (isset($_SESSION['user_id'])) {
 
 $error = '';
 
-// Check the "database" (stored in $_SESSION['users']) after form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $fullName = trim($_POST['full_name']);
     $password = $_POST['password'];
-    
-    if (isset($_SESSION['users'][$fullName])) {
-        $storedHash = $_SESSION['users'][$fullName]['password'];
-        if (password_verify($password, $storedHash)) {
-            $_SESSION['user_id'] = $fullName;
-            header("Location: index_user.php");
-            exit();
-        } else {
-            $error = "Invalid password.";
-        }
+
+    // Prepare a statement to fetch the hashed password from Users table by full name
+    $stmt = $conn->prepare("SELECT User_password FROM Users WHERE Full_name = ?");
+    if (!$stmt) {
+        $error = "Database error: " . $conn->error;
     } else {
-        $error = "User not found. Please register first.";
+        $stmt->bind_param("s", $fullName);
+        $stmt->execute();
+        $stmt->store_result();
+        
+        if ($stmt->num_rows === 0) {
+            $error = "User not found. Please register first.";
+        } else {
+            $stmt->bind_result($storedPassword);
+            $stmt->fetch();
+            // Compare the entered password with the stored hashed password
+            if (password_verify($password, $storedPassword)) {
+                $_SESSION['user_id'] = $fullName; // you might use a unique id instead
+                header("Location: index_user.php");
+                exit();
+            } else {
+                $error = "Invalid password.";
+            }
+        }
+        $stmt->close();
     }
 }
+$conn->close();
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Login</title>
-  <!-- Link to the separate login CSS -->
+  <title>User Login</title>
   <link rel="stylesheet" href="login_style.css">
   <script>
     // Simple client-side validation
@@ -53,7 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 <body>
 
-<!-- Include your existing header.php so your header remains -->
+<!-- Include your existing header so your header remains -->
 <?php include 'header.php'; ?>
 
 <div class="login-container">
@@ -72,8 +86,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         id="full_name" 
         name="full_name" 
         placeholder="e.g. Tan Chun Hoong" 
-        required
-      >
+        autocomplete="off" 
+        required>
     </div>
     <div class="input-group">
       <label for="password">Password</label>
@@ -82,8 +96,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         id="password" 
         name="password" 
         placeholder="Enter your password" 
-        required
-      >
+        autocomplete="off" 
+        required>
     </div>
     <button type="submit" class="login-btn">Log In</button>
   </form>
