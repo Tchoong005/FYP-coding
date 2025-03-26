@@ -8,7 +8,7 @@ body {
   background-color: #fff;
 }
 
-/* Container for the admin login form */
+/* Admin login form container */
 .admin-login-container {
   max-width: 400px;
   margin: 2rem auto;
@@ -28,13 +28,13 @@ body {
   font-size: 0.95rem;
 }
 
-/* Error message styling */
+/* Error message */
 .error-msg {
   color: red;
   margin-bottom: 1rem;
 }
 
-/* Input group styling */
+/* Input groups */
 .input-group {
   margin-bottom: 1rem;
   text-align: left;
@@ -54,7 +54,7 @@ body {
   border-radius: 4px;
 }
 
-/* Login button styling */
+/* Login button */
 .login-btn {
   width: 100%;
   padding: 10px;
@@ -66,7 +66,21 @@ body {
   cursor: pointer;
   transition: background-color 0.3s;
 }
-
 .login-btn:hover {
   background-color: #bbb;
+}
+
+/* Bottom links (e.g., Return to Index) */
+.bottom-links {
+  margin-top: 1rem;
+  font-size: 0.9rem;
+  color: #333;
+  text-align: center;
+}
+.bottom-links p {
+  margin: 0.5rem 0;
+}
+.bottom-links a {
+  color: #e4002b;
+  text-decoration: underline;
 }
