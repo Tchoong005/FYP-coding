@@ -7,16 +7,16 @@ if (isset($_SESSION['user_id'])) {
 }
 
 $error = '';
-// When the form is submitted, check the "database" (stored in $_SESSION['users'])
+
+// Check the "database" (stored in $_SESSION['users']) after form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $fullName = trim($_POST['full_name']);
     $password = $_POST['password'];
     
-    // Check if the user exists in our simulated database
     if (isset($_SESSION['users'][$fullName])) {
         $storedHash = $_SESSION['users'][$fullName]['password'];
         if (password_verify($password, $storedHash)) {
-            $_SESSION['user_id'] = $fullName;  // using full name as user ID for demo
+            $_SESSION['user_id'] = $fullName;
             header("Location: index_user.php");
             exit();
         } else {
@@ -35,7 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <!-- Link to the separate login CSS -->
   <link rel="stylesheet" href="login_style.css">
   <script>
-    // Client-side validation is optional (login mainly checks the database)
+    // Simple client-side validation
     function validateLoginForm() {
       var fullName = document.getElementById("full_name").value.trim();
       var password = document.getElementById("password").value;
@@ -67,11 +67,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <form action="" method="post" onsubmit="return validateLoginForm();">
     <div class="input-group">
       <label for="full_name">Full Name</label>
-      <input type="text" id="full_name" name="full_name" placeholder="e.g. Tan Chun Hoong" required>
+      <input 
+        type="text" 
+        id="full_name" 
+        name="full_name" 
+        placeholder="e.g. Tan Chun Hoong" 
+        required
+      >
     </div>
     <div class="input-group">
       <label for="password">Password</label>
-      <input type="password" id="password" name="password" placeholder="Enter your password" required>
+      <input 
+        type="password" 
+        id="password" 
+        name="password" 
+        placeholder="Enter your password" 
+        required
+      >
     </div>
     <button type="submit" class="login-btn">Log In</button>
   </form>
@@ -83,11 +95,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <button>Continue with Facebook</button>
   </div>
   
+  <!-- Bottom links, each on its own line, centered -->
   <div class="bottom-links">
-    Don't have an account? <a href="register_user.php">Sign up now!</a>
-  </div>
-  <div class="admin-link">
-    <a href="admin_login.php">Admin Login</a>
+    <p>Don't have an account? <a href="register_user.php">Sign up now!</a></p>
+    <p><a href="admin_login.php">Admin Login</a></p>
+    <p><a href="index.php">Continue as Guest</a></p>
   </div>
 </div>
 

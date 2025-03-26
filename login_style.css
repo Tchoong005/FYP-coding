@@ -109,3 +109,18 @@ body {
   color: red;
   margin-bottom: 1rem;
 }
+.bottom-links {
+  margin-top: 1.5rem;
+  font-size: 0.9rem;
+  color: #333;
+  text-align: center; /* Center the text */
+}
+
+.bottom-links p {
+  margin: 0.5rem 0; /* Space between each line */
+}
+
+.bottom-links a {
+  color: #e4002b;
+  text-decoration: underline;
+}
