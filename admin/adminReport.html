@@ -117,8 +117,87 @@
             left: 260px;
             min-height: calc(100%-60px);
            
+
+
         }
 
+        .cards{
+            width: 100%;
+            padding: 35px 20px;
+            display: grid;
+            grid-template-columns: repeat(4,1fr);
+            grid-gap: 20px;
+        }
+        .card{
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #efefef;
+            border-radius: 10px;
+            width: 270px;
+            box-shadow: 0 75px 25px 2 rgba(0, 0, 0, 0.08);
+            
+
+        }
+
+        .number{
+            font-size: 35px;
+            font-weight: 500;
+            color: rgb(227, 125, 125);
+        }
+
+        .card_name{
+            color: 888;
+            font-weight: 600;
+        }
+
+        .icon{
+            font-size: 45px;
+            color: rgb(227, 125, 125);
+        }
+
+
+
+        .tabledesign{
+            background: #efefef;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 75px 25px rgba(0, 0, 0, 0.08);
+            width: 100%;
+        }
+
+       
+        
+
+        table{
+            border-collapse: separate;
+            border-spacing: 0 10px;
+            width: 100%;
+            font-size: 16px;
+            
+           
+            
+        }
+
+        table th, table td{
+            padding: 12px 100px;
+            text-align: left;
+        }
+
+        thead th{
+            background-color: #f5f5f5;
+            border-bottom: 2px solid #b3a8a8;
+        }
+
+        tbody tr {
+            background-color: #f3f2eec7;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        tbody td {
+            border-bottom: 1px solid #eee;
+        }
      
 
     </style>
@@ -147,56 +226,56 @@
     <div class="list">
         <ul>
             <li>
-                <a href="#">
-                    <i></i>
+                <a href="adminhome.html">
+                    <i class="fas fa-home"></i>
                     <h4>DASHBOARD</h4>
                 </a>
             </li>
         </ul>
         <ul>
             <li>
-                <a href="#">
-                    <i></i>
+                <a href="adminorder.html">
+                    <i class="fas fa-receipt"></i>
                     <h4>ORDERS</h4>
                 </a>
             </li>
         </ul>
         <ul>
             <li>
-                <a href="#">
-                    <i></i>
+                <a href="adminProduct.html">
+                    <i class="fas fa-box-open"></i>
                     <h4>PRODUCTS</h4>
                 </a>
             </li>
         </ul>
         <ul>
             <li>
-                <a href="#">
-                    <i></i>
+                <a href="adminStaff.html">
+                    <i class="fas fa-user-tie"></i>
                     <h4>STAFFS</h4>
                 </a>
             </li>
         </ul>
         <ul>
             <li>
-                <a href="#">
-                    <i></i>
+                <a href="adminCustomer.html">
+                    <i class="fas fa-users"></i>
                     <h4>CUSTOMER</h4>
                 </a>
             </li>
         </ul>
         <ul>
             <li>
-                <a href="#">
-                    <i></i>
+                <a href="adminReport.html">
+                    <i class="fas fa-chart-line"></i>
                     <h4>REPORT</h4>
                 </a>
             </li>
         </ul>
         <ul>
             <li>
-                <a href="#">
-                    <i></i>
+                <a href="adminAboutUs.html">
+                    <i class="fas fa-info-circle"></i>
                     <h4>ABOURT US</h4>
                 </a>
             </li>
@@ -205,7 +284,78 @@
     </div>
 
 
+    <div class="main">
+        <div class="cards">
+            <div class="card">
+                <div class="content">
+                    <div class="number">$10000.99</div>
+                    <div class="card_name">Total sales</div>
+                </div>
+                <div class="icon">
+                    <i class="fa-solid fa-box"></i>
+                </div>
+            </div>
+            <div class="card">
+                <div class="content">
+                    <div class="number">12.80%</div>
+                    <div class="card_name">Sale Growth</div>
+                </div>
+                <div class="icon">
+                    <i class="fa-solid fa-box-open"></i>
+                </div>
+            </div>
+            <div class="card">
+                <div class="content">
+                    <div class="number">Cheese wedges</div>
+                    <div class="card_name">Top Selling Product</div>
+                </div>
+                <div class="icon">
+                    <i class="fa-solid fa-user-tie"></i>
+                </div>
+            </div>
+            <div class="card">
+                <div class="content">
+                    <div class="number">$12000</div>
+                    <div class="card_name">Sales</div>
+                </div>
+                <div class="icon">
+                    <i class="fa-solid fa-money-bill-trend-up"></i>
+                </div>
+            </div>
+        
+        
+        </div>
 
+
+
+        <div class="tabledesign">
+            <h2>Recent Salest</h2>
+            <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Total Order</th>
+                    <th>Sales</th>
+                    
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <th>2025.1.23</th>
+                    <th>25</th>
+                    <th>$1200.25</th>
+                    
+                </tr>
+            </tbody>
+    
+                
+            </table>
+    
+           
+            
+        </div>
+       
+    </div>
 
   
    

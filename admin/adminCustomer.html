@@ -110,13 +110,70 @@
 
         
 
-        .main{
+        .main {
+            margin-left: 280px;
+            margin-top: 80px;
+            padding: 20px;
+            font-size: 16px;
             position: absolute;
-            top: 60px;
-            width: calc(100%-260px);
-            left: 260px;
-            min-height: calc(100%-60px);
+            background-color: #ffffff17;
+            padding: 12px;
+            border-radius: 40px;
+            box-shadow: 0 4px 12px  rgba(0, 0, 0, 0.08);
+            max-width: 1000px;
+        
+        }
+
+        table{
+            border-collapse: separate;
+            border-spacing: 0 10px;
+            width: 100%;
+            font-size: 16px;
+            
            
+            
+        }
+
+        table th, table td{
+            padding: 12px 100px;
+            text-align: left;
+        }
+
+        thead th{
+            background-color: #f5f5f5;
+            border-bottom: 2px solid #b3a8a8;
+        }
+
+        tbody tr {
+            background-color: #f3f2eec7;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        tbody td {
+            border-bottom: 1px solid #eee;
+        }
+
+        .button-group {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 15px; 
+        }
+
+         .button-group button {
+            padding: 10px 20px;
+            border: none;
+            background-color: #dc4949;
+            color: white;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+    
+        }
+
+        .button-group button:hover {
+            background-color: #c53737;
         }
 
      
@@ -147,56 +204,56 @@
     <div class="list">
         <ul>
             <li>
-                <a href="#">
-                    <i></i>
+                <a href="adminhome.html">
+                    <i class="fas fa-home"></i>
                     <h4>DASHBOARD</h4>
                 </a>
             </li>
         </ul>
         <ul>
             <li>
-                <a href="#">
-                    <i></i>
+                <a href="adminorder.html">
+                    <i class="fas fa-receipt"></i>
                     <h4>ORDERS</h4>
                 </a>
             </li>
         </ul>
         <ul>
             <li>
-                <a href="#">
-                    <i></i>
+                <a href="adminProduct.html">
+                    <i class="fas fa-box-open"></i>
                     <h4>PRODUCTS</h4>
                 </a>
             </li>
         </ul>
         <ul>
             <li>
-                <a href="#">
-                    <i></i>
+                <a href="adminStaff.html">
+                    <i class="fas fa-user-tie"></i>
                     <h4>STAFFS</h4>
                 </a>
             </li>
         </ul>
         <ul>
             <li>
-                <a href="#">
-                    <i></i>
+                <a href="adminCustomer.html">
+                    <i class="fas fa-users"></i>
                     <h4>CUSTOMER</h4>
                 </a>
             </li>
         </ul>
         <ul>
             <li>
-                <a href="#">
-                    <i></i>
+                <a href="adminReport.html">
+                    <i class="fas fa-chart-line"></i>
                     <h4>REPORT</h4>
                 </a>
             </li>
         </ul>
         <ul>
             <li>
-                <a href="#">
-                    <i></i>
+                <a href="adminAboutUs.html">
+                    <i class="fas fa-info-circle"></i>
                     <h4>ABOURT US</h4>
                 </a>
             </li>
@@ -205,7 +262,37 @@
     </div>
 
 
+    <div class="main">
+        <h2>Customer Management</h2>
+        <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Contact No.</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <th>1</th>
+                <th>Justin</th>
+                <th>justin@gmail.com</th>
+                <th>01110008658</th>
+            </tr>
+        </tbody>
 
+            
+        </table>
+
+        <div class="button-group">
+        <button type="button" onclick="addcustomer()">Add Customer</button>
+        <button type="button" onclick="deletecustomer()">Delete Customer</button>
+        <button type="button" onclick="editcustomer()">Edit Customer</button>
+        <button type="button" onclick="viewcustomer()">View Customer</button>
+        </div>
+        
+    </div>
 
   
    
