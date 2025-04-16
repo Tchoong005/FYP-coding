@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Login - FastFood Express</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.css">
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background-color: #fff0f0;
+    }
+    .login-container {
+      max-width: 420px;
+      margin: 80px auto;
+      background: #fff;
+      padding: 40px;
+      border-radius: 12px;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+    }
+    .login-container h2 {
+      text-align: center;
+      color: #d6001c;
+      margin-bottom: 25px;
+    }
+    form input {
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 15px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+    .form-group {
+      position: relative;
+    }
+    .toggle-password {
+      position: absolute;
+      right: 12px;
+      top: 12px;
+      cursor: pointer;
+      font-size: 14px;
+      color: #d6001c;
+    }
+    .remember {
+      display: flex;
+      align-items: center;
+      font-size: 14px;
+      margin-bottom: 15px;
+    }
+    .remember input {
+      margin-right: 8px;
+    }
+    button {
+      background-color: #d6001c;
+      color: white;
+      border: none;
+      padding: 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      width: 100%;
+      font-weight: bold;
+      font-size: 16px;
+    }
+    .register-link {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 14px;
+    }
+    .register-link a {
+      color: #d6001c;
+      text-decoration: none;
+      font-weight: bold;
+    }
+    .footer {
+      text-align: center;
+      font-size: 13px;
+      color: #666;
+      margin-top: 30px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="login-container" data-aos="zoom-in">
+  <h2 data-aos="zoom-in" data-aos-delay="100">Login to FastFood Express</h2>
+  <form>
+    <input type="email" placeholder="Email" required data-aos="fade-right" data-aos-delay="200">
+    <div class="form-group" data-aos="fade-left" data-aos-delay="300">
+      <input type="password" id="password" placeholder="Password" required>
+      <span class="toggle-password" onclick="togglePassword()">Show</span>
+    </div>
+    <div class="remember" data-aos="fade-up" data-aos-delay="400">
+      <input type="checkbox" id="remember">
+      <label for="remember">Remember Me</label>
+    </div>
+    <div data-aos="fade-up" data-aos-delay="500">
+      <button type="submit">Login</button>
+    </div>
+  </form>
+  <div class="register-link" data-aos="fade-up" data-aos-delay="600">
+    Don't have an account? <a href="register.html">Register here</a>
+  </div>
+</div>
+
+<div class="footer">
+  © 2025 FastFood Express. All rights reserved.
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
+<script>
+  AOS.init();
+  function togglePassword() {
+    const pwd = document.getElementById('password');
+    const toggle = document.querySelector('.toggle-password');
+    if (pwd.type === 'password') {
+      pwd.type = 'text';
+      toggle.textContent = 'Hide';
+    } else {
+      pwd.type = 'password';
+      toggle.textContent = 'Show';
+    }
+  }
+</script>
+
+</body>
+</html>
