@@ -68,7 +68,7 @@ $conn->close();
 <body>
 
 <!-- Include your existing header so your header remains -->
-<?php include 'header.php'; ?>
+<?php include 'header_guest.php'; ?>
 
 <div class="login-container">
   <h2>Log in to enjoy exclusive KFC deals!</h2>

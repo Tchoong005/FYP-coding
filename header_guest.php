@@ -15,7 +15,7 @@
   <div class="right">
     <!-- You can conditionally hide these if user is logged in, etc. -->
     <a href="login_user.php">Login / Register</a>
-    <a href="login_user.php" class="order-now-btn">Order Now</a>
+    <a href="set_location.php" class="order-now-btn">Order Now</a>
   </div>
 </div>
 
