@@ -15,7 +15,7 @@ if (isset($_SESSION['user_id'])) {
 </head>
 <body>
 
-<?php include 'header.php'; ?>
+<?php include 'header_guest.php'; ?>
 
 <!-- Hero / Banner -->
 <div class="hero-section">
