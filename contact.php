@@ -136,7 +136,7 @@ if (!isset($_SESSION['user_id'])) {
     <p>123 FastFood Lane, Burger City, 43000</p>
 
     <h3>📞 Phone</h3>
-    <p>+60 12-345 6789</p>
+    <p>+60 16-7748568</p>
 
     <h3>📧 Email</h3>
     <p>hello@fastfoodexpress.com</p>
