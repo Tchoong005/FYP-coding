@@ -1,4 +1,10 @@
-<?php session_start(); ?>
+<?php
+session_start();
+if (!isset($_SESSION['user_id'])) {
+  header("Location: login.php");
+  exit();
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,7 +12,11 @@
   <title>Contact Us - FastFood Express</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.css">
   <style>
-    body { margin: 0; font-family: Arial, sans-serif; background-color: #fff; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background-color: #fff;
+    }
 
     .topbar {
       background-color: #222;
@@ -48,7 +58,7 @@
       padding: 40px 20px;
     }
 
-    .info-box, .form-box {
+    .info-box {
       flex: 1 1 300px;
       background: #fff6f6;
       padding: 30px;
@@ -59,6 +69,14 @@
     .info-box h3 {
       color: #d6001c;
       margin-bottom: 10px;
+    }
+
+    .form-box {
+      flex: 1 1 300px;
+      background: #f9f9f9;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
 
     form input, form textarea {
@@ -91,12 +109,13 @@
 </head>
 <body>
 
-<!-- 顶部导航栏 -->
+<!-- Topbar -->
 <div class="topbar">
   <div class="logo">🍔 FastFood Express</div>
   <div>
     <a href="index_user.php">Home</a>
     <a href="products_user.php">Products</a>
+    <a href="profile.php">Profile</a>
     <a href="about.php">About</a>
     <a href="contact.php">Contact</a>
     <a href="logout.php">Logout</a>
@@ -111,7 +130,7 @@
 
 <!-- Contact Grid -->
 <div class="contact-grid">
-  <!-- Contact Info -->
+  <!-- Info -->
   <div class="info-box" data-aos="fade-right">
     <h3>📍 Address</h3>
     <p>123 FastFood Lane, Burger City, 43000</p>
@@ -123,7 +142,7 @@
     <p>hello@fastfoodexpress.com</p>
   </div>
 
-  <!-- Contact Form -->
+  <!-- Form -->
   <div class="form-box" data-aos="fade-left">
     <form>
       <input type="text" placeholder="Your Name" required>
@@ -139,7 +158,7 @@
   © 2025 FastFood Express. All rights reserved.
 </div>
 
-<!-- AOS -->
+<!-- AOS Script -->
 <script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
 <script>AOS.init();</script>
 

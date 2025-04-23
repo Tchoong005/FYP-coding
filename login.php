@@ -1,14 +1,12 @@
 <?php
 session_start();
-include 'db.php'; // 确保你有正确连接数据库的 db.php 文件
-
+include 'db.php';
 $error = "";
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $email = $_POST['email'];
     $password = $_POST['password'];
 
-    // 防止 SQL 注入
     $email = mysqli_real_escape_string($conn, $email);
     $password = mysqli_real_escape_string($conn, $password);
 
@@ -19,7 +17,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $row = mysqli_fetch_assoc($result);
         $_SESSION['user_id'] = $row['id'];
         $_SESSION['username'] = $row['username'];
-
         header("Location: index_user.php");
         exit();
     } else {
@@ -27,7 +24,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -35,13 +31,57 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
   <title>Login - FastFood Express</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.css">
   <style>
-    body { font-family: Arial, sans-serif; background: #fff0f0; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-    .login-container { background: white; padding: 30px 40px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 350px; }
-    h2 { color: #d6001c; text-align: center; margin-bottom: 20px; }
-    input[type=email], input[type=password] { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 8px; }
-    button { background: #d6001c; color: white; width: 100%; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
-    .bottom-link { text-align: center; margin-top: 15px; }
-    .error { color: red; text-align: center; margin-bottom: 10px; }
+    body {
+      font-family: Arial, sans-serif;
+      background: #fff0f0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .login-container {
+      background: white;
+      padding: 30px 40px;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      width: 350px;
+    }
+    h2 {
+      color: #d6001c;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    input[type=email], input[type=password] {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+    button {
+      background: #d6001c;
+      color: white;
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .bottom-link {
+      text-align: center;
+      margin-top: 15px;
+    }
+    .bottom-link a {
+      color: #d6001c;
+      text-decoration: none;
+    }
+    .error {
+      color: red;
+      text-align: center;
+      margin-bottom: 10px;
+    }
   </style>
 </head>
 <body>
@@ -54,6 +94,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <input type="password" name="password" placeholder="Password" required>
     <button type="submit">Login</button>
     <div class="bottom-link">Don't have an account? <a href="register.php">Register</a></div>
+    <div class="bottom-link"><a href="reset_password.php">Forgot Password?</a></div>
   </form>
 </div>
 

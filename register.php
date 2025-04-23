@@ -1,24 +1,30 @@
 <?php
+session_start();
 include 'db.php';
+$error = "";
+$success = "";
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-  $username = $_POST['username'];
-  $email = $_POST['email'];
-  $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
+    $user_id = mysqli_real_escape_string($conn, $_POST['user_id']);
+    $email    = mysqli_real_escape_string($conn, $_POST['email']);
+    $phone    = mysqli_real_escape_string($conn, $_POST['phone']);
+    $password = mysqli_real_escape_string($conn, $_POST['password']);
 
-  $stmt = $conn->prepare("INSERT INTO customers (username, email, password) VALUES (?, ?, ?)");
-  $stmt->bind_param("sss", $username, $email, $password);
+    $check_query = "SELECT * FROM customers WHERE email='$email'";
+    $check_result = mysqli_query($conn, $check_query);
 
-  if ($stmt->execute()) {
-    echo "<script>alert('Registration successful! You can login now'); window.location='login.php';</script>";
-  } else {
-    echo "<script>alert('Registration failed! Email or username already used.');</script>";
-  }
-
-  $stmt->close();
+    if (mysqli_num_rows($check_result) > 0) {
+        $error = "Email already registered.";
+    } else {
+        $query = "INSERT INTO customers (username, email, phone, password) VALUES ('$user_id', '$email', '$phone', '$password')";
+        if (mysqli_query($conn, $query)) {
+            $success = "Registration successful! You can now login.";
+        } else {
+            $error = "Something went wrong. Please try again.";
+        }
+    }
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -30,57 +36,68 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
       font-family: Arial, sans-serif;
       background: #fff0f0;
       display: flex;
-      align-items: center;
       justify-content: center;
+      align-items: center;
       height: 100vh;
+      margin: 0;
     }
-    .form-container {
-      background: #fff;
-      padding: 40px;
+    .register-container {
+      background: white;
+      padding: 30px 40px;
       border-radius: 10px;
-      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
-      width: 100%;
-      max-width: 400px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      width: 350px;
     }
     h2 {
       color: #d6001c;
+      text-align: center;
       margin-bottom: 20px;
     }
-    input, button {
+    input[type=text], input[type=email], input[type=password] {
       width: 100%;
-      padding: 12px;
-      margin-bottom: 15px;
-      border-radius: 6px;
+      padding: 10px;
+      margin: 10px 0;
       border: 1px solid #ccc;
-      font-size: 14px;
+      border-radius: 8px;
     }
     button {
       background: #d6001c;
       color: white;
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
       font-weight: bold;
       cursor: pointer;
     }
-    a {
-      display: block;
+    .bottom-link {
       text-align: center;
-      color: #d6001c;
-      text-decoration: none;
+      margin-top: 15px;
     }
+    .error { color: red; text-align: center; margin-bottom: 10px; }
+    .success { color: green; text-align: center; margin-bottom: 10px; }
   </style>
 </head>
 <body>
-  <div class="form-container" data-aos="zoom-in">
-    <h2>Register</h2>
-    <form method="POST">
-      <input type="text" name="username" placeholder="Username" required>
-      <input type="email" name="email" placeholder="Email" required>
-      <input type="password" name="password" placeholder="Password" required>
-      <button type="submit">Register</button>
-      <a href="login.php">Already have an account? Login</a>
-    </form>
-  </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
-  <script>AOS.init();</script>
+<div class="register-container" data-aos="zoom-in">
+  <h2>Register</h2>
+  <?php
+    if ($error) echo "<div class='error'>$error</div>";
+    if ($success) echo "<div class='success'>$success</div>";
+  ?>
+  <form method="post">
+    <input type="text" name="user_id" placeholder="User ID" required>
+    <input type="email" name="email" placeholder="Email" required>
+    <input type="text" name="phone" placeholder="Phone Number" required>
+    <input type="password" name="password" placeholder="Password" required>
+    <button type="submit">Register</button>
+    <div class="bottom-link">Already have an account? <a href="login.php">Login</a></div>
+  </form>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
+<script>AOS.init();</script>
+
 </body>
 </html>

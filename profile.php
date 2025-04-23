@@ -8,88 +8,158 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 $user_id = $_SESSION['user_id'];
+$query = "SELECT * FROM customers WHERE id = '$user_id'";
+$result = mysqli_query($conn, $query);
+$user = mysqli_fetch_assoc($result);
+
+$success = "";
+$error = "";
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-  $username = $_POST['username'];
-  $email = $_POST['email'];
+  $email = mysqli_real_escape_string($conn, $_POST['email']);
+  $phone = mysqli_real_escape_string($conn, $_POST['phone']);
+  $password = mysqli_real_escape_string($conn, $_POST['password']);
 
-  $stmt = $conn->prepare("UPDATE customers SET username = ?, email = ? WHERE id = ?");
-  $stmt->bind_param("ssi", $username, $email, $user_id);
-  $stmt->execute();
-  echo "<script>alert('Profile updated');</script>";
-  $stmt->close();
+  $update_query = "UPDATE customers SET email='$email', phone='$phone', password='$password' WHERE id='$user_id'";
+  if (mysqli_query($conn, $update_query)) {
+    $success = "Profile updated successfully!";
+  } else {
+    $error = "Update failed. Please try again.";
+  }
+
+  // Refresh data
+  $result = mysqli_query($conn, $query);
+  $user = mysqli_fetch_assoc($result);
 }
-
-$stmt = $conn->prepare("SELECT username, email FROM customers WHERE id = ?");
-$stmt->bind_param("i", $user_id);
-$stmt->execute();
-$stmt->bind_result($username, $email);
-$stmt->fetch();
-$stmt->close();
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Profile - FastFood Express</title>
+  <title>My Profile - FastFood Express</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.css">
   <style>
     body {
       font-family: Arial, sans-serif;
-      background: #fff0f0;
-      padding: 40px;
+      background-color: #fff0f0;
+      margin: 0;
+    }
+
+    .topbar {
+      background-color: #222;
+      color: white;
       display: flex;
-      justify-content: center;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px 30px;
     }
-    .form-container {
-      background: #fff;
-      padding: 40px;
+
+    .topbar .logo {
+      font-size: 24px;
+      font-weight: bold;
+    }
+
+    .topbar a {
+      color: white;
+      text-decoration: none;
+      margin-left: 20px;
+      font-weight: bold;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 60px auto;
+      background: white;
+      padding: 30px;
       border-radius: 10px;
-      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
-      width: 100%;
-      max-width: 500px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     }
+
     h2 {
       color: #d6001c;
-      margin-bottom: 20px;
       text-align: center;
     }
-    input, button {
+
+    form input {
       width: 100%;
       padding: 12px;
-      margin-bottom: 15px;
-      border-radius: 6px;
+      margin: 10px 0;
       border: 1px solid #ccc;
-      font-size: 14px;
+      border-radius: 8px;
     }
-    button {
+
+    input[readonly] {
+      background-color: #f3f3f3;
+    }
+
+    form button {
       background: #d6001c;
       color: white;
-      font-weight: bold;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 8px;
       cursor: pointer;
+      font-weight: bold;
+      width: 100%;
     }
-    a {
-      display: block;
+
+    .message {
       text-align: center;
-      color: #d6001c;
-      text-decoration: none;
+      font-weight: bold;
+      margin: 10px 0;
+    }
+
+    .success { color: green; }
+    .error { color: red; }
+
+    .footer {
+      background-color: #eee;
+      text-align: center;
+      padding: 20px;
+      font-size: 14px;
+      margin-top: 40px;
     }
   </style>
 </head>
 <body>
-  <div class="form-container" data-aos="zoom-in">
-    <h2>Your Profile</h2>
-    <form method="POST">
-      <input type="text" name="username" value="<?php echo $username; ?>" required>
-      <input type="email" name="email" value="<?php echo $email; ?>" required>
-      <button type="submit">Update</button>
-      <a href="logout.php">Logout</a>
-    </form>
-  </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
-  <script>AOS.init();</script>
-  
+<!-- Topbar -->
+<div class="topbar">
+  <div class="logo">🍔 FastFood Express</div>
+  <div>
+    <a href="index_user.php">Home</a>
+    <a href="products_user.php">Products</a>
+    <a href="profile.php">Profile</a>
+    <a href="about.php">About</a>
+    <a href="contact.php">Contact</a>
+    <a href="logout.php">Logout</a>
+  </div>
+</div>
+
+<!-- Profile Form -->
+<div class="container" data-aos="fade-up">
+  <h2>My Profile</h2>
+  <?php
+    if ($success) echo "<div class='message success'>$success</div>";
+    if ($error) echo "<div class='message error'>$error</div>";
+  ?>
+  <form method="POST">
+    <input type="text" name="username" value="<?php echo $user['username']; ?>" readonly>
+    <input type="email" name="email" value="<?php echo $user['email']; ?>" required>
+    <input type="text" name="phone" value="<?php echo $user['phone']; ?>" required>
+    <input type="password" name="password" value="<?php echo $user['password']; ?>" required>
+    <button type="submit">Update Profile</button>
+  </form>
+</div>
+
+<!-- Footer -->
+<div class="footer">
+  © 2025 FastFood Express. All rights reserved.
+</div>
+
+<!-- AOS Script -->
+<script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
+<script>AOS.init();</script>
+
 </body>
 </html>
