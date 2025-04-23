@@ -10,17 +10,22 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $phone    = mysqli_real_escape_string($conn, $_POST['phone']);
     $password = mysqli_real_escape_string($conn, $_POST['password']);
 
-    $check_query = "SELECT * FROM customers WHERE email='$email'";
-    $check_result = mysqli_query($conn, $check_query);
-
-    if (mysqli_num_rows($check_result) > 0) {
-        $error = "Email already registered.";
+    // ✅ 强密码验证（后端检查）
+    if (!preg_match("/^(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,}$/", $password)) {
+        $error = "Password must be at least 8 characters long and include uppercase, lowercase, and a number.";
     } else {
-        $query = "INSERT INTO customers (username, email, phone, password) VALUES ('$user_id', '$email', '$phone', '$password')";
-        if (mysqli_query($conn, $query)) {
-            $success = "Registration successful! You can now login.";
+        $check_query = "SELECT * FROM customers WHERE email='$email'";
+        $check_result = mysqli_query($conn, $check_query);
+
+        if (mysqli_num_rows($check_result) > 0) {
+            $error = "Email already registered.";
         } else {
-            $error = "Something went wrong. Please try again.";
+            $query = "INSERT INTO customers (username, email, phone, password) VALUES ('$user_id', '$email', '$phone', '$password')";
+            if (mysqli_query($conn, $query)) {
+                $success = "Registration successful! You can now login.";
+            } else {
+                $error = "Something went wrong. Please try again.";
+            }
         }
     }
 }
@@ -90,7 +95,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <input type="text" name="user_id" placeholder="User ID" required>
     <input type="email" name="email" placeholder="Email" required>
     <input type="text" name="phone" placeholder="Phone Number" required>
-    <input type="password" name="password" placeholder="Password" required>
+    <input type="password" name="password" placeholder="Password" required
+      pattern="(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,}"
+      title="At least 8 characters with uppercase, lowercase, and a number.">
     <button type="submit">Register</button>
     <div class="bottom-link">Already have an account? <a href="login.php">Login</a></div>
   </form>
