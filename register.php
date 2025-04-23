@@ -1,3 +1,24 @@
+<?php
+include 'db.php';
+
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+  $username = $_POST['username'];
+  $email = $_POST['email'];
+  $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
+
+  $stmt = $conn->prepare("INSERT INTO customers (username, email, password) VALUES (?, ?, ?)");
+  $stmt->bind_param("sss", $username, $email, $password);
+
+  if ($stmt->execute()) {
+    echo "<script>alert('Registration successful! You can login now'); window.location='login.php';</script>";
+  } else {
+    echo "<script>alert('Registration failed! Email or username already used.');</script>";
+  }
+
+  $stmt->close();
+}
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,113 +27,60 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.css">
   <style>
     body {
-      margin: 0;
       font-family: Arial, sans-serif;
-      background-color: #fff0f0;
+      background: #fff0f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
     }
-    .register-container {
-      max-width: 420px;
-      margin: 80px auto;
+    .form-container {
       background: #fff;
       padding: 40px;
-      border-radius: 12px;
-      box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+      border-radius: 10px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+      width: 100%;
+      max-width: 400px;
     }
-    .register-container h2 {
-      text-align: center;
+    h2 {
       color: #d6001c;
-      margin-bottom: 25px;
+      margin-bottom: 20px;
     }
-    form input {
+    input, button {
       width: 100%;
       padding: 12px;
       margin-bottom: 15px;
+      border-radius: 6px;
       border: 1px solid #ccc;
-      border-radius: 8px;
       font-size: 14px;
-    }
-    .form-group {
-      position: relative;
-    }
-    .toggle-password {
-      position: absolute;
-      right: 12px;
-      top: 12px;
-      cursor: pointer;
-      font-size: 14px;
-      color: #d6001c;
     }
     button {
-      background-color: #d6001c;
+      background: #d6001c;
       color: white;
-      border: none;
-      padding: 12px;
-      border-radius: 8px;
-      cursor: pointer;
-      width: 100%;
       font-weight: bold;
-      font-size: 16px;
+      cursor: pointer;
     }
-    .login-link {
+    a {
+      display: block;
       text-align: center;
-      margin-top: 20px;
-      font-size: 14px;
-    }
-    .login-link a {
       color: #d6001c;
       text-decoration: none;
-      font-weight: bold;
-    }
-    .footer {
-      text-align: center;
-      font-size: 13px;
-      color: #666;
-      margin-top: 30px;
     }
   </style>
 </head>
 <body>
-
-<div class="register-container" data-aos="zoom-in">
-  <h2 data-aos="zoom-in" data-aos-delay="100">Create Account</h2>
-  <form>
-    <input type="text" placeholder="Full Name" required data-aos="fade-right" data-aos-delay="200">
-    <input type="email" placeholder="Email" required data-aos="fade-left" data-aos-delay="300">
-    <div class="form-group" data-aos="fade-up" data-aos-delay="400">
-      <input type="password" id="password" placeholder="Password" required>
-      <span class="toggle-password" onclick="togglePassword('password', this)">Show</span>
-    </div>
-    <div class="form-group" data-aos="fade-up" data-aos-delay="500">
-      <input type="password" id="confirm" placeholder="Confirm Password" required>
-      <span class="toggle-password" onclick="togglePassword('confirm', this)">Show</span>
-    </div>
-    <div data-aos="fade-up" data-aos-delay="600">
+  <div class="form-container" data-aos="zoom-in">
+    <h2>Register</h2>
+    <form method="POST">
+      <input type="text" name="username" placeholder="Username" required>
+      <input type="email" name="email" placeholder="Email" required>
+      <input type="password" name="password" placeholder="Password" required>
       <button type="submit">Register</button>
-    </div>
-  </form>
-  <div class="login-link" data-aos="fade-up" data-aos-delay="700">
-    Already have an account? <a href="login.html">Login here</a>
+      <a href="login.php">Already have an account? Login</a>
+    </form>
   </div>
-</div>
 
-<div class="footer">
-  © 2025 FastFood Express. All rights reserved.
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
-<script>
-  AOS.init();
-  function togglePassword(id, el) {
-    const field = document.getElementById(id);
-    if (field.type === 'password') {
-      field.type = 'text';
-      el.textContent = 'Hide';
-    } else {
-      field.type = 'password';
-      el.textContent = 'Show';
-    }
-  }
-</script>
-
+  <script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
+  <script>AOS.init();</script>
 </body>
 </html>

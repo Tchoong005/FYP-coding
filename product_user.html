@@ -67,12 +67,13 @@
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
       gap: 30px;
-      padding: 30px;
-      max-width: 1200px;
-      margin: auto;
+      padding: 20px 40px;
+      justify-items: center;
     }
 
     .product-card {
+      width: 100%;
+      max-width: 260px;
       background-color: #fff7f7;
       border-radius: 16px;
       overflow: hidden;
@@ -98,7 +99,7 @@
 
     .product-card p {
       font-size: 14px;
-      margin: 5px 0;
+      margin: 5px 10px;
       color: #444;
     }
 
@@ -118,7 +119,7 @@
 </head>
 <body>
 
-<!-- Navbar -->
+<!-- Topbar -->
 <div class="topbar">
   <div class="logo">🍔 FastFood Express</div>
   <div>
@@ -126,7 +127,7 @@
     <a href="product_user.html">Products</a>
     <a href="user_about.html">About</a>
     <a href="contact_user.html">Contact</a>
-    <a href="login.html">Logout</a>
+    <a href="login.php">Login</a>
   </div>
 </div>
 
@@ -135,7 +136,7 @@
   <h1>Our Tasty Menu</h1>
 </div>
 
-<!-- Filter -->
+<!-- Filter Buttons -->
 <div class="filter-buttons">
   <button onclick="filterProducts('all')">All</button>
   <button onclick="filterProducts('burger')">Burgers</button>
@@ -145,119 +146,32 @@
   <button onclick="filterProducts('drink')">Drinks</button>
 </div>
 
-<!-- Products -->
+<!-- Product Grid -->
 <div class="product-grid" id="productGrid">
-
   <!-- Burgers -->
-  <div class="product-card burger" data-aos="zoom-in">
-    <img src="https://source.unsplash.com/400x300/?burger" alt="Burger">
-    <h3>Classic Beef Burger</h3>
-    <p>Juicy patty with cheese and lettuce.</p>
-    <div class="price">RM12.90</div>
-  </div>
-
-  <div class="product-card burger" data-aos="zoom-in">
-    <img src="https://source.unsplash.com/400x300/?bbq-burger" alt="BBQ Burger">
-    <h3>BBQ Beef Burger</h3>
-    <p>Grilled beef patty with smoky BBQ sauce.</p>
-    <div class="price">RM13.90</div>
-  </div>
-
-  <div class="product-card burger" data-aos="zoom-in">
-    <img src="https://source.unsplash.com/400x300/?cheeseburger" alt="Cheeseburger">
-    <h3>Double Cheeseburger</h3>
-    <p>Double meat, double cheese, all flavor.</p>
-    <div class="price">RM15.50</div>
-  </div>
+  <div class="product-card burger" data-aos="zoom-in"><img src="https://source.unsplash.com/400x300/?burger" alt="Burger"><h3>Classic Beef Burger</h3><p>Beef patty with cheese & lettuce.</p><div class="price">RM12.90</div></div>
+  <div class="product-card burger" data-aos="zoom-in"><img src="https://source.unsplash.com/400x300/?cheeseburger" alt="Burger"><h3>Cheese Lover</h3><p>Double cheese & beef.</p><div class="price">RM14.90</div></div>
+  <div class="product-card burger" data-aos="zoom-in"><img src="https://source.unsplash.com/400x300/?bbq-burger" alt="Burger"><h3>BBQ Beef</h3><p>Smoky BBQ sauce with beef.</p><div class="price">RM13.90</div></div>
 
   <!-- Chicken -->
-  <div class="product-card chicken" data-aos="zoom-in">
-    <img src="https://source.unsplash.com/400x300/?fried-chicken" alt="Fried Chicken">
-    <h3>Spicy Fried Chicken</h3>
-    <p>Crunchy, spicy and juicy.</p>
-    <div class="price">RM10.90</div>
-  </div>
-
-  <div class="product-card chicken" data-aos="zoom-in">
-    <img src="https://source.unsplash.com/400x300/?honey-chicken" alt="Honey Chicken">
-    <h3>Honey Crispy Chicken</h3>
-    <p>Sweet glaze on crispy bites.</p>
-    <div class="price">RM11.90</div>
-  </div>
-
-  <div class="product-card chicken" data-aos="zoom-in">
-    <img src="https://source.unsplash.com/400x300/?nuggets" alt="Nuggets">
-    <h3>Chicken Nuggets</h3>
-    <p>Golden nuggets served with dip.</p>
-    <div class="price">RM7.90</div>
-  </div>
+  <div class="product-card chicken" data-aos="zoom-in"><img src="https://source.unsplash.com/400x300/?fried-chicken" alt="Chicken"><h3>Spicy Fried Chicken</h3><p>Hot & crispy!</p><div class="price">RM10.90</div></div>
+  <div class="product-card chicken" data-aos="zoom-in"><img src="https://source.unsplash.com/400x300/?chicken-wings" alt="Chicken"><h3>Chicken Wings</h3><p>6pc sweet & spicy.</p><div class="price">RM11.90</div></div>
+  <div class="product-card chicken" data-aos="zoom-in"><img src="https://source.unsplash.com/400x300/?korean-chicken" alt="Chicken"><h3>Korean Chicken</h3><p>Sweet soy garlic glaze.</p><div class="price">RM12.90</div></div>
 
   <!-- Pizza -->
-  <div class="product-card pizza" data-aos="zoom-in">
-    <img src="https://source.unsplash.com/400x300/?pepperoni-pizza" alt="Pizza">
-    <h3>Pepperoni Pizza</h3>
-    <p>Classic cheesy pepperoni delight.</p>
-    <div class="price">RM14.90</div>
-  </div>
-
-  <div class="product-card pizza" data-aos="zoom-in">
-    <img src="https://source.unsplash.com/400x300/?cheese-pizza" alt="Cheese Pizza">
-    <h3>Cheese Lovers Pizza</h3>
-    <p>Extra cheese and tomato sauce base.</p>
-    <div class="price">RM13.90</div>
-  </div>
-
-  <div class="product-card pizza" data-aos="zoom-in">
-    <img src="https://source.unsplash.com/400x300/?pizza" alt="Pizza">
-    <h3>Chicken Supreme Pizza</h3>
-    <p>Loaded with chicken and veggies.</p>
-    <div class="price">RM15.90</div>
-  </div>
+  <div class="product-card pizza" data-aos="zoom-in"><img src="https://source.unsplash.com/400x300/?pepperoni-pizza" alt="Pizza"><h3>Pepperoni Pizza</h3><p>Spicy meat & mozzarella.</p><div class="price">RM14.90</div></div>
+  <div class="product-card pizza" data-aos="zoom-in"><img src="https://source.unsplash.com/400x300/?cheese-pizza" alt="Pizza"><h3>Cheesy Crust</h3><p>Melty cheese overload.</p><div class="price">RM13.50</div></div>
+  <div class="product-card pizza" data-aos="zoom-in"><img src="https://source.unsplash.com/400x300/?chicken-pizza" alt="Pizza"><h3>Chicken Pizza</h3><p>Loaded with BBQ chicken!</p><div class="price">RM15.00</div></div>
 
   <!-- Fries -->
-  <div class="product-card fries" data-aos="zoom-in">
-    <img src="https://source.unsplash.com/400x300/?fries" alt="Fries">
-    <h3>Golden Fries</h3>
-    <p>Perfectly crisp with special seasoning.</p>
-    <div class="price">RM5.00</div>
-  </div>
-
-  <div class="product-card fries" data-aos="zoom-in">
-    <img src="https://source.unsplash.com/400x300/?cheese-fries" alt="Cheese Fries">
-    <h3>Cheese Loaded Fries</h3>
-    <p>Smothered in gooey cheddar cheese.</p>
-    <div class="price">RM6.50</div>
-  </div>
-
-  <div class="product-card fries" data-aos="zoom-in">
-    <img src="https://source.unsplash.com/400x300/?waffle-fries" alt="Waffle Fries">
-    <h3>Waffle Fries</h3>
-    <p>Fun-shaped fries with spicy dip.</p>
-    <div class="price">RM6.90</div>
-  </div>
+  <div class="product-card fries" data-aos="zoom-in"><img src="https://source.unsplash.com/400x300/?fries" alt="Fries"><h3>Golden Fries</h3><p>Crispy & salty.</p><div class="price">RM5.00</div></div>
+  <div class="product-card fries" data-aos="zoom-in"><img src="https://source.unsplash.com/400x300/?cheese-fries" alt="Fries"><h3>Cheese Fries</h3><p>Fries with cheesy sauce.</p><div class="price">RM6.50</div></div>
+  <div class="product-card fries" data-aos="zoom-in"><img src="https://source.unsplash.com/400x300/?curly-fries" alt="Fries"><h3>Curly Fries</h3><p>Twisted and fun!</p><div class="price">RM6.00</div></div>
 
   <!-- Drinks -->
-  <div class="product-card drink" data-aos="zoom-in">
-    <img src="https://source.unsplash.com/400x300/?soft-drink" alt="Drink">
-    <h3>Cola Classic</h3>
-    <p>Chilled and fizzy cola drink.</p>
-    <div class="price">RM3.50</div>
-  </div>
-
-  <div class="product-card drink" data-aos="zoom-in">
-    <img src="https://source.unsplash.com/400x300/?strawberry-drink" alt="Strawberry">
-    <h3>Strawberry Fizz</h3>
-    <p>Refreshing strawberry soda fizz.</p>
-    <div class="price">RM4.50</div>
-  </div>
-
-  <div class="product-card drink" data-aos="zoom-in">
-    <img src="https://source.unsplash.com/400x300/?lemon-tea" alt="Lemon Tea">
-    <h3>Iced Lemon Tea</h3>
-    <p>Cool and citrusy, a fan favorite.</p>
-    <div class="price">RM3.90</div>
-  </div>
-
+  <div class="product-card drink" data-aos="zoom-in"><img src="https://source.unsplash.com/400x300/?cola" alt="Drink"><h3>Cola</h3><p>Chilled & fizzy.</p><div class="price">RM3.50</div></div>
+  <div class="product-card drink" data-aos="zoom-in"><img src="https://source.unsplash.com/400x300/?lemonade" alt="Drink"><h3>Lemonade</h3><p>Sweet & sour lemon mix.</p><div class="price">RM3.90</div></div>
+  <div class="product-card drink" data-aos="zoom-in"><img src="https://source.unsplash.com/400x300/?strawberry-soda" alt="Drink"><h3>Strawberry Fizz</h3><p>Fruity & fizzy fun.</p><div class="price">RM4.50</div></div>
 </div>
 
 <!-- Footer -->
@@ -265,10 +179,11 @@
   © 2025 FastFood Express. All rights reserved.
 </div>
 
-<!-- Scripts -->
+<!-- AOS & Filtering Script -->
 <script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
 <script>
   AOS.init();
+
   function filterProducts(category) {
     const cards = document.querySelectorAll('.product-card');
     cards.forEach(card => {

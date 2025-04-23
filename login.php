@@ -1,3 +1,34 @@
+<?php
+session_start();
+include 'db.php';
+
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+  $email = $_POST['email'];
+  $password = $_POST['password'];
+
+  $stmt = $conn->prepare("SELECT id, password FROM customers WHERE email = ?");
+  $stmt->bind_param("s", $email);
+  $stmt->execute();
+  $stmt->store_result();
+
+  if ($stmt->num_rows == 1) {
+    $stmt->bind_result($id, $hashed_password);
+    $stmt->fetch();
+    if (password_verify($password, $hashed_password)) {
+      $_SESSION['user_id'] = $id;
+      header("Location: profile.php");
+      exit();
+    } else {
+      echo "<script>alert('Wrong password!');</script>";
+    }
+  } else {
+    echo "<script>alert('Email not found!');</script>";
+  }
+
+  $stmt->close();
+}
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,112 +37,59 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.css">
   <style>
     body {
-      margin: 0;
       font-family: Arial, sans-serif;
-      background-color: #fff0f0;
+      background: #fff0f0;
       display: flex;
-      justify-content: center;
       align-items: center;
+      justify-content: center;
       height: 100vh;
     }
-
-    .login-container {
-      background-color: white;
+    .form-container {
+      background: #fff;
       padding: 40px;
-      border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      border-radius: 10px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
       width: 100%;
       max-width: 400px;
     }
-
     h2 {
-      text-align: center;
       color: #d6001c;
       margin-bottom: 20px;
     }
-
-    input[type="text"], input[type="password"] {
+    input, button {
       width: 100%;
       padding: 12px;
       margin-bottom: 15px;
+      border-radius: 6px;
       border: 1px solid #ccc;
-      border-radius: 8px;
       font-size: 14px;
     }
-
-    .remember-row {
-      display: flex;
-      align-items: center;
-      margin-bottom: 20px;
-    }
-
-    .remember-row input[type="checkbox"] {
-      margin-right: 10px;
-      transform: scale(1.2);
-    }
-
-    .remember-row label {
-      font-size: 14px;
-      color: #555;
-    }
-
     button {
-      background-color: #d6001c;
+      background: #d6001c;
       color: white;
-      border: none;
-      padding: 12px;
-      width: 100%;
-      border-radius: 8px;
-      cursor: pointer;
       font-weight: bold;
-      font-size: 16px;
+      cursor: pointer;
     }
-
-    button:hover {
-      background-color: #b80018;
-    }
-
-    .bottom-text {
+    a {
+      display: block;
       text-align: center;
-      margin-top: 15px;
-      font-size: 14px;
-    }
-
-    .bottom-text a {
       color: #d6001c;
       text-decoration: none;
-      font-weight: bold;
-    }
-
-    .bottom-text a:hover {
-      text-decoration: underline;
     }
   </style>
 </head>
 <body>
+  <div class="form-container" data-aos="zoom-in">
+    <h2>Login</h2>
+    <form method="POST">
+      <input type="email" name="email" placeholder="Email" required>
+      <input type="password" name="password" placeholder="Password" required>
+      <button type="submit">Login</button>
+      <a href="register.php">No account? Register</a>
+    </form>
+  </div>
 
-<div class="login-container" data-aos="fade-up">
-  <h2>Login to FastFood Express</h2>
-  <form>
-    <input type="text" placeholder="Username or Email" required>
-    <input type="password" placeholder="Password" required>
-
-    <div class="remember-row">
-      <input type="checkbox" id="remember">
-      <label for="remember">Remember Me</label>
-    </div>
-
-    <button type="submit">Login</button>
-
-    <div class="bottom-text">
-      Don't have an account? <a href="register.html">Register here</a>
-    </div>
-  </form>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
-<script>AOS.init();</script>
-
-
+  <script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
+  <script>AOS.init();</script>
 </body>
 </html>
