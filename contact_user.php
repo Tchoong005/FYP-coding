@@ -109,7 +109,7 @@ if (!isset($_SESSION['user_id'])) {
 </head>
 <body>
 
-<!-- Topbar -->
+<!-- ✅ Topbar - 链接全为 *_user.php 版本 -->
 <div class="topbar">
   <div class="logo">🍔 FastFood Express</div>
   <div>
@@ -117,7 +117,7 @@ if (!isset($_SESSION['user_id'])) {
     <a href="products_user.php">Products</a>
     <a href="profile.php">Profile</a>
     <a href="about.php">About</a>
-    <a href="contact.php">Contact</a>
+    <a href="contact_user.php">Contact</a>
     <a href="logout.php">Logout</a>
   </div>
 </div>
