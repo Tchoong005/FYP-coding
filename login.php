@@ -1,6 +1,9 @@
 <?php
+// 必须放在文件最上方，确保不会输出 HTML 或空格
 session_start();
 include 'db.php';
+
+$error = '';
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
   $email = $_POST['email'];
@@ -16,13 +19,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $stmt->fetch();
     if (password_verify($password, $hashed_password)) {
       $_SESSION['user_id'] = $id;
+      // 🔥 关键！一定要立刻跳转并停止输出
       header("Location: profile.php");
       exit();
     } else {
-      echo "<script>alert('Wrong password!');</script>";
+      $error = "Incorrect password.";
     }
   } else {
-    echo "<script>alert('Email not found!');</script>";
+    $error = "Email not found.";
   }
 
   $stmt->close();
@@ -76,11 +80,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
       color: #d6001c;
       text-decoration: none;
     }
+    .error {
+      color: red;
+      text-align: center;
+      margin-bottom: 10px;
+    }
   </style>
 </head>
 <body>
   <div class="form-container" data-aos="zoom-in">
     <h2>Login</h2>
+
+    <?php if (!empty($error)) { echo "<div class='error'>" . $error . "</div>"; } ?>
+
     <form method="POST">
       <input type="email" name="email" placeholder="Email" required>
       <input type="password" name="password" placeholder="Password" required>
