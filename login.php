@@ -1,35 +1,30 @@
 <?php
-// 必须放在文件最上方，确保不会输出 HTML 或空格
 session_start();
-include 'db.php';
+include 'db.php'; // 确保你有正确连接数据库的 db.php 文件
 
-$error = '';
+$error = "";
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-  $email = $_POST['email'];
-  $password = $_POST['password'];
+    $email = $_POST['email'];
+    $password = $_POST['password'];
 
-  $stmt = $conn->prepare("SELECT id, password FROM customers WHERE email = ?");
-  $stmt->bind_param("s", $email);
-  $stmt->execute();
-  $stmt->store_result();
+    // 防止 SQL 注入
+    $email = mysqli_real_escape_string($conn, $email);
+    $password = mysqli_real_escape_string($conn, $password);
 
-  if ($stmt->num_rows == 1) {
-    $stmt->bind_result($id, $hashed_password);
-    $stmt->fetch();
-    if (password_verify($password, $hashed_password)) {
-      $_SESSION['user_id'] = $id;
-      // 🔥 关键！一定要立刻跳转并停止输出
-      header("Location: profile.php");
-      exit();
+    $query = "SELECT * FROM customers WHERE email='$email' AND password='$password'";
+    $result = mysqli_query($conn, $query);
+
+    if (mysqli_num_rows($result) == 1) {
+        $row = mysqli_fetch_assoc($result);
+        $_SESSION['user_id'] = $row['id'];
+        $_SESSION['username'] = $row['username'];
+
+        header("Location: index_user.php");
+        exit();
     } else {
-      $error = "Incorrect password.";
+        $error = "Invalid email or password.";
     }
-  } else {
-    $error = "Email not found.";
-  }
-
-  $stmt->close();
 }
 ?>
 
@@ -40,68 +35,30 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
   <title>Login - FastFood Express</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.css">
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #fff0f0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-    }
-    .form-container {
-      background: #fff;
-      padding: 40px;
-      border-radius: 10px;
-      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
-      width: 100%;
-      max-width: 400px;
-    }
-    h2 {
-      color: #d6001c;
-      margin-bottom: 20px;
-    }
-    input, button {
-      width: 100%;
-      padding: 12px;
-      margin-bottom: 15px;
-      border-radius: 6px;
-      border: 1px solid #ccc;
-      font-size: 14px;
-    }
-    button {
-      background: #d6001c;
-      color: white;
-      font-weight: bold;
-      cursor: pointer;
-    }
-    a {
-      display: block;
-      text-align: center;
-      color: #d6001c;
-      text-decoration: none;
-    }
-    .error {
-      color: red;
-      text-align: center;
-      margin-bottom: 10px;
-    }
+    body { font-family: Arial, sans-serif; background: #fff0f0; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+    .login-container { background: white; padding: 30px 40px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 350px; }
+    h2 { color: #d6001c; text-align: center; margin-bottom: 20px; }
+    input[type=email], input[type=password] { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 8px; }
+    button { background: #d6001c; color: white; width: 100%; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
+    .bottom-link { text-align: center; margin-top: 15px; }
+    .error { color: red; text-align: center; margin-bottom: 10px; }
   </style>
 </head>
 <body>
-  <div class="form-container" data-aos="zoom-in">
-    <h2>Login</h2>
 
-    <?php if (!empty($error)) { echo "<div class='error'>" . $error . "</div>"; } ?>
+<div class="login-container" data-aos="zoom-in">
+  <h2>Login</h2>
+  <?php if ($error != "") echo "<div class='error'>$error</div>"; ?>
+  <form method="post">
+    <input type="email" name="email" placeholder="Email" required>
+    <input type="password" name="password" placeholder="Password" required>
+    <button type="submit">Login</button>
+    <div class="bottom-link">Don't have an account? <a href="register.php">Register</a></div>
+  </form>
+</div>
 
-    <form method="POST">
-      <input type="email" name="email" placeholder="Email" required>
-      <input type="password" name="password" placeholder="Password" required>
-      <button type="submit">Login</button>
-      <a href="register.php">No account? Register</a>
-    </form>
-  </div>
+<script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
+<script>AOS.init();</script>
 
-  <script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
-  <script>AOS.init();</script>
 </body>
 </html>

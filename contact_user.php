@@ -1,3 +1,4 @@
+<?php session_start(); ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5,11 +6,7 @@
   <title>Contact Us - FastFood Express</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.css">
   <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background-color: #fff;
-    }
+    body { margin: 0; font-family: Arial, sans-serif; background-color: #fff; }
 
     .topbar {
       background-color: #222;
@@ -51,7 +48,7 @@
       padding: 40px 20px;
     }
 
-    .info-box {
+    .info-box, .form-box {
       flex: 1 1 300px;
       background: #fff6f6;
       padding: 30px;
@@ -62,14 +59,6 @@
     .info-box h3 {
       color: #d6001c;
       margin-bottom: 10px;
-    }
-
-    .form-box {
-      flex: 1 1 300px;
-      background: #f9f9f9;
-      padding: 30px;
-      border-radius: 10px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
 
     form input, form textarea {
@@ -102,32 +91,34 @@
 </head>
 <body>
 
-<!-- 🔝 Topbar -->
+<!-- 顶部导航栏 -->
 <div class="topbar">
   <div class="logo">🍔 FastFood Express</div>
   <div>
-    <a href="index_user.html">Home</a>
-    <a href="product_user.html">Products</a>
-    <a href="user_about.html">About</a>
-    <a href="contact_user.html">Contact</a>
-    <a href="login.php">Login</a>
+    <a href="index_user.php">Home</a>
+    <a href="products_user.php">Products</a>
+    <a href="about.php">About</a>
+    <a href="contact.php">Contact</a>
+    <a href="logout.php">Logout</a>
   </div>
 </div>
 
-<!-- 💬 Hero -->
+<!-- Hero -->
 <div class="contact-hero" data-aos="fade-up">
   <h1>Contact Us</h1>
   <p>We'd love to hear from you! Drop us a message or give us a visit. 🍟</p>
 </div>
 
-<!-- 📧 Grid -->
+<!-- Contact Grid -->
 <div class="contact-grid">
   <!-- Contact Info -->
   <div class="info-box" data-aos="fade-right">
     <h3>📍 Address</h3>
     <p>123 FastFood Lane, Burger City, 43000</p>
+
     <h3>📞 Phone</h3>
     <p>+60 12-345 6789</p>
+
     <h3>📧 Email</h3>
     <p>hello@fastfoodexpress.com</p>
   </div>
@@ -143,16 +134,14 @@
   </div>
 </div>
 
-<!-- 🔚 Footer -->
+<!-- Footer -->
 <div class="footer">
   © 2025 FastFood Express. All rights reserved.
 </div>
 
 <!-- AOS -->
 <script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
-<script>
-  AOS.init();
-</script>
+<script>AOS.init();</script>
 
 </body>
 </html>
