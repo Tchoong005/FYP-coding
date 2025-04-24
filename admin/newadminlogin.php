@@ -1,3 +1,63 @@
+<?php
+
+$host="localhost";
+$user="root";
+$password="";
+$db="kfg";
+
+session_start();
+
+
+$data=mysqli_connect($host,$user,$password,$db);
+
+if($data===false)
+{
+	die("connection error");
+}
+
+
+if($_SERVER["REQUEST_METHOD"]=="POST")
+{
+	$username=$_POST["username"];
+	$password=$_POST["password"];
+
+
+	$sql="select * from login where username='".$username."' AND password='".$password."' ";
+
+	$result=mysqli_query($data,$sql);
+
+	$row=mysqli_fetch_array($result);
+
+	if($row["usertype"]=="superadmin")
+	{	
+
+		$_SESSION["username"]=$username;
+
+		header("location:adminHome.html");
+	}
+
+	elseif($row["usertype"]=="admin")
+	{
+
+		$_SESSION["username"]=$username;
+		
+		header("location:adminStaff.php");
+	}
+
+	else
+	{
+        echo "<script>alert('Invalid Username or Password');</script>";
+		
+	}
+
+}
+
+
+
+
+?>
+
+
 <!DOCTYPE html>
 <htm1 lang="en">
 
@@ -66,14 +126,14 @@
         .i{
             position: absolute;
             right: 46%;
-            top: 59.5%;
+            top: 60%;
             font-size: 20px;
             transform: translateY(-50%);
         }
         .o{
             position: absolute;
             right: 46%;
-            top: 66%;
+            top: 66.5%;
             font-size: 20px;
             transform: translateY(-50%);
         }
@@ -86,16 +146,18 @@
     
     <h1>KFG FOOD</h1>
     
-    
+    <form method="POST">
     <div class="smallbox">
         <H2>Admin Login</H2>
-        <input type="USERNAME" placeholder="USERNAME">
+        
+        <input type="text" name="username" placeholder="USERNAME" required>
         <img class="i" src="img/user-solid-24.png" alt="">
-        <input type="PASSWORD" placeholder="PASSWORD">
+        <input type="password" name="password" placeholder="PASSWORD" required>
         <img class="o" src="img/lock-solid-24.png" alt="">
-        <button>SUBMIT</button>
-
+        <button type="submit">SUBMIT</button>
+    
     </div>
+    </form>
 
     
 
