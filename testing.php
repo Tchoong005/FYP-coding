@@ -1,3 +1,36 @@
+<?php
+// Connect to database
+$conn = new mysqli("localhost", "root", "", "kfg");
+if ($conn->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
+}
+
+// Handle Add, Edit, Delete
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $action = $_POST['action'];
+
+    $id = $_POST['id'] ?? '';
+    $name = $_POST['name'] ?? '';
+    $role = $_POST['role'] ?? '';
+    $phone = $_POST['phone'] ?? '';
+    $email = $_POST['email'] ?? '';
+
+    if ($action == 'add') {
+        $sql = "INSERT INTO staff (id, name, role, phone, email) VALUES ('$id', '$name', '$role', '$phone', '$email')";
+        $conn->query($sql);
+    } elseif ($action == 'edit') {
+        $sql = "UPDATE staff SET name='$name', role='$role', phone='$phone', email='$email' WHERE id='$id'";
+        $conn->query($sql);
+    } elseif ($action == 'delete') {
+        $sql = "DELETE FROM staff WHERE id='$id'";
+        $conn->query($sql);
+    }
+}
+
+// Load all staff
+$staffList = $conn->query("SELECT * FROM staff");
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -275,29 +308,40 @@
             </tr>
         </thead>
         <tbody>
-            <tr>
-                <th>1221206585</th>
-                <th>CHONG KAI YANG</th>
-                <th>IT TECHNICIAN</th>
-                <th>01110525772</th>
-                <th>1221206585@student.mmu.edu.my</th>
-            </tr>
+        <?php while($row = $staffList->fetch_assoc()): ?>
+                <tr>
+                    <td><?= $row['id'] ?></td>
+                    <td><?= $row['name'] ?></td>
+                    <td><?= $row['role'] ?></td>
+                    <td><?= $row['phone'] ?></td>
+                    <td><?= $row['email'] ?></td>
+                </tr>
+            <?php endwhile; ?>
         </tbody>
 
             
         </table>
 
         <div class="button-group">
-        <button type="button" onclick="addcategory()">Add Staff</button>
-        <button type="button" onclick="deletecategory()">Delete Staff</button>
-        <button type="button" onclick="editstaff()">Edit Staff</button>
-        <button type="button" onclick="viewstaff()">View Staff</button>
+        <form method="post">
+        <h3>Add / Edit / Delete Staff</h3>
+        <input type="text" name="id" placeholder="Staff ID" required>
+        <input type="text" name="name" placeholder="Name">
+        <input type="text" name="role" placeholder="Role">
+        <input type="text" name="phone" placeholder="Phone">
+        <input type="email" name="email" placeholder="Email">
+        
+        <button type="submit" name="action" value="add">Add Staff</button>
+        <button type="submit" name="action" value="edit">Edit Staff</button>
+        <button type="submit" name="action" value="delete" style="background:#999;">Delete Staff</button>
+    </form>
         </div>
         
     </div>
 
-
-  
+          
+    
+        
    
 
 </body>
