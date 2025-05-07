@@ -1,0 +1,182 @@
+/* ---------- 基础样式 ---------- */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+html, body {
+  height: 100%;
+  font-family: Arial, sans-serif;
+  background: url("https://picsum.photos/id/1018/1920/1080") no-repeat center center fixed;
+  background-size: cover;
+  color: #333;
+}
+/* ---------- 独立 set_location 页头部 ---------- */
+.setlocation-header {
+  background-color: #ef3c2d;
+  color: #fff;
+  padding: 15px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.setlocation-header .back-btn {
+  color: #fff;
+  text-decoration: none;
+  font-size: 1.2rem;
+}
+.setlocation-header h1 {
+  font-size: 1.5rem;
+  margin: 0;
+}
+/* ---------- 整个页面容器 ---------- */
+.location-container {
+  margin-top: 60px;
+  max-width: 1200px;
+  margin: 20px auto;
+  background: rgba(255,255,255,0.85);
+  border-radius: 12px;
+  min-height: calc(100vh - 60px); /* 60px 是页头高度 */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+/* ---------- Top Bar: 搜索部分 ---------- */
+#topBar {
+  padding: 20px;
+  border-bottom: 2px solid #ef3c2d;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+}
+#topBar h2 {
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+#topBar h2 .fa-location-dot {
+  color: #ef3c2d;
+}
+.search-area {
+  display: flex;
+  align-items: center;
+  position: relative;
+  width: 360px;
+}
+.search-area .icon-left {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  color: #ef3c2d;
+  font-size: 16px;
+}
+.search-area input {
+  width: 100%;
+  font-size: 14px;
+  padding: 8px 38px 8px 30px;
+  border: 2px solid #ef3c2d;
+  border-radius: 20px 0 0 20px;
+  outline: none;
+}
+.search-area button {
+  border: none;
+  background: #ef3c2d;
+  color: #fff;
+  width: 46px;
+  font-size: 16px;
+  border-radius: 0 20px 20px 0;
+  cursor: pointer;
+}
+.search-area button:hover {
+  background: #d32f2f;
+}
+/* ---------- 主区: 店铺列表 + 地图 ---------- */
+#mainContainer {
+  flex: 1;
+  display: flex;
+}
+#storePanel {
+  width: 350px;
+  max-width: 400px;
+  background: #fff;
+  border-right: 1px solid #ddd;
+  padding: 20px;
+  overflow-y: auto;
+}
+#storePanel h3 {
+  font-size: 16px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.store-card {
+  border: 1px solid #eee;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  padding: 10px;
+}
+.store-card h4 {
+  font-size: 15px;
+  color: #333;
+  margin-bottom: 5px;
+}
+.store-card p {
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 8px;
+}
+.store-card button {
+  background-color: #ef3c2d;
+  color: #fff;
+  border: none;
+  padding: 6px 12px;
+  font-size: 13px;
+  border-radius: 16px;
+  cursor: pointer;
+}
+.store-card button:hover {
+  background-color: #d32f2f;
+}
+#map {
+  flex: 1;
+  min-height: 500px;
+}
+/* ---------- KFC-like Modal ---------- */
+.kfc-modal-overlay {
+  display: none;
+  position: fixed;
+  z-index: 9999;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.4);
+}
+.kfc-modal {
+  background: #fff;
+  border-radius: 12px;
+  max-width: 400px;
+  margin: 100px auto 0 auto;
+  text-align: center;
+  padding: 20px;
+  position: relative;
+}
+.kfc-modal p {
+  font-size: 16px;
+  margin-bottom: 20px;
+}
+.kfc-modal button {
+  background-color: #ef3c2d;
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  font-size: 14px;
+  border-radius: 20px;
+  cursor: pointer;
+}
+.kfc-modal button:hover {
+  background-color: #d32f2f;
+}

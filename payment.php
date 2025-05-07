@@ -1,222 +1,69 @@
 <?php
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Include Stripe PHP SDK (make sure you installed it via Composer)
-    require 'vendor/autoload.php';
+require __DIR__ . '/vendor/autoload.php';
+$dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
+$dotenv->load();
 
-    // Set your Stripe secret key (use test key during development)
-    \Stripe\Stripe::setApiKey('YOUR_STRIPE_SECRET_KEY');
-
-    // Retrieve the posted token and cardholder name
-    $token = $_POST['stripeToken'] ?? null;
-    $cardholderName = $_POST['cardholder_name'] ?? 'Unknown';
-    
-    // Example payment amount in cents (e.g., 125299 = $1,252.99)
-    $amount = 125299;
-
-    if ($token) {
-        try {
-            // Create a charge using the token
-            $charge = \Stripe\Charge::create([
-                'amount'      => $amount,
-                'currency'    => 'usd',
-                'description' => 'Order Payment',
-                'source'      => $token,
-                'metadata'    => ['cardholder_name' => $cardholderName],
-            ]);
-
-            echo "<h1 style='text-align:center; margin-top:100px;'>Payment Successful!</h1>";
-            exit;
-        } catch (\Stripe\Exception\CardException $e) {
-            echo "<h1 style='text-align:center; margin-top:100px;'>Payment Failed: " 
-                 . $e->getError()->message . "</h1>";
-            exit;
-        } catch (Exception $e) {
-            echo "<h1 style='text-align:center; margin-top:100px;'>Error: " 
-                 . $e->getMessage() . "</h1>";
-            exit;
-        }
-    } else {
-        // If no token, possibly user selected e-transfer or something else
-        echo "<h1 style='text-align:center; margin-top:100px;'>No card token provided.</h1>";
-        exit;
-    }
-}
+\Stripe\Stripe::setApiKey('sk_test_51RGvaeIeMdrcW0DLETTGKifHW790cW8ul4gTMxSXeFI1uMmQndKjjvqyiPibqVzxPelDhE486ESLdKZAWdE9nc7300k3zQsa2B');
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Payment Page</title>
-  <link rel="stylesheet" type="text/css" href="payment.css">
-  <!-- Stripe.js library -->
+  <title>Stripe Payment</title>
   <script src="https://js.stripe.com/v3/"></script>
+  <style>
+    body { font-family: Arial; padding: 50px; background: #f4f4f4; }
+    #card-element { border: 1px solid #ccc; padding: 10px; margin-bottom: 15px; }
+    button { padding: 10px 20px; background: #28a745; color: white; border: none; cursor: pointer; }
+    button:hover { background: #218838; }
+    #card-errors { color: red; margin-top: 10px; }
+  </style>
 </head>
 <body>
+  <h2>测试支付</h2>
+  <form id="payment-form">
+    <div id="card-element"></div>
+    <button type="submit">Pay Now</button>
+    <div id="card-errors"></div>
+  </form>
 
-<!-- Container for the entire layout -->
-<div class="wrapper">
+  <script>
+    const stripe = Stripe('<?php echo $_ENV['STRIPE_PUBLISHABLE_KEY']; ?>');
+    const elements = stripe.elements();
+    const card = elements.create('card');
+    card.mount('#card-element');
 
-  <!-- Top steps bar -->
-  <div class="steps-bar">
-    <div class="step">Order</div>
-    <div class="step active">Payment</div>
-    <div class="step">Complete</div>
-  </div>
+    document.getElementById('payment-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      document.getElementById('card-errors').textContent = '';
 
-  <div class="payment-container">
-    <!-- Left side: Payment form -->
-    <div class="payment-left">
-      <h2>Payment Details</h2>
-
-      <!-- Payment method tabs -->
-      <div class="tabs">
-        <div class="tab active" id="creditTab">Credit Card</div>
-        <div class="tab" id="etransferTab">e-transfer</div>
-      </div>
-
-      <!-- Actual payment form -->
-      <form id="payment-form" action="payment.php" method="POST">
-        <!-- Cardholder Name (always shown) -->
-        <div class="form-group">
-          <label for="cardholder_name">Cardholder Name</label>
-          <input 
-            type="text"
-            id="cardholder_name"
-            name="cardholder_name"
-            placeholder="Regina Phalange"
-            required
-          >
-        </div>
-
-        <!-- Credit card fields (Stripe Elements area) -->
-        <div id="creditCardSection">
-          <label for="card-element">Credit/Debit Card Details</label>
-          <div id="card-element" class="card-element"></div>
-          <div id="card-errors" class="card-errors" role="alert"></div>
-        </div>
-
-        <!-- e-transfer info -->
-        <div id="etransferSection" class="etransfer-section">
-          <p>
-            Please send your e-transfer to <strong>pay@example.com</strong> 
-            and include your order number in the note.
-          </p>
-        </div>
-
-        <button type="submit" class="pay-now-btn">Pay Now</button>
-      </form>
-    </div>
-
-    <!-- Right side: Order summary -->
-    <div class="payment-right">
-      <h3>Order Summary</h3>
-      <div class="order-item">
-        <span class="item-title">iPhone 16 Pro Max</span>
-        <span class="item-price">$1199.00</span>
-        <span class="item-details">Colour: Black | 512 GB</span>
-      </div>
-      <div class="order-item">
-        <span class="item-title">Apple 20W USB-C Power Adapter</span>
-        <span class="item-price">$25.00</span>
-      </div>
-      <div class="calculation">
-        <div>
-          <span>Subtotal:</span>
-          <span>$1224.00</span>
-        </div>
-        <div>
-          <span>Shipping:</span>
-          <span>$19.00</span>
-        </div>
-        <div>
-          <span>Taxes:</span>
-          <span>$9.99</span>
-        </div>
-      </div>
-      <div class="total">
-        <strong>Total: $1,252.99</strong>
-      </div>
-    </div>
-  </div>
-</div>
-
-<script>
-  // Initialize Stripe with your public key
-  const stripe = Stripe('YOUR_STRIPE_PUBLIC_KEY');
-  const elements = stripe.elements();
-
-  // Custom styling for Stripe Elements
-  const style = {
-    base: {
-      color: "#32325d",
-      fontFamily: 'Arial, sans-serif',
-      fontSize: "16px",
-      "::placeholder": {
-        color: "#aab7c4"
-      }
-    },
-    invalid: {
-      color: "#fa755a"
-    }
-  };
-
-  // Create an instance of the card Element
-  const card = elements.create("card", { style: style });
-  card.mount("#card-element");
-
-  // Show errors if card details are invalid
-  card.addEventListener('change', function(event) {
-    const displayError = document.getElementById('card-errors');
-    if (event.error) {
-      displayError.textContent = event.error.message;
-    } else {
-      displayError.textContent = '';
-    }
-  });
-
-  // Tabs
-  const creditTab = document.getElementById('creditTab');
-  const etransferTab = document.getElementById('etransferTab');
-  const creditCardSection = document.getElementById('creditCardSection');
-  const etransferSection = document.getElementById('etransferSection');
-
-  // Default state: Credit Card tab active
-  creditTab.addEventListener('click', () => {
-    creditTab.classList.add('active');
-    etransferTab.classList.remove('active');
-    creditCardSection.style.display = 'block';
-    etransferSection.style.display = 'none';
-  });
-
-  etransferTab.addEventListener('click', () => {
-    etransferTab.classList.add('active');
-    creditTab.classList.remove('active');
-    creditCardSection.style.display = 'none';
-    etransferSection.style.display = 'block';
-  });
-
-  // On form submission, if credit card tab is active, create a Stripe token
-  const form = document.getElementById('payment-form');
-  form.addEventListener('submit', function(event) {
-    if (creditTab.classList.contains('active')) {
-      // If paying by credit card, we need to generate a token from Stripe
-      event.preventDefault();
-      stripe.createToken(card).then(function(result) {
-        if (result.error) {
-          const errorElement = document.getElementById('card-errors');
-          errorElement.textContent = result.error.message;
-        } else {
-          // Append the token to the form and submit
-          const hiddenInput = document.createElement('input');
-          hiddenInput.setAttribute('type', 'hidden');
-          hiddenInput.setAttribute('name', 'stripeToken');
-          hiddenInput.setAttribute('value', result.token.id);
-          form.appendChild(hiddenInput);
-          form.submit();
-        }
+      const res = await fetch('create_payment_intent.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: 1500, currency: 'myr' })
       });
-    }
-  });
-</script>
+
+      const { success, clientSecret, message } = await res.json();
+      if (!success) {
+        document.getElementById('card-errors').textContent = message;
+        return;
+      }
+
+      const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+        payment_method: { card }
+      });
+
+      if (error) {
+        document.getElementById('card-errors').textContent = error.message;
+        return;
+      }
+
+      if (paymentIntent.status === 'succeeded') {
+        window.location.href = 'http://localhost/FYP-coding/payment_success.php?pid=' + paymentIntent.id;
+      } else {
+        document.getElementById('card-errors').textContent = '支付未完成：' + paymentIntent.status;
+      }
+    });
+  </script>
 </body>
 </html>

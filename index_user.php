@@ -1,57 +1,50 @@
 <?php
 session_start();
 if (!isset($_SESSION['user_id'])) {
-    header("Location: login_user.php");
-    exit();
+  header("Location: login.php");
+  exit();
 }
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Fast Food Ordering - User Home</title>
-  <link rel="stylesheet" href="style.css">
+  <title>FastFood Express - Home</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.css">
   <style>
     body {
-      font-family: 'Segoe UI', sans-serif;
       margin: 0;
-      background-color: #fffaf5;
+      font-family: Arial, sans-serif;
+      background-color: #fff;
     }
 
     .topbar {
-      background-color: #ff6b6b;
-      padding: 15px 30px;
+      background-color: #222;
       color: white;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      padding: 15px 30px;
     }
 
     .topbar .logo {
-      font-size: 28px;
-      font-weight: bold;
-      text-decoration: none;
-      color: white;
-    }
-
-    .topbar-links {
-      list-style: none;
-      display: flex;
-      gap: 25px;
-    }
-
-    .topbar-links li a {
-      color: white;
-      text-decoration: none;
+      font-size: 24px;
       font-weight: bold;
     }
 
-    .hero-section {
+    .topbar a {
+      color: white;
+      text-decoration: none;
+      margin-left: 20px;
+      font-weight: bold;
+    }
+
+    .hero {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 50px;
-      background: linear-gradient(90deg, #ffe1bd, #ffd6d6);
+      padding: 60px;
+      background: #ffecec;
     }
 
     .hero-text {
@@ -59,155 +52,162 @@ if (!isset($_SESSION['user_id'])) {
     }
 
     .hero-text h1 {
-      font-size: 50px;
-      color: #ff6b6b;
+      font-size: 48px;
+      color: #d6001c;
     }
 
     .hero-text p {
-      font-size: 20px;
-      color: #444;
-      margin-top: 10px;
+      font-size: 18px;
     }
 
-    .hero-text a.button {
-      display: inline-block;
-      margin-top: 20px;
-      padding: 12px 25px;
-      background-color: #ff6b6b;
+    .hero-text .btn {
+      background: #d6001c;
       color: white;
-      font-weight: bold;
+      padding: 12px 20px;
+      border: none;
       border-radius: 8px;
+      margin-top: 15px;
+      cursor: pointer;
+      font-weight: bold;
       text-decoration: none;
-      transition: background-color 0.3s;
-    }
-
-    .hero-text a.button:hover {
-      background-color: #ff3e3e;
     }
 
     .hero-image img {
       width: 400px;
-      border-radius: 20px;
+      border-radius: 16px;
     }
 
-    .categories-section {
-      padding: 60px 30px;
+    .categories {
+      text-align: center;
+      padding: 50px 20px;
+    }
+
+    .cat-grid {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 30px;
+      margin-top: 20px;
+    }
+
+    .cat-box {
+      width: 120px;
+      padding: 20px;
+      background: #fff6f6;
+      border: 2px solid #d6001c;
+      border-radius: 16px;
+      font-weight: bold;
+    }
+
+    .offers {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 20px;
+      padding: 40px 20px;
+    }
+
+    .offer-card {
+      flex: 1 1 250px;
+      background: #f7f7f7;
+      padding: 20px;
+      border-radius: 10px;
+      text-align: center;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+
+    .gallery {
+      padding: 30px 20px;
       text-align: center;
     }
 
-    .categories-section h2 {
-      font-size: 32px;
-      margin-bottom: 30px;
-      color: #333;
-    }
-
-    .categories-section ul {
+    .gallery-grid {
       display: flex;
       flex-wrap: wrap;
       justify-content: center;
-      gap: 30px;
-      padding: 0;
-      list-style: none;
+      gap: 20px;
     }
 
-    .categories-section li {
-      background-color: white;
-      border-radius: 16px;
-      box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
-      width: 220px;
-      transition: transform 0.3s, box-shadow 0.3s;
-    }
-
-    .categories-section li:hover {
-      transform: translateY(-8px);
-      box-shadow: 0 12px 20px rgba(0, 0, 0, 0.15);
-    }
-
-    .category-link {
-      text-decoration: none;
-      color: inherit;
-      display: block;
-      padding: 20px;
-    }
-
-    .category-link img {
-      width: 100%;
-      height: 140px;
+    .gallery img {
+      width: 180px;
+      height: 120px;
       object-fit: cover;
       border-radius: 12px;
     }
 
-    .category-link p {
-      font-size: 18px;
-      margin-top: 10px;
-      font-weight: bold;
-    }
-
-    .category-link span {
-      display: block;
+    .footer {
+      background-color: #eee;
+      text-align: center;
+      padding: 20px;
       font-size: 14px;
-      color: #777;
-      margin-top: 4px;
     }
   </style>
 </head>
 <body>
 
-<!-- Top Bar -->
+<!-- Topbar -->
 <div class="topbar">
-  <a href="index_user.php" class="logo">🍔 Fast Food Ordering</a>
-  <ul class="topbar-links">
-    <li><a href="menu_user.php">Order Now</a></li>
-    <li><a href="logout.php">Logout</a></li>
-  </ul>
+  <div class="logo">🍔 FastFood Express</div>
+  <div>
+    <a href="index_user.php">Home</a>
+    <a href="products_user.php">Products</a>
+    <a href="profile.php">Profile</a>
+    <a href="about.php">About</a>
+    <a href="contact.php">Contact</a>
+    <a href="logout.php">Logout</a>
+  </div>
 </div>
 
 <!-- Hero Section -->
-<div class="hero-section">
+<div class="hero" data-aos="fade-up">
   <div class="hero-text">
-    <h1>Welcome Back, Foodie!</h1>
-    <p>Your cravings, just one click away. Delicious meals await.</p>
-    <a href="menu_user.php" class="button">Start Ordering 🍽️</a>
+    <h1 data-aos="zoom-in">BEST BURGERS IN GALAXY</h1>
+    <p data-aos="fade-right">We craft juicy burgers to satisfy your cravings. Order now and enjoy greatness!</p>
+    <a href="products_user.php" class="btn" data-aos="fade-up" data-aos-delay="200">Go Order</a>
   </div>
-  <div class="hero-image">
-    <img src="images/banner.jpg" alt="Delicious Promo">
+  <div class="hero-image" data-aos="zoom-in">
+    <img src="https://images.unsplash.com/photo-1600891964599-f61ba0e24092?auto=format&fit=crop&w=800&q=80" alt="Burger">
   </div>
 </div>
 
 <!-- Categories Section -->
-<div class="categories-section">
-  <h2>Explore Categories</h2>
-  <ul>
-    <li>
-      <a class="category-link" href="menu.php?category=ktown">
-        <img src="images/ktown.png" alt="K-Town">
-        <p>K-Town</p>
-        <span>Try our Korean fried chicken!</span>
-      </a>
-    </li>
-    <li>
-      <a class="category-link" href="menu.php?category=western">
-        <img src="images/western.png" alt="Western Food">
-        <p>Western</p>
-        <span>Burgers, fries, steaks & more!</span>
-      </a>
-    </li>
-    <li>
-      <a class="category-link" href="menu.php?category=local">
-        <img src="images/local.png" alt="Local Delights">
-        <p>Local Delights</p>
-        <span>Your Malaysian favorites</span>
-      </a>
-    </li>
-    <li>
-      <a class="category-link" href="menu.php?category=drinks">
-        <img src="images/drinks.png" alt="Drinks">
-        <p>Drinks</p>
-        <span>Cool down with sweet beverages</span>
-      </a>
-    </li>
-  </ul>
+<div class="categories">
+  <h2 data-aos="fade-up">Menus</h2>
+  <div class="cat-grid">
+    <div class="cat-box" data-aos="fade-up">🍔 Combo</div>
+    <div class="cat-box" data-aos="fade-up" data-aos-delay="100">🍕 Pizza</div>
+    <div class="cat-box" data-aos="fade-up" data-aos-delay="200">🥪 Burger</div>
+    <div class="cat-box" data-aos="fade-up" data-aos-delay="300">🍹 Kids Menu</div>
+  </div>
 </div>
+
+<!-- Offers Section -->
+<div class="offers">
+  <div class="offer-card" data-aos="fade-up">Any Day Offers <br><strong>$11.00</strong></div>
+  <div class="offer-card" data-aos="fade-up" data-aos-delay="100">Find a Store Near You</div>
+  <div class="offer-card" data-aos="fade-up" data-aos-delay="200">Other Flavors <br><strong>$13.00</strong></div>
+</div>
+
+<!-- Gallery Section -->
+<div class="gallery">
+  <h2 data-aos="fade-up">Chef has to run outside</h2>
+  <div class="gallery-grid">
+    <img data-aos="zoom-in" src="https://source.unsplash.com/300x200/?burger" alt="1">
+    <img data-aos="zoom-in" data-aos-delay="100" src="https://source.unsplash.com/300x200/?pasta" alt="2">
+    <img data-aos="zoom-in" data-aos-delay="200" src="https://source.unsplash.com/300x200/?cheeseburger" alt="3">
+    <img data-aos="zoom-in" data-aos-delay="300" src="https://source.unsplash.com/300x200/?pizza" alt="4">
+    <img data-aos="zoom-in" data-aos-delay="400" src="https://source.unsplash.com/300x200/?fastfood" alt="5">
+  </div>
+</div>
+
+<!-- Footer -->
+<div class="footer">
+  © 2025 FastFood Express. All rights reserved.
+</div>
+
+<!-- AOS -->
+<script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
+<script>AOS.init();</script>
 
 </body>
 </html>
