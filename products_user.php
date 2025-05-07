@@ -44,7 +44,7 @@ while ($row = mysqli_fetch_assoc($result)) {
 </head>
 <body>
 
-<div class="topbar">
+<div class="topbar" data-aos="fade-down">
     <div class="logo">🍔 FastFood Express</div>
     <div>
         <a href="index_user.php">Home</a>
@@ -56,7 +56,7 @@ while ($row = mysqli_fetch_assoc($result)) {
     </div>
 </div>
 
-<div class="categories">
+<div class="categories" data-aos="fade-up">
     <button onclick="filterProducts('all')">All</button>
     <button onclick="filterProducts('beverages')">Beverages</button>
     <button onclick="filterProducts('chicken')">Chicken</button>
@@ -66,7 +66,7 @@ while ($row = mysqli_fetch_assoc($result)) {
 
 <div class="product-grid">
     <?php foreach ($products as $product): ?>
-        <div class="product-card" data-category="<?php echo $product['category']; ?>"
+        <div class="product-card" data-aos="zoom-in" data-category="<?php echo $product['category']; ?>"
              onclick="showDetails('<?php echo $product['name']; ?>', '<?php echo $product['price']; ?>', '<?php echo $product['image_url']; ?>')">
             <img src="<?php echo $product['image_url']; ?>" alt="<?php echo $product['name']; ?>"
                  onerror="this.onerror=null; this.src='images/default.jpg';">
@@ -76,7 +76,7 @@ while ($row = mysqli_fetch_assoc($result)) {
 </div>
 
 <!-- Modal -->
-<div id="productModal">
+<div id="productModal" data-aos="fade-up">
     <span class="close-btn" onclick="closeModal()">❌</span>
     <img id="modalImage" src="" alt="">
     <h3 id="modalName"></h3>
@@ -128,7 +128,12 @@ function decreaseQty() {
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
-<script>AOS.init();</script>
+<script>
+  AOS.init({
+    duration: 1000,
+    once: true,
+  });
+</script>
 
 </body>
 </html>
