@@ -1,3 +1,36 @@
+<?php
+// Connect to database
+$conn = new mysqli("localhost", "root", "", "kfg");
+if ($conn->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
+}
+
+// Handle Add, Edit, Delete
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $action = $_POST['action'];
+
+    $id = $_POST['id'] ?? '';
+    $name = $_POST['name'] ?? '';
+    $role = $_POST['role'] ?? '';
+    $phone = $_POST['phone'] ?? '';
+    $email = $_POST['email'] ?? '';
+
+    if ($action == 'add') {
+        $sql = "INSERT INTO staff (id, name, role, phone, email) VALUES ('$id', '$name', '$role', '$phone', '$email')";
+        $conn->query($sql);
+    } elseif ($action == 'edit') {
+        $sql = "UPDATE staff SET name='$name', role='$role', phone='$phone', email='$email' WHERE id='$id'";
+        $conn->query($sql);
+    } elseif ($action == 'delete') {
+        $sql = "DELETE FROM staff WHERE id='$id'";
+        $conn->query($sql);
+    }
+}
+
+// Load all staff
+$staffList = $conn->query("SELECT * FROM staff");
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -110,65 +143,20 @@
 
         
 
-        .main{
-            position: absolute;
-            top: 60px;
-            width: calc(100%-260px);
-            left: 260px;
-            min-height: calc(100%-60px);
-           
-
-
-        }
-
-        .cards{
-            width: 100%;
-            padding: 35px 20px;
-            display: grid;
-            grid-template-columns: repeat(4,1fr);
-            grid-gap: 20px;
-        }
-        .card{
-            padding: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            background: #efefef;
-            border-radius: 10px;
-            width: 270px;
-            box-shadow: 0 75px 25px 2 rgba(0, 0, 0, 0.08);
-            
-
-        }
-
-        .number{
-            font-size: 35px;
-            font-weight: 500;
-            color: rgb(227, 125, 125);
-        }
-
-        .card_name{
-            color: 888;
-            font-weight: 600;
-        }
-
-        .icon{
-            font-size: 45px;
-            color: rgb(227, 125, 125);
-        }
-
-
-
-        .tabledesign{
-            background: #efefef;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 75px 25px rgba(0, 0, 0, 0.08);
-            width: 100%;
-        }
-
        
+        .main {
+            margin-left: 280px;
+            margin-top: 80px;
+            padding: 20px;
+            font-size: 16px;
+            position: absolute;
+            background-color: #ffffff17;
+            padding: 12px;
+            border-radius: 40px;
+            box-shadow: 0 4px 12px  rgba(0, 0, 0, 0.08);
+            max-width: 1000px;
         
+        }
 
         table{
             border-collapse: separate;
@@ -198,6 +186,30 @@
         tbody td {
             border-bottom: 1px solid #eee;
         }
+
+        .button-group {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 15px; 
+        }
+
+         .button-group button {
+            padding: 10px 20px;
+            border: none;
+            background-color: #dc4949;
+            color: white;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+    
+        }
+
+        .button-group button:hover {
+            background-color: #c53737;
+        }
+
      
 
     </style>
@@ -283,81 +295,53 @@
      
     </div>
 
-
     <div class="main">
-        <div class="cards">
-            <div class="card">
-                <div class="content">
-                    <div class="number">$10000.99</div>
-                    <div class="card_name">Total sales</div>
-                </div>
-                <div class="icon">
-                    <i class="fa-solid fa-box"></i>
-                </div>
-            </div>
-            <div class="card">
-                <div class="content">
-                    <div class="number">12.80%</div>
-                    <div class="card_name">Sale Growth</div>
-                </div>
-                <div class="icon">
-                    <i class="fa-solid fa-box-open"></i>
-                </div>
-            </div>
-            <div class="card">
-                <div class="content">
-                    <div class="number">Cheese wedges</div>
-                    <div class="card_name">Top Selling Product</div>
-                </div>
-                <div class="icon">
-                    <i class="fa-solid fa-user-tie"></i>
-                </div>
-            </div>
-            <div class="card">
-                <div class="content">
-                    <div class="number">$12000</div>
-                    <div class="card_name">Sales</div>
-                </div>
-                <div class="icon">
-                    <i class="fa-solid fa-money-bill-trend-up"></i>
-                </div>
-            </div>
-        
-        
-        </div>
-
-
-
-        <div class="tabledesign">
-            <h2>Recent Salest</h2>
-            <table>
-            <thead>
+        <h2>Staff Management</h2>
+        <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Role</th>
+                <th>Phone</th>
+                <th>Emails</th>
+            </tr>
+        </thead>
+        <tbody>
+        <?php while($row = $staffList->fetch_assoc()): ?>
                 <tr>
-                    <th>Date</th>
-                    <th>Total Order</th>
-                    <th>Sales</th>
-                    
+                    <td><?= $row['id'] ?></td>
+                    <td><?= $row['name'] ?></td>
+                    <td><?= $row['role'] ?></td>
+                    <td><?= $row['phone'] ?></td>
+                    <td><?= $row['email'] ?></td>
                 </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <th>2025.1.23</th>
-                    <th>25</th>
-                    <th>$1200.25</th>
-                    
-                </tr>
-            </tbody>
-    
-                
-            </table>
-    
-           
+            <?php endwhile; ?>
+        </tbody>
+
             
+        </table>
+
+        <div class="button-group">
+        <form method="post">
+        <h3>Add / Edit / Delete Staff</h3>
+        <input type="text" name="id" placeholder="Staff ID" required>
+        <input type="text" name="name" placeholder="Name">
+        <input type="text" name="role" placeholder="Role">
+        <input type="text" name="phone" placeholder="Phone">
+        <input type="email" name="email" placeholder="Email">
+        
+        <button type="submit" name="action" value="add">Add Staff</button>
+        <button type="submit" name="action" value="edit">Edit Staff</button>
+        <button type="submit" name="action" value="delete" style="background:#999;">Delete Staff</button>
+    </form>
         </div>
-       
+        
     </div>
 
-  
+          
+    
+        
    
 
 </body>
