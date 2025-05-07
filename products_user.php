@@ -1,168 +1,93 @@
 <?php
 session_start();
+include 'db.php';
+
+// 检查登录
 if (!isset($_SESSION['user_id'])) {
-  header("Location: login.php");
-  exit();
+    header("Location: login.php");
+    exit();
 }
+
+// 获取产品
+$category = isset($_GET['category']) ? $_GET['category'] : 'all';
+$sql = ($category === 'all') ? "SELECT * FROM products" : "SELECT * FROM products WHERE category='$category'";
+$result = mysqli_query($conn, $sql);
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>FastFood Express - Products</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.css">
-  <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background-color: #fff;
-    }
+    <meta charset="UTF-8">
+    <title>Products - FastFood Express</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; background: #fff; }
+        .topbar { background: #222; color: white; padding: 15px 30px; display: flex; justify-content: space-between; }
+        .topbar .logo { font-size: 24px; font-weight: bold; }
+        .topbar a { color: white; text-decoration: none; margin-left: 20px; }
 
-    .topbar {
-      background-color: #222;
-      color: white;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 15px 30px;
-    }
+        .category-bar { text-align: center; margin: 20px; }
+        .category-bar a { margin: 0 10px; padding: 8px 16px; background: #d6001c; color: white; text-decoration: none; border-radius: 20px; }
+        .category-bar a:hover { background: #a30014; }
 
-    .topbar .logo {
-      font-size: 24px;
-      font-weight: bold;
-    }
-
-    .topbar a {
-      color: white;
-      text-decoration: none;
-      margin-left: 20px;
-      font-weight: bold;
-    }
-
-    .title-section {
-      padding: 40px;
-      background: #ffecec;
-      text-align: center;
-    }
-
-    .title-section h1 {
-      font-size: 42px;
-      color: #d6001c;
-    }
-
-    .product-grid {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 30px;
-      padding: 40px;
-    }
-
-    .product-card {
-      width: 250px;
-      background-color: #fff7f7;
-      border-radius: 16px;
-      overflow: hidden;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-      transition: transform 0.3s;
-      text-align: center;
-    }
-
-    .product-card:hover {
-      transform: scale(1.05);
-    }
-
-    .product-card img {
-      width: 100%;
-      height: 160px;
-      object-fit: cover;
-    }
-
-    .product-card h3 {
-      margin: 15px 0 5px;
-      color: #d6001c;
-    }
-
-    .product-card p {
-      font-size: 14px;
-      margin: 5px 0;
-      color: #444;
-    }
-
-    .product-card .price {
-      color: #000;
-      font-weight: bold;
-      margin-bottom: 15px;
-    }
-
-    .footer {
-      background-color: #eee;
-      text-align: center;
-      padding: 20px;
-      font-size: 14px;
-      margin-top: 40px;
-    }
-  </style>
+        .product-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 30px; padding: 20px; }
+        .product-card { width: 250px; background: #fff7f7; border-radius: 16px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); text-align: center; padding: 15px; }
+        .product-card img { width: 100%; height: 160px; object-fit: cover; border-radius: 10px; }
+        .product-card h3 { color: #d6001c; margin: 10px 0; }
+        .product-card .price { font-weight: bold; margin-bottom: 10px; }
+        .quantity-control { display: flex; justify-content: center; align-items: center; gap: 10px; margin-bottom: 10px; }
+        .quantity-control button { padding: 5px 10px; font-size: 18px; }
+        .footer { background: #eee; text-align: center; padding: 20px; margin-top: 40px; font-size: 14px; }
+    </style>
+    <script>
+        function changeQuantity(id, change) {
+            const qtyInput = document.getElementById('qty-' + id);
+            let qty = parseInt(qtyInput.value);
+            qty = isNaN(qty) ? 1 : qty;
+            qty += change;
+            if (qty < 1) qty = 1;
+            qtyInput.value = qty;
+        }
+    </script>
 </head>
 <body>
 
-<!-- Topbar -->
 <div class="topbar">
-  <div class="logo">🍔 FastFood Express</div>
-  <div>
-    <a href="index_user.php">Home</a>
-    <a href="products_user.php">Products</a>
-    <a href="profile.php">Profile</a>
-    <a href="about.php">About</a>
-    <a href="contact.php">Contact</a>
-    <a href="logout.php">Logout</a>
-  </div>
+    <div class="logo">🍔 FastFood Express</div>
+    <div>
+        <a href="index_user.php">Home</a>
+        <a href="products_user.php">Products</a>
+        <a href="profile.php">Profile</a>
+        <a href="about.php">About</a>
+        <a href="contact.php">Contact</a>
+        <a href="logout.php">Logout</a>
+    </div>
 </div>
 
-<!-- Page Title -->
-<div class="title-section" data-aos="fade-up">
-  <h1>Our Tasty Menu</h1>
+<div class="category-bar">
+    <a href="products_user.php?category=all">All</a>
+    <a href="products_user.php?category=beverages">Beverages</a>
+    <a href="products_user.php?category=chicken">Chicken</a>
+    <a href="products_user.php?category=burger">Burger</a>
+    <a href="products_user.php?category=desserts and sides">Desserts & Sides</a>
 </div>
 
-<!-- Product Cards -->
 <div class="product-grid">
-  <div class="product-card" data-aos="zoom-in">
-    <img src="https://source.unsplash.com/400x300/?burger" alt="Burger">
-    <h3>Classic Beef Burger</h3>
-    <p>Juicy patty with fresh lettuce, tomato and cheese.</p>
-    <div class="price">RM12.90</div>
-  </div>
-
-  <div class="product-card" data-aos="zoom-in" data-aos-delay="100">
-    <img src="https://source.unsplash.com/400x300/?fried-chicken" alt="Chicken">
-    <h3>Spicy Fried Chicken</h3>
-    <p>Crunchy, spicy and perfectly seasoned chicken.</p>
-    <div class="price">RM10.90</div>
-  </div>
-
-  <div class="product-card" data-aos="zoom-in" data-aos-delay="200">
-    <img src="https://source.unsplash.com/400x300/?fries" alt="Fries">
-    <h3>Golden Fries</h3>
-    <p>Perfectly crisp fries served with sauce.</p>
-    <div class="price">RM5.00</div>
-  </div>
-
-  <div class="product-card" data-aos="zoom-in" data-aos-delay="300">
-    <img src="https://source.unsplash.com/400x300/?soft-drink" alt="Drinks">
-    <h3>Refreshing Drinks</h3>
-    <p>Choose from Coke, Sprite, or Iced Lemon Tea.</p>
-    <div class="price">RM3.50</div>
-  </div>
+<?php while ($row = mysqli_fetch_assoc($result)) { ?>
+    <div class="product-card">
+        <img src="<?= htmlspecialchars($row['image_url']) ?>" alt="<?= htmlspecialchars($row['name']) ?>">
+        <h3><?= htmlspecialchars($row['name']) ?></h3>
+        <div class="price">RM<?= number_format($row['price'], 2) ?></div>
+        <div class="quantity-control">
+            <button onclick="changeQuantity(<?= $row['id'] ?>, -1)">-</button>
+            <input id="qty-<?= $row['id'] ?>" type="text" value="1" style="width:30px; text-align:center;" readonly>
+            <button onclick="changeQuantity(<?= $row['id'] ?>, 1)">+</button>
+        </div>
+    </div>
+<?php } ?>
 </div>
 
-<!-- Footer -->
 <div class="footer">
-  © 2025 FastFood Express. All rights reserved.
+    © 2025 FastFood Express. All rights reserved.
 </div>
-
-<!-- AOS Script -->
-<script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
-<script>AOS.init();</script>
 
 </body>
 </html>
