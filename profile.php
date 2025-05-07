@@ -61,16 +61,66 @@ if (isset($_POST['change_password'])) {
 <meta charset="UTF-8">
 <title>Profile - FastFood Express</title>
 <style>
-body { font-family: Arial; background: #fff; margin: 0; padding: 0; }
-.sidebar { width: 200px; background: #f93; color: white; float: left; height: 100vh; padding: 20px; box-sizing: border-box; }
-.sidebar a { display: block; color: white; margin: 10px 0; text-decoration: none; }
-.container { margin-left: 220px; padding: 20px; }
-h2 { color: #d6001c; }
-input, button, select { width: 100%; padding: 10px; margin: 8px 0; border-radius: 5px; border: 1px solid #ccc; }
-.tab { display: none; }
-.tab.active { display: block; }
-.notice { background: #ffe0e0; padding: 10px; border-radius: 5px; color: #d6001c; text-align: center; }
-.success, .error, .pass-message { text-align: center; margin-bottom: 10px; }
+body {
+    font-family: Arial;
+    background: #fff;
+    margin: 0;
+    padding: 0;
+    opacity: 0;
+    animation: fadeIn 1s forwards;
+}
+@keyframes fadeIn {
+    to { opacity: 1; }
+}
+.sidebar {
+    width: 200px;
+    background: #d6001c;
+    color: white;
+    float: left;
+    height: 100vh;
+    padding: 20px;
+    box-sizing: border-box;
+}
+.sidebar h2 {
+    color: #ffd700; /* 金色字更醒目，你也可以换成 white */
+}
+.sidebar a {
+    display: block;
+    color: white;
+    margin: 10px 0;
+    text-decoration: none;
+}
+.container {
+    margin-left: 220px;
+    padding: 20px;
+}
+h2 {
+    color: #d6001c;
+}
+input, button, select {
+    width: 100%;
+    padding: 10px;
+    margin: 8px 0;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+}
+.tab {
+    display: none;
+}
+.tab.active {
+    display: block;
+}
+.notice {
+    background: #ffe0e0;
+    padding: 10px;
+    border-radius: 5px;
+    color: #d6001c;
+    text-align: center;
+}
+.success, .error, .pass-message {
+    text-align: center;
+    margin-bottom: 10px;
+}
 </style>
 <script>
 function showTab(tab) {
@@ -83,7 +133,7 @@ function showTab(tab) {
 <body>
 
 <div class="sidebar">
-    <h2>Profile</h2>
+    <h2>My Profile</h2>
     <a href="#" onclick="showTab('infoTab')">Personal Info</a>
     <a href="#" onclick="showTab('passTab')">Change Password</a>
     <a href="logout.php">Logout</a>
@@ -96,7 +146,7 @@ function showTab(tab) {
         <?php if ($success) echo "<div class='success'>$success</div>"; ?>
         <?php if ($error) echo "<div class='error'>$error</div>"; ?>
         <form method="post">
-            <label>Email (locked)</label>
+            <label>Email</label>
             <input type="email" value="<?php echo $user['email']; ?>" readonly>
             <label>Name</label>
             <input type="text" name="username" value="<?php echo $user['username']; ?>" required>
