@@ -11,17 +11,23 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $password = mysqli_real_escape_string($conn, $_POST['password']);
     $hometown = mysqli_real_escape_string($conn, $_POST['hometown']);
 
-    $check_query = "SELECT * FROM customers WHERE email='$email'";
-    $check_result = mysqli_query($conn, $check_query);
-
-    if (mysqli_num_rows($check_result) > 0) {
-        $error = "Email already registered.";
+    // 手机号验证：01 开头 + 10~11 位 + 纯数字
+    if (!preg_match('/^01\d{8,9}$/', $phone)) {
+        $error = "Phone number must start with 01 and have 10-11 digits.";
     } else {
-        $query = "INSERT INTO customers (username, email, phone, password, hometown) VALUES ('$user_id', '$email', '$phone', '$password', '$hometown')";
-        if (mysqli_query($conn, $query)) {
-            $success = "Registration successful! You can now login.";
+        // 检查 email 是否唯一
+        $check_query = "SELECT * FROM customers WHERE email='$email'";
+        $check_result = mysqli_query($conn, $check_query);
+
+        if (mysqli_num_rows($check_result) > 0) {
+            $error = "Email already registered.";
         } else {
-            $error = "Something went wrong. Please try again.";
+            $query = "INSERT INTO customers (username, email, phone, password, hometown) VALUES ('$user_id', '$email', '$phone', '$password', '$hometown')";
+            if (mysqli_query($conn, $query)) {
+                $success = "Registration successful! You can now login.";
+            } else {
+                $error = "Something went wrong. Please try again.";
+            }
         }
     }
 }
@@ -77,12 +83,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
     .error { color: red; text-align: center; margin-bottom: 10px; }
     .success { color: green; text-align: center; margin-bottom: 10px; }
-    label {
-      font-weight: bold;
-      color: #d6001c;
-      margin-top: 10px;
-      display: block;
-    }
   </style>
 </head>
 <body>
@@ -96,12 +96,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
   <form method="post">
     <input type="text" name="user_id" placeholder="User ID" required>
     <input type="email" name="email" placeholder="Email" required>
-    <input type="text" name="phone" placeholder="Phone Number" required>
+    <input type="text" name="phone" placeholder="Phone Number (10-11 digits, starts with 01)" pattern="01\d{8,9}" required>
     <input type="password" name="password" placeholder="Password" required>
-
-    <label for="hometown">Where is your hometown?</label>
-    <input type="text" id="hometown" name="hometown" placeholder="Your Answer" required>
-
+    <input type="text" name="hometown" placeholder="Where is your hometown?" required>
     <button type="submit">Register</button>
     <div class="bottom-link">Already have an account? <a href="login.php">Login</a></div>
   </form>
