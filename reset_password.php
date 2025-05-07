@@ -9,7 +9,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $security_answer = mysqli_real_escape_string($conn, $_POST['security_answer']);
     $new_password = mysqli_real_escape_string($conn, $_POST['new_password']);
 
-    $query = "SELECT * FROM customers WHERE email='$email' AND security_answer='$security_answer'";
+    $query = "SELECT * FROM customers WHERE email='$email' AND security_question='Where is your hometown?' AND security_answer='$security_answer'";
     $result = mysqli_query($conn, $query);
 
     if (mysqli_num_rows($result) == 1) {
@@ -71,6 +71,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
     .error { color: red; text-align: center; margin-bottom: 10px; }
     .success { color: green; text-align: center; margin-bottom: 10px; }
+    .bottom-link { text-align: center; margin-top: 10px; }
   </style>
 </head>
 <body>
@@ -83,7 +84,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
   ?>
   <form method="post">
     <input type="email" name="email" placeholder="Your Registered Email" required>
-    <input type="text" name="security_answer" placeholder="Security Answer" required>
+    <label for="security_answer">Where is your hometown?</label>
+    <input type="text" name="security_answer" placeholder="Your Answer" required>
     <input type="password" name="new_password" placeholder="New Password" required>
     <button type="submit">Reset Password</button>
     <div class="bottom-link">

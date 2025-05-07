@@ -17,15 +17,31 @@ $result = mysqli_query($conn, $query);
 $user = mysqli_fetch_assoc($result);
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $email = mysqli_real_escape_string($conn, $_POST['email']);
+    $new_user_id = mysqli_real_escape_string($conn, $_POST['user_id']);
     $phone = mysqli_real_escape_string($conn, $_POST['phone']);
     $password = mysqli_real_escape_string($conn, $_POST['password']);
 
-    $update_query = "UPDATE customers SET email='$email', phone='$phone', password='$password' WHERE id='$user_id'";
-    if (mysqli_query($conn, $update_query)) {
-        $success = "Profile updated successfully!";
+    // 检查 user_id 是否唯一（排除自己）
+    $check_userid = "SELECT * FROM customers WHERE username='$new_user_id' AND id != '$user_id'";
+    $check_result_userid = mysqli_query($conn, $check_userid);
+
+    // 检查 email 是否唯一（排除自己，虽然不可改，安全兜底）
+    $email = $user['email'];
+    $check_email = "SELECT * FROM customers WHERE email='$email' AND id != '$user_id'";
+    $check_result_email = mysqli_query($conn, $check_email);
+
+    if (mysqli_num_rows($check_result_userid) > 0) {
+        $error = "User ID is already taken by another user.";
+    } elseif (mysqli_num_rows($check_result_email) > 0) {
+        $error = "Email is already used by another account.";
     } else {
-        $error = "Something went wrong. Please try again.";
+        $update_query = "UPDATE customers SET username='$new_user_id', phone='$phone', password='$password' WHERE id='$user_id'";
+        if (mysqli_query($conn, $update_query)) {
+            $success = "Profile updated successfully!";
+            $_SESSION['username'] = $new_user_id;
+        } else {
+            $error = "Something went wrong. Please try again.";
+        }
     }
 }
 ?>
@@ -79,6 +95,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
     .error { color: red; text-align: center; margin-bottom: 10px; }
     .success { color: green; text-align: center; margin-bottom: 10px; }
+    .bottom-link { text-align: center; margin-top: 10px; }
   </style>
 </head>
 <body>
@@ -90,8 +107,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if ($success) echo "<div class='success'>$success</div>";
   ?>
   <form method="post">
-    <input type="text" name="username" value="<?php echo htmlspecialchars($user['username']); ?>" readonly>
-    <input type="email" name="email" value="<?php echo htmlspecialchars($user['email']); ?>" required>
+    <input type="email" name="email" value="<?php echo htmlspecialchars($user['email']); ?>" readonly>
+    <input type="text" name="user_id" value="<?php echo htmlspecialchars($user['username']); ?>" required>
     <input type="text" name="phone" value="<?php echo htmlspecialchars($user['phone']); ?>" required>
     <input type="password" name="password" value="<?php echo htmlspecialchars($user['password']); ?>" required>
     <button type="submit">Update Profile</button>

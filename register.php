@@ -9,14 +9,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $email = mysqli_real_escape_string($conn, $_POST['email']);
     $phone = mysqli_real_escape_string($conn, $_POST['phone']);
     $password = mysqli_real_escape_string($conn, $_POST['password']);
-    $security_question = mysqli_real_escape_string($conn, $_POST['security_question']);
+    $security_question = "Where is your hometown?";
     $security_answer = mysqli_real_escape_string($conn, $_POST['security_answer']);
 
     // 邮箱格式检查
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = "Invalid email format.";
     }
-    // 手机号长度检查（假设10-15位）
+    // 手机号检查（10-15位数字）
     elseif (!preg_match('/^[0-9]{10,15}$/', $phone)) {
         $error = "Phone number must be 10-15 digits.";
     }
@@ -108,10 +108,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <input type="email" name="email" placeholder="Email" required>
     <input type="text" name="phone" placeholder="Phone Number" required>
     <input type="password" name="password" placeholder="Password" required>
-    <input type="text" name="security_question" placeholder="Security Question (e.g., What’s your pet’s name?)" required>
-    <input type="text" name="security_answer" placeholder="Security Answer" required>
+    <label for="security_answer">Where is your hometown?</label>
+    <input type="text" name="security_answer" placeholder="Your Answer" required>
     <button type="submit">Register</button>
-    <div class="bottom-link">Already have an account? <a href="login.php">Login</a></div>
+    <div class="bottom-link">
+      Already have an account? <a href="login.php">Login</a>
+    </div>
   </form>
 </div>
 
