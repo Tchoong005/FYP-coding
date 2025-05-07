@@ -1,4 +1,4 @@
-Dennis Yew Shun Yao, [5/7/2025 9:19 PM]
+Dennis Yew Shun Yao, [5/7/2025 9:28 PM]
 <?php
 session_start();
 include 'db.php';
@@ -102,7 +102,7 @@ function showTab(tab) {
         <button onclick="showTab('passTab')">Change Password</button>
     </div>
 
-Dennis Yew Shun Yao, [5/7/2025 9:19 PM]
+Dennis Yew Shun Yao, [5/7/2025 9:28 PM]
 <div id="infoTab" class="tab active">
         <h2>Personal Information</h2>
         <?php if ($show_notice) echo "<div class='notice'>Please complete your information</div>"; ?>
