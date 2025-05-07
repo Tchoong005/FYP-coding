@@ -11,16 +11,22 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $password = mysqli_real_escape_string($conn, $_POST['password']);
     $hometown = mysqli_real_escape_string($conn, $_POST['hometown']);
 
-    // 手机号验证：01 开头 + 10~11 位 + 纯数字
+    // 手机号格式验证
     if (!preg_match('/^01\d{8,9}$/', $phone)) {
         $error = "Phone number must start with 01 and have 10-11 digits.";
     } else {
-        // 检查 email 是否唯一
-        $check_query = "SELECT * FROM customers WHERE email='$email'";
-        $check_result = mysqli_query($conn, $check_query);
+        // 检查 email 是否已存在
+        $check_query_email = "SELECT * FROM customers WHERE email='$email'";
+        $check_result_email = mysqli_query($conn, $check_query_email);
 
-        if (mysqli_num_rows($check_result) > 0) {
+        // 检查 phone 是否已存在
+        $check_query_phone = "SELECT * FROM customers WHERE phone='$phone'";
+        $check_result_phone = mysqli_query($conn, $check_query_phone);
+
+        if (mysqli_num_rows($check_result_email) > 0) {
             $error = "Email already registered.";
+        } elseif (mysqli_num_rows($check_result_phone) > 0) {
+            $error = "Phone number already registered.";
         } else {
             $query = "INSERT INTO customers (username, email, phone, password, hometown) VALUES ('$user_id', '$email', '$phone', '$password', '$hometown')";
             if (mysqli_query($conn, $query)) {
@@ -83,6 +89,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
     .error { color: red; text-align: center; margin-bottom: 10px; }
     .success { color: green; text-align: center; margin-bottom: 10px; }
+    label {
+      font-weight: bold;
+      color: #d6001c;
+      margin-top: 10px;
+      display: block;
+    }
   </style>
 </head>
 <body>
