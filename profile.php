@@ -136,7 +136,7 @@ function showTab(tab) {
     <h2>My Profile</h2>
     <a href="#" onclick="showTab('infoTab')">Personal Info</a>
     <a href="#" onclick="showTab('passTab')">Change Password</a>
-    <a href="logout.php">Logout</a>
+    <a href="index_user.php">Go to Home Page</a>
 </div>
 
 <div class="container">
