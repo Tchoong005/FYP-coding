@@ -23,7 +23,6 @@
         onclick="showDetails('<?php echo $product['name']; ?>', '<?php echo $product['price']; ?>', '<?php echo $product['image_url']; ?>')">
         <img src="<?php echo $product['image_url']; ?>" alt="<?php echo $product['name']; ?>" onerror="this.onerror=null; this.src='images/default.jpg';">
         <h3><?php echo $product['name']; ?></h3>
-        <button class="add-cart-btn" onclick="event.stopPropagation(); addToCart('<?php echo $product['name']; ?>')">Add to Cart</button>
     </div>
 <?php endforeach; ?>
 </div>
@@ -39,9 +38,12 @@
         <input type="text" id="modalQty" value="1" readonly style="width:30px; text-align:center;">
         <button onclick="increaseQty()">+</button>
     </div>
+    <button class="add-cart-btn" onclick="addToCart()">Add to Cart</button>
 </div>
 
 <script>
+let currentProduct = '';
+
 function filterProducts(category) {
     var cards = document.querySelectorAll('.product-card');
     cards.forEach(function(card) {
@@ -58,6 +60,7 @@ function showDetails(name, price, image) {
     document.getElementById('modalPrice').innerText = parseFloat(price).toFixed(2);
     document.getElementById('modalImage').src = image;
     document.getElementById('modalQty').value = 1;
+    currentProduct = name;
 
     var modal = document.getElementById('productModal');
     modal.style.display = 'block';
@@ -86,9 +89,9 @@ function decreaseQty() {
     }
 }
 
-function addToCart(productName) {
-    console.log("Added to cart:", productName);
-    alert("✅ " + productName + " has been added to cart!");
+function addToCart() {
+    var qty = document.getElementById('modalQty').value;
+    alert("✅ " + currentProduct + " (x" + qty + ") has been added to cart!");
 }
 </script>
 
