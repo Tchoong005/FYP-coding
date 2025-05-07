@@ -6,21 +6,33 @@ $success = "";
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $user_id = mysqli_real_escape_string($conn, $_POST['user_id']);
-    $email    = mysqli_real_escape_string($conn, $_POST['email']);
-    $phone    = mysqli_real_escape_string($conn, $_POST['phone']);
+    $email = mysqli_real_escape_string($conn, $_POST['email']);
+    $phone = mysqli_real_escape_string($conn, $_POST['phone']);
     $password = mysqli_real_escape_string($conn, $_POST['password']);
+    $security_question = mysqli_real_escape_string($conn, $_POST['security_question']);
+    $security_answer = mysqli_real_escape_string($conn, $_POST['security_answer']);
 
-    // ✅ 强密码验证（后端检查）
-    if (!preg_match("/^(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,}$/", $password)) {
-        $error = "Password must be at least 8 characters long and include uppercase, lowercase, and a number.";
-    } else {
+    // 邮箱格式检查
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $error = "Invalid email format.";
+    }
+    // 手机号长度检查（假设10-15位）
+    elseif (!preg_match('/^[0-9]{10,15}$/', $phone)) {
+        $error = "Phone number must be 10-15 digits.";
+    }
+    // 密码强度检查
+    elseif (!preg_match('/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/', $password)) {
+        $error = "Password must be at least 8 characters, include uppercase, lowercase, and number.";
+    }
+    else {
         $check_query = "SELECT * FROM customers WHERE email='$email'";
         $check_result = mysqli_query($conn, $check_query);
 
         if (mysqli_num_rows($check_result) > 0) {
             $error = "Email already registered.";
         } else {
-            $query = "INSERT INTO customers (username, email, phone, password) VALUES ('$user_id', '$email', '$phone', '$password')";
+            $query = "INSERT INTO customers (username, email, phone, password, security_question, security_answer) 
+                      VALUES ('$user_id', '$email', '$phone', '$password', '$security_question', '$security_answer')";
             if (mysqli_query($conn, $query)) {
                 $success = "Registration successful! You can now login.";
             } else {
@@ -95,9 +107,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <input type="text" name="user_id" placeholder="User ID" required>
     <input type="email" name="email" placeholder="Email" required>
     <input type="text" name="phone" placeholder="Phone Number" required>
-    <input type="password" name="password" placeholder="Password" required
-      pattern="(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,}"
-      title="At least 8 characters with uppercase, lowercase, and a number.">
+    <input type="password" name="password" placeholder="Password" required>
+    <input type="text" name="security_question" placeholder="Security Question (e.g., What’s your pet’s name?)" required>
+    <input type="text" name="security_answer" placeholder="Security Answer" required>
     <button type="submit">Register</button>
     <div class="bottom-link">Already have an account? <a href="login.php">Login</a></div>
   </form>

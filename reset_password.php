@@ -1,25 +1,27 @@
 <?php
+session_start();
 include 'db.php';
 $error = "";
 $success = "";
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-  $email = mysqli_real_escape_string($conn, $_POST['email']);
-  $new_password = mysqli_real_escape_string($conn, $_POST['password']);
+    $email = mysqli_real_escape_string($conn, $_POST['email']);
+    $security_answer = mysqli_real_escape_string($conn, $_POST['security_answer']);
+    $new_password = mysqli_real_escape_string($conn, $_POST['new_password']);
 
-  $check_query = "SELECT * FROM customers WHERE email='$email'";
-  $result = mysqli_query($conn, $check_query);
+    $query = "SELECT * FROM customers WHERE email='$email' AND security_answer='$security_answer'";
+    $result = mysqli_query($conn, $query);
 
-  if (mysqli_num_rows($result) == 1) {
-    $update_query = "UPDATE customers SET password='$new_password' WHERE email='$email'";
-    if (mysqli_query($conn, $update_query)) {
-      $success = "Password updated successfully. You can now login.";
+    if (mysqli_num_rows($result) == 1) {
+        $update_query = "UPDATE customers SET password='$new_password' WHERE email='$email'";
+        if (mysqli_query($conn, $update_query)) {
+            $success = "Password reset successful! You can now login.";
+        } else {
+            $error = "Something went wrong. Please try again.";
+        }
     } else {
-      $error = "Something went wrong. Please try again.";
+        $error = "Invalid email or security answer.";
     }
-  } else {
-    $error = "No user found with that email.";
-  }
 }
 ?>
 <!DOCTYPE html>
@@ -27,6 +29,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <head>
   <meta charset="UTF-8">
   <title>Reset Password - FastFood Express</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.css">
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -49,7 +52,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
       text-align: center;
       margin-bottom: 20px;
     }
-    input[type=email], input[type=password] {
+    input[type=email], input[type=text], input[type=password] {
       width: 100%;
       padding: 10px;
       margin: 10px 0;
@@ -66,32 +69,31 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
       font-weight: bold;
       cursor: pointer;
     }
-    .message {
-      text-align: center;
-      margin-bottom: 10px;
-      color: green;
-    }
-    .error {
-      text-align: center;
-      margin-bottom: 10px;
-      color: red;
-    }
+    .error { color: red; text-align: center; margin-bottom: 10px; }
+    .success { color: green; text-align: center; margin-bottom: 10px; }
   </style>
 </head>
 <body>
 
-<div class="reset-container">
+<div class="reset-container" data-aos="zoom-in">
   <h2>Reset Password</h2>
   <?php
-    if ($error) echo "<p class='error'>$error</p>";
-    if ($success) echo "<p class='message'>$success</p>";
+    if ($error) echo "<div class='error'>$error</div>";
+    if ($success) echo "<div class='success'>$success</div>";
   ?>
   <form method="post">
-    <input type="email" name="email" placeholder="Your Email" required>
-    <input type="password" name="password" placeholder="New Password" required>
-    <button type="submit">Update Password</button>
+    <input type="email" name="email" placeholder="Your Registered Email" required>
+    <input type="text" name="security_answer" placeholder="Security Answer" required>
+    <input type="password" name="new_password" placeholder="New Password" required>
+    <button type="submit">Reset Password</button>
+    <div class="bottom-link">
+      Back to <a href="login.php">Login</a>
+    </div>
   </form>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
+<script>AOS.init();</script>
 
 </body>
 </html>

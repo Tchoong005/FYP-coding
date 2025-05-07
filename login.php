@@ -4,13 +4,10 @@ include 'db.php';
 $error = "";
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $email = $_POST['email'];
-    $password = $_POST['password'];
+    $user_id = mysqli_real_escape_string($conn, $_POST['user_id']);
+    $password = mysqli_real_escape_string($conn, $_POST['password']);
 
-    $email = mysqli_real_escape_string($conn, $email);
-    $password = mysqli_real_escape_string($conn, $password);
-
-    $query = "SELECT * FROM customers WHERE email='$email' AND password='$password'";
+    $query = "SELECT * FROM customers WHERE username='$user_id' AND password='$password'";
     $result = mysqli_query($conn, $query);
 
     if (mysqli_num_rows($result) == 1) {
@@ -20,7 +17,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         header("Location: index_user.php");
         exit();
     } else {
-        $error = "Invalid email or password.";
+        $error = "Invalid User ID or Password.";
     }
 }
 ?>
@@ -52,7 +49,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
       text-align: center;
       margin-bottom: 20px;
     }
-    input[type=email], input[type=password] {
+    input[type=text], input[type=password] {
       width: 100%;
       padding: 10px;
       margin: 10px 0;
@@ -73,28 +70,24 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
       text-align: center;
       margin-top: 15px;
     }
-    .bottom-link a {
-      color: #d6001c;
-      text-decoration: none;
-    }
-    .error {
-      color: red;
-      text-align: center;
-      margin-bottom: 10px;
-    }
+    .error { color: red; text-align: center; margin-bottom: 10px; }
   </style>
 </head>
 <body>
 
 <div class="login-container" data-aos="zoom-in">
   <h2>Login</h2>
-  <?php if ($error != "") echo "<div class='error'>$error</div>"; ?>
+  <?php
+    if ($error) echo "<div class='error'>$error</div>";
+  ?>
   <form method="post">
-    <input type="email" name="email" placeholder="Email" required>
+    <input type="text" name="user_id" placeholder="User ID" required>
     <input type="password" name="password" placeholder="Password" required>
     <button type="submit">Login</button>
-    <div class="bottom-link">Don't have an account? <a href="register.php">Register</a></div>
-    <div class="bottom-link"><a href="reset_password.php">Forgot Password?</a></div>
+    <div class="bottom-link">
+      Don't have an account? <a href="register.php">Register</a><br>
+      <a href="reset_password.php">Forgot Password?</a>
+    </div>
   </form>
 </div>
 
