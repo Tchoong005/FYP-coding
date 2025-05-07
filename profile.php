@@ -1,3 +1,4 @@
+Dennis Yew Shun Yao, [5/7/2025 9:19 PM]
 <?php
 session_start();
 include 'db.php';
@@ -8,118 +9,137 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 $user_id = $_SESSION['user_id'];
-$error = "";
-$success = "";
-
-// 获取当前用户信息
-$query = "SELECT * FROM customers WHERE id='$user_id'";
-$result = mysqli_query($conn, $query);
+$sql = "SELECT * FROM customers WHERE id='$user_id'";
+$result = mysqli_query($conn, $sql);
 $user = mysqli_fetch_assoc($result);
 
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $new_user_id = mysqli_real_escape_string($conn, $_POST['user_id']);
+$show_notice = empty($user['address'])  empty($user['birthday'])  empty($user['gender']);
+$success = $error = $pass_message = "";
+
+// 更新个人信息
+if (isset($_POST['update_profile'])) {
+    $username = mysqli_real_escape_string($conn, $_POST['username']);
     $phone = mysqli_real_escape_string($conn, $_POST['phone']);
-    $password = mysqli_real_escape_string($conn, $_POST['password']);
+    $address = mysqli_real_escape_string($conn, $_POST['address']);
+    $birthday = mysqli_real_escape_string($conn, $_POST['birthday']);
+    $gender = mysqli_real_escape_string($conn, $_POST['gender']);
 
-    // 检查 user_id 是否唯一（排除自己）
-    $check_userid = "SELECT * FROM customers WHERE username='$new_user_id' AND id != '$user_id'";
-    $check_result_userid = mysqli_query($conn, $check_userid);
-
-    // 检查 email 是否唯一（排除自己，虽然不可改，安全兜底）
-    $email = $user['email'];
-    $check_email = "SELECT * FROM customers WHERE email='$email' AND id != '$user_id'";
-    $check_result_email = mysqli_query($conn, $check_email);
-
-    if (mysqli_num_rows($check_result_userid) > 0) {
-        $error = "User ID is already taken by another user.";
-    } elseif (mysqli_num_rows($check_result_email) > 0) {
-        $error = "Email is already used by another account.";
+    $update_sql = "UPDATE customers SET username='$username', phone='$phone', address='$address', birthday='$birthday', gender='$gender' WHERE id='$user_id'";
+    if (mysqli_query($conn, $update_sql)) {
+        $success = "Profile updated!";
+        $show_notice = false;
+        $user['username'] = $username;
+        $user['phone'] = $phone;
+        $user['address'] = $address;
+        $user['birthday'] = $birthday;
+        $user['gender'] = $gender;
     } else {
-        $update_query = "UPDATE customers SET username='$new_user_id', phone='$phone', password='$password' WHERE id='$user_id'";
-        if (mysqli_query($conn, $update_query)) {
-            $success = "Profile updated successfully!";
-            $_SESSION['username'] = $new_user_id;
+        $error = "Update failed!";
+    }
+}
+
+// 修改密码
+if (isset($_POST['change_password'])) {
+    $old_password = mysqli_real_escape_string($conn, $_POST['old_password']);
+    $new_password = mysqli_real_escape_string($conn, $_POST['new_password']);
+
+    $check_sql = "SELECT * FROM customers WHERE id='$user_id' AND password='$old_password'";
+    $check_result = mysqli_query($conn, $check_sql);
+
+    if (mysqli_num_rows($check_result) > 0) {
+        $update_sql = "UPDATE customers SET password='$new_password' WHERE id='$user_id'";
+        if (mysqli_query($conn, $update_sql)) {
+            $pass_message = "<span style='color:green;'>Password updated successfully!</span>";
         } else {
-            $error = "Something went wrong. Please try again.";
+            $pass_message = "<span style='color:red;'>Failed to update password.</span>";
         }
+    } else {
+        $pass_message = "<span style='color:red;'>Old password is incorrect.</span>";
     }
 }
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Profile - FastFood Express</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.css">
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #fff0f0;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      margin: 0;
-    }
-    .profile-container {
-      background: white;
-      padding: 30px 40px;
-      border-radius: 10px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-      width: 350px;
-    }
-    h2 {
-      color: #d6001c;
-      text-align: center;
-      margin-bottom: 20px;
-    }
-    input[type=text], input[type=email], input[type=password] {
-      width: 100%;
-      padding: 10px;
-      margin: 10px 0;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-    }
-    input[readonly] {
-      background: #f0f0f0;
-    }
-    button {
-      background: #d6001c;
-      color: white;
-      width: 100%;
-      padding: 12px;
-      border: none;
-      border-radius: 8px;
-      font-weight: bold;
-      cursor: pointer;
-    }
-    .error { color: red; text-align: center; margin-bottom: 10px; }
-    .success { color: green; text-align: center; margin-bottom: 10px; }
-    .bottom-link { text-align: center; margin-top: 10px; }
-  </style>
+<meta charset="UTF-8">
+<title>Profile - FastFood Express</title>
+<style>
+body { font-family: Arial; background: #fff; margin: 0; padding: 0; }
+.topbar { background: #222; color: white; display: flex; justify-content: space-between; padding: 15px 30px; }
+.topbar .logo { font-size: 24px; font-weight: bold; }
+.topbar a { color: white; margin-left: 20px; text-decoration: none; }
+.container { max-width: 500px; margin: 30px auto; padding: 20px; background: #f9f9f9; border-radius: 10px; }
+h2 { text-align: center; color: #d6001c; }
+button, input, select { width: 100%; padding: 10px; margin: 8px 0; border-radius: 5px; border: 1px solid #ccc; }
+.tab-btns { display: flex; justify-content: space-around; margin-bottom: 20px; }
+.tab-btns button { width: 48%; }
+.tab { display: none; }
+.tab.active { display: block; }
+.notice { background: #ffe0e0; padding: 10px; border-radius: 5px; margin-bottom: 10px; text-align: center; color: #d6001c; }
+.success, .error, .pass-message { text-align: center; margin-bottom: 10px; }
+</style>
+<script>
+function showTab(tab) {
+    document.getElementById('infoTab').classList.remove('active');
+    document.getElementById('passTab').classList.remove('active');
+    document.getElementById(tab).classList.add('active');
+}
+</script>
 </head>
 <body>
 
-<div class="profile-container" data-aos="zoom-in">
-  <h2>Your Profile</h2>
-  <?php
-    if ($error) echo "<div class='error'>$error</div>";
-    if ($success) echo "<div class='success'>$success</div>";
-  ?>
-  <form method="post">
-    <input type="email" name="email" value="<?php echo htmlspecialchars($user['email']); ?>" readonly>
-    <input type="text" name="user_id" value="<?php echo htmlspecialchars($user['username']); ?>" required>
-    <input type="text" name="phone" value="<?php echo htmlspecialchars($user['phone']); ?>" required>
-    <input type="password" name="password" value="<?php echo htmlspecialchars($user['password']); ?>" required>
-    <button type="submit">Update Profile</button>
-    <div class="bottom-link">
-      <a href="index_user.php">Back to Home</a>
+<div class="topbar">
+    <div class="logo">🍔 FastFood Express</div>
+    <div>
+        <a href="index_user.php">Home</a>
+        <a href="logout.php">Logout</a>
     </div>
-  </form>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
-<script>AOS.init();</script>
+<div class="container">
+    <div class="tab-btns">
+        <button onclick="showTab('infoTab')">Personal Information</button>
+        <button onclick="showTab('passTab')">Change Password</button>
+    </div>
+
+Dennis Yew Shun Yao, [5/7/2025 9:19 PM]
+<div id="infoTab" class="tab active">
+        <h2>Personal Information</h2>
+        <?php if ($show_notice) echo "<div class='notice'>Please complete your information</div>"; ?>
+        <?php if ($success) echo "<div class='success'>$success</div>"; ?>
+        <?php if ($error) echo "<div class='error'>$error</div>"; ?>
+        <form method="post">
+            <label>Email (locked)</label>
+            <input type="email" value="<?php echo $user['email']; ?>" readonly>
+            <label>User ID</label>
+            <input type="text" name="username" value="<?php echo $user['username']; ?>" required>
+            <label>Phone</label>
+            <input type="text" name="phone" value="<?php echo $user['phone']; ?>">
+            <label>Address</label>
+            <input type="text" name="address" value="<?php echo $user['address']; ?>">
+            <label>Birthday</label>
+            <input type="date" name="birthday" value="<?php echo $user['birthday']; ?>">
+            <label>Gender</label>
+            <select name="gender">
+                <option value="">Select</option>
+                <option value="Male" <?php if ($user['gender']=='Male') echo 'selected'; ?>>Male</option>
+                <option value="Female" <?php if ($user['gender']=='Female') echo 'selected'; ?>>Female</option>
+                <option value="Other" <?php if ($user['gender']=='Other') echo 'selected'; ?>>Other</option>
+            </select>
+            <button type="submit" name="update_profile">Update Profile</button>
+        </form>
+    </div>
+
+    <div id="passTab" class="tab">
+        <h2>Change Password</h2>
+        <?php if ($pass_message) echo "<div class='pass-message'>$pass_message</div>"; ?>
+        <form method="post">
+            <input type="password" name="old_password" placeholder="Old Password" required>
+            <input type="password" name="new_password" placeholder="New Password" required>
+            <button type="submit" name="change_password">Change Password</button>
+        </form>
+    </div>
+</div>
 
 </body>
 </html>
