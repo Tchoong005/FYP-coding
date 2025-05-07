@@ -1,6 +1,6 @@
 <?php
 session_start();
-include 'db.php'; // 记得要有 db.php 连接数据库
+include 'db.php';
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
@@ -21,82 +21,25 @@ while ($row = mysqli_fetch_assoc($result)) {
     <title>Products - FastFood Express</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.css">
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #fff;
-            margin: 0;
-            padding: 20px;
-        }
-        .topbar {
-            background: #222;
-            color: white;
-            display: flex;
-            justify-content: space-between;
-            padding: 15px 30px;
-        }
-        .topbar .logo {
-            font-size: 24px;
-            font-weight: bold;
-        }
-        .topbar a {
-            color: white;
-            text-decoration: none;
-            margin-left: 20px;
-            font-weight: bold;
-        }
-        .categories {
-            text-align: center;
-            margin: 20px 0;
-        }
-        .categories button {
-            margin: 5px;
-            padding: 10px 20px;
-            border: none;
-            background: #d6001c;
-            color: white;
-            border-radius: 20px;
-            cursor: pointer;
-        }
-        .product-grid {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 20px;
-        }
-        .product-card {
-            width: 200px;
-            background: #fff7f7;
-            border-radius: 10px;
-            text-align: center;
-            padding: 10px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-        .product-card img {
-            width: 100%;
-            height: 150px;
-            object-fit: cover;
-            border-radius: 10px;
-        }
-        .product-card h3 {
-            margin: 10px 0 5px;
-            font-size: 18px;
-            color: #d6001c;
-        }
-        .product-card p {
-            margin: 5px 0;
-        }
-        .quantity-controls {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin-top: 10px;
-        }
-        .quantity-controls button {
-            padding: 5px 10px;
-            font-size: 16px;
-            margin: 0 5px;
-            cursor: pointer;
-        }
+        body { font-family: Arial, sans-serif; background: #fff; margin: 0; padding: 20px; }
+        .topbar { background: #222; color: white; display: flex; justify-content: space-between; padding: 15px 30px; }
+        .topbar .logo { font-size: 24px; font-weight: bold; }
+        .topbar a { color: white; text-decoration: none; margin-left: 20px; font-weight: bold; }
+
+        .categories { text-align: center; margin: 20px 0; }
+        .categories button { margin: 5px; padding: 10px 20px; border: none; background: #d6001c; color: white; border-radius: 20px; cursor: pointer; }
+
+        .product-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; }
+        .product-card { width: 200px; background: #fff7f7; border-radius: 10px; text-align: center; padding: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); cursor: pointer; }
+        .product-card img { width: 100%; height: 150px; object-fit: cover; border-radius: 10px; }
+        .product-card h3 { margin: 10px 0 5px; font-size: 18px; color: #d6001c; }
+
+        /* Modal */
+        #productModal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.3); z-index: 1000; width: 300px; text-align: center; }
+        #productModal img { width: 200px; height: 150px; object-fit: cover; border-radius: 10px; }
+        #productModal .close-btn { cursor: pointer; float: right; font-size: 18px; }
+        .quantity-controls { display: flex; justify-content: center; align-items: center; margin-top: 10px; }
+        .quantity-controls button { padding: 5px 10px; font-size: 16px; margin: 0 5px; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -123,17 +66,26 @@ while ($row = mysqli_fetch_assoc($result)) {
 
 <div class="product-grid">
     <?php foreach ($products as $product): ?>
-        <div class="product-card" data-category="<?php echo $product['category']; ?>">
-            <img src="<?php echo $product['image_url']; ?>" alt="<?php echo $product['name']; ?>">
+        <div class="product-card" data-category="<?php echo $product['category']; ?>"
+             onclick="showDetails('<?php echo $product['name']; ?>', '<?php echo $product['price']; ?>', '<?php echo $product['image_url']; ?>')">
+            <img src="<?php echo $product['image_url']; ?>" alt="<?php echo $product['name']; ?>"
+                 onerror="this.onerror=null; this.src='images/default.jpg';">
             <h3><?php echo $product['name']; ?></h3>
-            <p>RM<?php echo number_format($product['price'], 2); ?></p>
-            <div class="quantity-controls">
-                <button onclick="decreaseQty(this)">-</button>
-                <input type="text" value="1" readonly style="width:30px; text-align:center;">
-                <button onclick="increaseQty(this)">+</button>
-            </div>
         </div>
     <?php endforeach; ?>
+</div>
+
+<!-- Modal -->
+<div id="productModal">
+    <span class="close-btn" onclick="closeModal()">❌</span>
+    <img id="modalImage" src="" alt="">
+    <h3 id="modalName"></h3>
+    <p>RM<span id="modalPrice"></span></p>
+    <div class="quantity-controls">
+        <button onclick="decreaseQty()">-</button>
+        <input type="text" id="modalQty" value="1" readonly style="width:30px; text-align:center;">
+        <button onclick="increaseQty()">+</button>
+    </div>
 </div>
 
 <script>
@@ -148,14 +100,26 @@ function filterProducts(category) {
     });
 }
 
-function increaseQty(button) {
-    var input = button.previousElementSibling;
+function showDetails(name, price, image) {
+    document.getElementById('modalName').innerText = name;
+    document.getElementById('modalPrice').innerText = parseFloat(price).toFixed(2);
+    document.getElementById('modalImage').src = image;
+    document.getElementById('modalQty').value = 1;
+    document.getElementById('productModal').style.display = 'block';
+}
+
+function closeModal() {
+    document.getElementById('productModal').style.display = 'none';
+}
+
+function increaseQty() {
+    var input = document.getElementById('modalQty');
     var value = parseInt(input.value);
     input.value = value + 1;
 }
 
-function decreaseQty(button) {
-    var input = button.nextElementSibling;
+function decreaseQty() {
+    var input = document.getElementById('modalQty');
     var value = parseInt(input.value);
     if (value > 1) {
         input.value = value - 1;
