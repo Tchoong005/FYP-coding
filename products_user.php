@@ -1,4 +1,4 @@
-Dennis Yew Shun Yao, [5/7/2025 8:46 PM]
+Dennis Yew Shun Yao, [5/7/2025 8:51 PM]
 <?php
 session_start();
 include 'db.php';
@@ -77,7 +77,13 @@ if ($result) {
             padding: 10px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
             cursor: pointer;
-            transition: transform 0.3s ease;
+            transition: transform 0.3s ease, opacity 0.3s ease;
+            opacity: 1;
+        }
+        .product-card.hide {
+            opacity: 0;
+            transform: scale(0.9);
+            pointer-events: none;
         }
         .product-card:hover {
             transform: scale(1.05);
@@ -149,7 +155,7 @@ if ($result) {
 </head>
 <body>
 
-Dennis Yew Shun Yao, [5/7/2025 8:46 PM]
+Dennis Yew Shun Yao, [5/7/2025 8:51 PM]
 <div class="topbar" data-aos="fade-down">
     <div class="logo">🍔 FastFood Express</div>
     <div>
@@ -201,9 +207,9 @@ function filterProducts(category) {
     var cards = document.querySelectorAll('.product-card');
     cards.forEach(function(card) {
         if (category === 'all' || card.dataset.category === category) {
-            card.style.display = 'block';
+            card.classList.remove('hide');
         } else {
-            card.style.display = 'none';
+            card.classList.add('hide');
         }
     });
 }
