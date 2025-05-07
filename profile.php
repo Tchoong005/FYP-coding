@@ -21,17 +21,33 @@ if (isset($_POST['update_profile'])) {
     $phone = mysqli_real_escape_string($conn, $_POST['phone']);
     $address = mysqli_real_escape_string($conn, $_POST['address']);
     $birthday = mysqli_real_escape_string($conn, $_POST['birthday']);
+    
+    // 验证手机号
+    if (!preg_match("/^01\d{8,9}$/", $phone)) {
+        $error = "Phone number must start with 01 and be 10-11 digits long.";
+    }
 
-    $update_sql = "UPDATE customers SET username='$username', phone='$phone', address='$address', birthday='$birthday' WHERE id='$user_id'";
-    if (mysqli_query($conn, $update_sql)) {
-        $success = "Profile updated!";
-        $show_notice = false;
-        $user['username'] = $username;
-        $user['phone'] = $phone;
-        $user['address'] = $address;
-        $user['birthday'] = $birthday;
-    } else {
-        $error = "Update failed!";
+    // 验证email是否唯一
+    $email = $user['email']; // email无法修改
+    $check_email_query = "SELECT * FROM customers WHERE email='$email' AND id != '$user_id'";
+    $check_email_result = mysqli_query($conn, $check_email_query);
+    if (mysqli_num_rows($check_email_result) > 0) {
+        $error = "This email is already registered.";
+    }
+
+    // 更新数据
+    if (empty($error)) {
+        $update_sql = "UPDATE customers SET username='$username', phone='$phone', address='$address', birthday='$birthday' WHERE id='$user_id'";
+        if (mysqli_query($conn, $update_sql)) {
+            $success = "Profile updated!";
+            $show_notice = false;
+            $user['username'] = $username;
+            $user['phone'] = $phone;
+            $user['address'] = $address;
+            $user['birthday'] = $birthday;
+        } else {
+            $error = "Update failed!";
+        }
     }
 }
 
@@ -40,21 +56,27 @@ if (isset($_POST['change_password'])) {
     $old_password = mysqli_real_escape_string($conn, $_POST['old_password']);
     $new_password = mysqli_real_escape_string($conn, $_POST['new_password']);
 
-    $check_sql = "SELECT * FROM customers WHERE id='$user_id' AND password='$old_password'";
-    $check_result = mysqli_query($conn, $check_sql);
-
-    if (mysqli_num_rows($check_result) > 0) {
-        $update_sql = "UPDATE customers SET password='$new_password' WHERE id='$user_id'";
-        if (mysqli_query($conn, $update_sql)) {
-            $pass_message = "<span style='color:green;'>Password updated successfully!</span>";
-        } else {
-            $pass_message = "<span style='color:red;'>Failed to update password.</span>";
-        }
+    // 验证密码
+    if (strlen($new_password) < 8 || !preg_match("/[A-Z]/", $new_password) || !preg_match("/[0-9]/", $new_password) || !preg_match("/[\W_]/", $new_password)) {
+        $pass_message = "Password must be at least 8 characters long, contain an uppercase letter, a number, and a symbol.";
     } else {
-        $pass_message = "<span style='color:red;'>Old password is incorrect.</span>";
+        $check_sql = "SELECT * FROM customers WHERE id='$user_id' AND password='$old_password'";
+        $check_result = mysqli_query($conn, $check_sql);
+
+        if (mysqli_num_rows($check_result) > 0) {
+            $update_sql = "UPDATE customers SET password='$new_password' WHERE id='$user_id'";
+            if (mysqli_query($conn, $update_sql)) {
+                $pass_message = "<span style='color:green;'>Password updated successfully!</span>";
+            } else {
+                $pass_message = "<span style='color:red;'>Failed to update password.</span>";
+            }
+        } else {
+            $pass_message = "<span style='color:red;'>Old password is incorrect.</span>";
+        }
     }
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -82,7 +104,7 @@ body {
     box-sizing: border-box;
 }
 .sidebar h2 {
-    color: #ffd700; /* 金色字更醒目，你也可以换成 white */
+    color: #ffd700;
 }
 .sidebar a {
     display: block;
