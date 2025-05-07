@@ -6,38 +6,22 @@ $success = "";
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $user_id = mysqli_real_escape_string($conn, $_POST['user_id']);
-    $email = mysqli_real_escape_string($conn, $_POST['email']);
-    $phone = mysqli_real_escape_string($conn, $_POST['phone']);
+    $email    = mysqli_real_escape_string($conn, $_POST['email']);
+    $phone    = mysqli_real_escape_string($conn, $_POST['phone']);
     $password = mysqli_real_escape_string($conn, $_POST['password']);
-    $security_question = "Where is your hometown?";
-    $security_answer = mysqli_real_escape_string($conn, $_POST['security_answer']);
+    $hometown = mysqli_real_escape_string($conn, $_POST['hometown']);
 
-    // 邮箱格式检查
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $error = "Invalid email format.";
-    }
-    // 手机号检查（10-15位数字）
-    elseif (!preg_match('/^[0-9]{10,15}$/', $phone)) {
-        $error = "Phone number must be 10-15 digits.";
-    }
-    // 密码强度检查
-    elseif (!preg_match('/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/', $password)) {
-        $error = "Password must be at least 8 characters, include uppercase, lowercase, and number.";
-    }
-    else {
-        $check_query = "SELECT * FROM customers WHERE email='$email'";
-        $check_result = mysqli_query($conn, $check_query);
+    $check_query = "SELECT * FROM customers WHERE email='$email'";
+    $check_result = mysqli_query($conn, $check_query);
 
-        if (mysqli_num_rows($check_result) > 0) {
-            $error = "Email already registered.";
+    if (mysqli_num_rows($check_result) > 0) {
+        $error = "Email already registered.";
+    } else {
+        $query = "INSERT INTO customers (username, email, phone, password, hometown) VALUES ('$user_id', '$email', '$phone', '$password', '$hometown')";
+        if (mysqli_query($conn, $query)) {
+            $success = "Registration successful! You can now login.";
         } else {
-            $query = "INSERT INTO customers (username, email, phone, password, security_question, security_answer) 
-                      VALUES ('$user_id', '$email', '$phone', '$password', '$security_question', '$security_answer')";
-            if (mysqli_query($conn, $query)) {
-                $success = "Registration successful! You can now login.";
-            } else {
-                $error = "Something went wrong. Please try again.";
-            }
+            $error = "Something went wrong. Please try again.";
         }
     }
 }
@@ -93,6 +77,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
     .error { color: red; text-align: center; margin-bottom: 10px; }
     .success { color: green; text-align: center; margin-bottom: 10px; }
+    label {
+      font-weight: bold;
+      color: #d6001c;
+      margin-top: 10px;
+      display: block;
+    }
   </style>
 </head>
 <body>
@@ -108,12 +98,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <input type="email" name="email" placeholder="Email" required>
     <input type="text" name="phone" placeholder="Phone Number" required>
     <input type="password" name="password" placeholder="Password" required>
-    <label for="security_answer">Where is your hometown?</label>
-    <input type="text" name="security_answer" placeholder="Your Answer" required>
+
+    <label for="hometown">Where is your hometown?</label>
+    <input type="text" id="hometown" name="hometown" placeholder="Your Answer" required>
+
     <button type="submit">Register</button>
-    <div class="bottom-link">
-      Already have an account? <a href="login.php">Login</a>
-    </div>
+    <div class="bottom-link">Already have an account? <a href="login.php">Login</a></div>
   </form>
 </div>
 
