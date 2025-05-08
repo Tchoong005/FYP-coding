@@ -2,7 +2,6 @@
 <html lang="en">
 
 <head>
-
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <title>Admin Home</title>
     <style>
@@ -11,8 +10,6 @@
             margin: 0;
             box-sizing: border-box;
             font-family: 'poppins',sans-serif;
-            
-        
         }
 
         .user{
@@ -71,7 +68,6 @@
             cursor: pointer;
         }
 
-
         .list{
             position: fixed;
             top: 60px;
@@ -79,17 +75,14 @@
             height: 100%;
             background: rgba(220, 73, 73, 0.897);
             overflow-x: hidden;
-
         }
         .list ul{
             margin-top: 20px;
-
         }
 
         .list ul li{
             width: 100%;
             list-style: none;
-
         }
         .list ul li a{
             width: 100%;
@@ -98,93 +91,38 @@
             height: 60px;
             display: flex;
             align-items: center;
-         
-
         }
         .list ul li a i{
             min-width: 60px;
             font-size: 24px;
             text-align: center;
-            
         }
         .list ul li:hover{
            background:rgb(227, 125, 125);
         }
 
-        
-
-        .main{
+        .main {
+            margin-left: 280px;
+            margin-top: 80px;
+            padding: 20px;
+            font-size: 16px;
             position: absolute;
-            top: 60px;
-            width: calc(100%-260px);
-            left: 260px;
-            min-height: calc(100%-60px);
-           
-
-
+            background-color: #ffffff17;
+            padding: 12px;
+            border-radius: 40px;
+            box-shadow: 0 4px 12px  rgba(0, 0, 0, 0.08);
+            max-width: 1000px;
         }
-
-        .cards{
-            width: 100%;
-            padding: 35px 20px;
-            display: grid;
-            grid-template-columns: repeat(4,1fr);
-            grid-gap: 20px;
-        }
-        .card{
-            padding: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            background: #efefef;
-            border-radius: 10px;
-            width: 270px;
-            box-shadow: 0 75px 25px 2 rgba(0, 0, 0, 0.08);
-            
-
-        }
-
-        .number{
-            font-size: 35px;
-            font-weight: 500;
-            color: rgb(227, 125, 125);
-        }
-
-        .card_name{
-            color: 888;
-            font-weight: 600;
-        }
-
-        .icon{
-            font-size: 45px;
-            color: rgb(227, 125, 125);
-        }
-
-
-
-        .tabledesign{
-            background: #efefef;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 75px 25px rgba(0, 0, 0, 0.08);
-            width: 100%;
-        }
-
-       
-        
 
         table{
             border-collapse: separate;
             border-spacing: 0 10px;
             width: 100%;
             font-size: 16px;
-            
-           
-            
         }
 
         table th, table td{
-            padding: 12px 100px;
+            padding: 12px 20px;
             text-align: left;
         }
 
@@ -200,6 +138,36 @@
 
         tbody td {
             border-bottom: 1px solid #eee;
+        }
+
+        .ban-btn {
+            padding: 6px 12px;
+            border: none;
+            background-color: #dc4949;
+            color: white;
+            font-size: 14px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .ban-btn:hover {
+            background-color: #c53737;
+        }
+
+        .unban-btn {
+            padding: 6px 12px;
+            border: none;
+            background-color: #4CAF50;
+            color: white;
+            font-size: 14px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .unban-btn:hover {
+            background-color: #3e8e41;
         }
 
         .user-dropdown {
@@ -239,11 +207,17 @@
         .user-dropdown.show .dropdown-content {
             display: block;
         }
-     
-
+        
+        .status-banned {
+            color: #dc4949;
+            font-weight: bold;
+        }
+        
+        .status-active {
+            color: #4CAF50;
+            font-weight: bold;
+        }
     </style>
-
-  
 </head>
 
 <body>
@@ -255,7 +229,6 @@
             <div class="search">
                 <input type="text" id="search" placeholder="search here">
                 <label for="search"><i class="fas fa-search"></i></label>
-        
             </div>
             <div class="user-dropdown" id="userDropdown">
                 <img src="img/72-729716_user-avatar-png-graphic-free-download-icon.png" alt="User Avatar">
@@ -263,8 +236,8 @@
                     <a href="profile.php">Edit profile</a>
                     <a href="adminlogout.php">Logout</a>
                 </div>
+            </div>
         </div>
-        
     </div>
 
     <div class="list">
@@ -324,99 +297,102 @@
                 </a>
             </li>
         </ul>
-     
     </div>
 
-
     <div class="main">
-        <div class="cards">
-            <div class="card">
-                <div class="content">
-                    <div class="number">$10000.99</div>
-                    <div class="card_name">Total sales</div>
-                </div>
-                <div class="icon">
-                    <i class="fa-solid fa-box"></i>
-                </div>
-            </div>
-            <div class="card">
-                <div class="content">
-                    <div class="number">12.80%</div>
-                    <div class="card_name">Sale Growth</div>
-                </div>
-                <div class="icon">
-                    <i class="fa-solid fa-box-open"></i>
-                </div>
-            </div>
-            <div class="card">
-                <div class="content">
-                    <div class="number">Cheese wedges</div>
-                    <div class="card_name">Top Selling Product</div>
-                </div>
-                <div class="icon">
-                    <i class="fa-solid fa-user-tie"></i>
-                </div>
-            </div>
-            <div class="card">
-                <div class="content">
-                    <div class="number">$12000</div>
-                    <div class="card_name">Sales</div>
-                </div>
-                <div class="icon">
-                    <i class="fa-solid fa-money-bill-trend-up"></i>
-                </div>
-            </div>
-        
-        
-        </div>
-
-
-
-        <div class="tabledesign">
-            <h2>Recent Salest</h2>
-            <table>
+        <h2>Customer Management</h2>
+        <table>
             <thead>
                 <tr>
-                    <th>Date</th>
-                    <th>Total Order</th>
-                    <th>Sales</th>
-                    
+                    <th>ID</th>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Status</th>
+                    <th>Action</th>
                 </tr>
             </thead>
             <tbody>
-                <tr>
-                    <th>2025.1.23</th>
-                    <th>25</th>
-                    <th>$1200.25</th>
-                    
-                </tr>
-            </tbody>
-    
+                <?php
+                // Database connection
+                $conn = new mysqli('127.0.0.1', 'root', '', 'fyp_fastfood');
                 
-            </table>
-    
-           
-            
-        </div>
-       
+                // Check connection
+                if ($conn->connect_error) {
+                    die("Connection failed: " . $conn->connect_error);
+                }
+                
+                // Handle ban/unban actions
+                if (isset($_POST['action']) && isset($_POST['user_id'])) {
+                    $user_id = $_POST['user_id'];
+                    $action = $_POST['action'];
+                    
+                    if ($action === 'ban') {
+                        $stmt = $conn->prepare("UPDATE customers SET is_banned = 1 WHERE id = ?");
+                        $stmt->bind_param("i", $user_id);
+                        $stmt->execute();
+                    } elseif ($action === 'unban') {
+                        $stmt = $conn->prepare("UPDATE customers SET is_banned = 0 WHERE id = ?");
+                        $stmt->bind_param("i", $user_id);
+                        $stmt->execute();
+                    }
+                }
+                
+                // First, check if the is_banned column exists, if not, add it
+                $checkColumn = $conn->query("SHOW COLUMNS FROM customers LIKE 'is_banned'");
+                if ($checkColumn->num_rows == 0) {
+                    $conn->query("ALTER TABLE customers ADD COLUMN is_banned TINYINT(1) DEFAULT 0");
+                }
+                
+                // Fetch customer data with ban status
+                $sql = "SELECT id, username, email, phone, is_banned FROM customers";
+                $result = $conn->query($sql);
+                
+                if ($result->num_rows > 0) {
+                    // Output data of each row
+                    while($row = $result->fetch_assoc()) {
+                        $status = $row['is_banned'] ? '<span class="status-banned">Banned</span>' : '<span class="status-active">Active</span>';
+                        $actionBtn = $row['is_banned'] ? 
+                            '<form method="post" style="display:inline;">
+                                <input type="hidden" name="user_id" value="'.$row['id'].'">
+                                <input type="hidden" name="action" value="unban">
+                                <button type="submit" class="unban-btn">Unban</button>
+                            </form>' : 
+                            '<form method="post" style="display:inline;">
+                                <input type="hidden" name="user_id" value="'.$row['id'].'">
+                                <input type="hidden" name="action" value="ban">
+                                <button type="submit" class="ban-btn">Ban</button>
+                            </form>';
+                        
+                        echo "<tr>
+                                <td>".$row["id"]."</td>
+                                <td>".$row["username"]."</td>
+                                <td>".$row["email"]."</td>
+                                <td>".$row["phone"]."</td>
+                                <td>".$status."</td>
+                                <td>".$actionBtn."</td>
+                              </tr>";
+                    }
+                } else {
+                    echo "<tr><td colspan='6'>No customers found</td></tr>";
+                }
+                $conn->close();
+                ?>
+            </tbody>
+        </table>
     </div>
 
-  
-   
-
+    <script>
+        const dropdown = document.getElementById('userDropdown');
+        dropdown.addEventListener('click', function (event) {
+            event.stopPropagation();
+            this.classList.toggle('show');
+        });
+    
+        // Close dropdown if clicked outside
+        window.addEventListener('click', function () {
+            dropdown.classList.remove('show');
+        });
+    </script>
 </body>
-
 </html>
-
-<script>
-    const dropdown = document.getElementById('userDropdown');
-    dropdown.addEventListener('click', function (event) {
-      event.stopPropagation();
-      this.classList.toggle('show');
-    });
-  
-    // Close dropdown if clicked outside
-    window.addEventListener('click', function () {
-      dropdown.classList.remove('show');
-    });
-  </script>
