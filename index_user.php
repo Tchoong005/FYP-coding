@@ -36,21 +36,34 @@ if (!isset($_SESSION['user_id'])) {
       font-weight: bold;
     }
     .hero {
+      position: relative;
       display: flex;
-      justify-content: space-between;
+      justify-content: center;
       align-items: center;
-      padding: 60px;
-      background: #ffecec;
+      text-align: center;
+      height: 400px;
+      background-image: url('https://images.unsplash.com/photo-1600891964599-f61ba0e24092?auto=format&fit=crop&w=1600&q=80');
+      background-size: cover;
+      background-position: center;
+      color: white;
+    }
+    .hero::before {
+      content: "";
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5);
     }
     .hero-text {
-      max-width: 50%;
+      position: relative;
+      z-index: 1;
     }
     .hero-text h1 {
       font-size: 48px;
-      color: #d6001c;
+      margin-bottom: 10px;
     }
     .hero-text p {
       font-size: 18px;
+      margin-bottom: 20px;
     }
     .hero-text .btn {
       background: #d6001c;
@@ -58,14 +71,13 @@ if (!isset($_SESSION['user_id'])) {
       padding: 12px 20px;
       border: none;
       border-radius: 8px;
-      margin-top: 15px;
-      cursor: pointer;
       font-weight: bold;
       text-decoration: none;
+      cursor: pointer;
+      transition: background 0.3s;
     }
-    .hero-image img {
-      width: 400px;
-      border-radius: 16px;
+    .hero-text .btn:hover {
+      background: #a50013;
     }
     .categories {
       text-align: center;
@@ -122,9 +134,6 @@ if (!isset($_SESSION['user_id'])) {
     <h1 data-aos="zoom-in">BEST BURGERS IN GALAXY</h1>
     <p data-aos="fade-right">We craft juicy burgers to satisfy your cravings. Order now and enjoy greatness!</p>
     <a href="products_user.php" class="btn" data-aos="fade-up" data-aos-delay="200">Go Order</a>
-  </div>
-  <div class="hero-image" data-aos="zoom-in">
-    <img src="https://images.unsplash.com/photo-1600891964599-f61ba0e24092?auto=format&fit=crop&w=800&q=80" alt="Burger">
   </div>
 </div>
 
