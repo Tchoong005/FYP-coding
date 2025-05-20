@@ -843,19 +843,17 @@ $staffList = $conn->query("SELECT * FROM staff ORDER BY id");
 
     <script>
         // Toggle dropdown menu
-
         function toggleDropdown(button) {
             const dropdown = button.nextElementSibling;
             dropdown.classList.toggle("show");
             
             // Close other dropdowns
-            document.querySelectorAll('.dropdown-content').forEach(item => {
+            document.querySelectorAll('.dropdown-menu').forEach(item => {
                 if (item !== dropdown) {
                     item.classList.remove('show');
                 }
             });
         }
-    
         
         // Close dropdowns when clicking outside
         window.onclick = function(event) {

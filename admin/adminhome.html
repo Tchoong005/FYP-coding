@@ -103,6 +103,9 @@
         }
         .list ul li a i{
             min-width: 60px;
+            font-size: 24px;
+            text-align: center;
+            
         }
         .list ul li:hover{
            background:rgb(227, 125, 125);
@@ -178,6 +181,45 @@
             box-shadow: 0 75px 25px rgba(0, 0, 0, 0.08);
             width: 100%;
         }
+
+
+        .user-dropdown {
+            position: relative;
+            display: inline-block;
+        }
+
+        .user-dropdown img {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            background-color: white;
+            min-width: 120px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            z-index: 1;
+            border-radius: 6px;
+        }
+
+        .dropdown-content a {
+            color: black;
+            padding: 10px 16px;
+            text-decoration: none;
+            display: block;
+        }
+
+        .dropdown-content a:hover {
+            background-color: #f1f1f1;
+        }
+
+        .user-dropdown.show .dropdown-content {
+            display: block;
+        }
      
 
     </style>
@@ -196,8 +238,12 @@
                 <label for="search"><i class="fas fa-search"></i></label>
         
             </div>
-            <div class="user">
-                <img src="img/72-729716_user-avatar-png-graphic-free-download-icon.png" alt="">
+            <div class="user-dropdown" id="userDropdown">
+                <img src="img/72-729716_user-avatar-png-graphic-free-download-icon.png" alt="User Avatar">
+                <div class="dropdown-content">
+                    <a href="profile.php">Edit profile</a>
+                    <a href="adminlogout.php">Logout</a>
+                </div>
             </div>
         </div>
         
@@ -222,7 +268,7 @@
         </ul>
         <ul>
             <li>
-                <a href="adminProduct.html">
+                <a href="adminProduct.php">
                     <i class="fas fa-box-open"></i>
                     <h4>PRODUCTS</h4>
                 </a>
@@ -230,7 +276,7 @@
         </ul>
         <ul>
             <li>
-                <a href="adminStaff.html">
+                <a href="adminStaff.php">
                     <i class="fas fa-user-tie"></i>
                     <h4>STAFFS</h4>
                 </a>
@@ -238,7 +284,7 @@
         </ul>
         <ul>
             <li>
-                <a href="adminCustomer.html">
+                <a href="adminCustomer.php">
                     <i class="fas fa-users"></i>
                     <h4>CUSTOMER</h4>
                 </a>
@@ -322,3 +368,16 @@
 </body>
 
 </html>
+
+<script>
+    const dropdown = document.getElementById('userDropdown');
+    dropdown.addEventListener('click', function (event) {
+      event.stopPropagation();
+      this.classList.toggle('show');
+    });
+  
+    // Close dropdown if clicked outside
+    window.addEventListener('click', function () {
+      dropdown.classList.remove('show');
+    });
+  </script>

@@ -17,7 +17,6 @@ if (!isset($_SESSION['user_id'])) {
       font-family: Arial, sans-serif;
       background-color: #fff;
     }
-
     .topbar {
       background-color: #222;
       color: white;
@@ -26,62 +25,64 @@ if (!isset($_SESSION['user_id'])) {
       align-items: center;
       padding: 15px 30px;
     }
-
     .topbar .logo {
       font-size: 24px;
       font-weight: bold;
     }
-
     .topbar a {
       color: white;
       text-decoration: none;
       margin-left: 20px;
       font-weight: bold;
     }
-
     .hero {
+      position: relative;
       display: flex;
-      justify-content: space-between;
+      justify-content: center;
       align-items: center;
-      padding: 60px;
-      background: #ffecec;
+      text-align: center;
+      height: 400px;
+      background-image: url('https://images.unsplash.com/photo-1600891964599-f61ba0e24092?auto=format&fit=crop&w=1600&q=80');
+      background-size: cover;
+      background-position: center;
+      color: white;
     }
-
+    .hero::before {
+      content: "";
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5);
+    }
     .hero-text {
-      max-width: 50%;
+      position: relative;
+      z-index: 1;
     }
-
     .hero-text h1 {
       font-size: 48px;
-      color: #d6001c;
+      margin-bottom: 10px;
     }
-
     .hero-text p {
       font-size: 18px;
+      margin-bottom: 20px;
     }
-
     .hero-text .btn {
       background: #d6001c;
       color: white;
       padding: 12px 20px;
       border: none;
       border-radius: 8px;
-      margin-top: 15px;
-      cursor: pointer;
       font-weight: bold;
       text-decoration: none;
+      cursor: pointer;
+      transition: background 0.3s;
     }
-
-    .hero-image img {
-      width: 400px;
-      border-radius: 16px;
+    .hero-text .btn:hover {
+      background: #a50013;
     }
-
     .categories {
       text-align: center;
       padding: 50px 20px;
     }
-
     .cat-grid {
       display: flex;
       justify-content: center;
@@ -89,52 +90,21 @@ if (!isset($_SESSION['user_id'])) {
       gap: 30px;
       margin-top: 20px;
     }
-
-    .cat-box {
-      width: 120px;
+    .cat-box a {
+      display: block;
+      width: 150px;
       padding: 20px;
-      background: #fff6f6;
-      border: 2px solid #d6001c;
+      background: #d6001c;
+      color: white;
       border-radius: 16px;
       font-weight: bold;
+      text-decoration: none;
+      transition: background 0.3s ease, transform 0.2s ease;
     }
-
-    .offers {
-      display: flex;
-      justify-content: center;
-      flex-wrap: wrap;
-      gap: 20px;
-      padding: 40px 20px;
+    .cat-box a:hover {
+      background: #a50013;
+      transform: scale(1.05);
     }
-
-    .offer-card {
-      flex: 1 1 250px;
-      background: #f7f7f7;
-      padding: 20px;
-      border-radius: 10px;
-      text-align: center;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-    }
-
-    .gallery {
-      padding: 30px 20px;
-      text-align: center;
-    }
-
-    .gallery-grid {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 20px;
-    }
-
-    .gallery img {
-      width: 180px;
-      height: 120px;
-      object-fit: cover;
-      border-radius: 12px;
-    }
-
     .footer {
       background-color: #eee;
       text-align: center;
@@ -165,38 +135,24 @@ if (!isset($_SESSION['user_id'])) {
     <p data-aos="fade-right">We craft juicy burgers to satisfy your cravings. Order now and enjoy greatness!</p>
     <a href="products_user.php" class="btn" data-aos="fade-up" data-aos-delay="200">Go Order</a>
   </div>
-  <div class="hero-image" data-aos="zoom-in">
-    <img src="https://images.unsplash.com/photo-1600891964599-f61ba0e24092?auto=format&fit=crop&w=800&q=80" alt="Burger">
-  </div>
 </div>
 
 <!-- Categories Section -->
 <div class="categories">
   <h2 data-aos="fade-up">Menus</h2>
   <div class="cat-grid">
-    <div class="cat-box" data-aos="fade-up">🍔 Combo</div>
-    <div class="cat-box" data-aos="fade-up" data-aos-delay="100">🍕 Pizza</div>
-    <div class="cat-box" data-aos="fade-up" data-aos-delay="200">🥪 Burger</div>
-    <div class="cat-box" data-aos="fade-up" data-aos-delay="300">🍹 Kids Menu</div>
-  </div>
-</div>
-
-<!-- Offers Section -->
-<div class="offers">
-  <div class="offer-card" data-aos="fade-up">Any Day Offers <br><strong>$11.00</strong></div>
-  <div class="offer-card" data-aos="fade-up" data-aos-delay="100">Find a Store Near You</div>
-  <div class="offer-card" data-aos="fade-up" data-aos-delay="200">Other Flavors <br><strong>$13.00</strong></div>
-</div>
-
-<!-- Gallery Section -->
-<div class="gallery">
-  <h2 data-aos="fade-up">Chef has to run outside</h2>
-  <div class="gallery-grid">
-    <img data-aos="zoom-in" src="https://source.unsplash.com/300x200/?burger" alt="1">
-    <img data-aos="zoom-in" data-aos-delay="100" src="https://source.unsplash.com/300x200/?pasta" alt="2">
-    <img data-aos="zoom-in" data-aos-delay="200" src="https://source.unsplash.com/300x200/?cheeseburger" alt="3">
-    <img data-aos="zoom-in" data-aos-delay="300" src="https://source.unsplash.com/300x200/?pizza" alt="4">
-    <img data-aos="zoom-in" data-aos-delay="400" src="https://source.unsplash.com/300x200/?fastfood" alt="5">
+    <div class="cat-box" data-aos="fade-up">
+      <a href="products_user.php?category=beverages">🥤 Beverages</a>
+    </div>
+    <div class="cat-box" data-aos="fade-up" data-aos-delay="100">
+      <a href="products_user.php?category=chicken">🍗 Chicken</a>
+    </div>
+    <div class="cat-box" data-aos="fade-up" data-aos-delay="200">
+      <a href="products_user.php?category=burger">🍔 Burger</a>
+    </div>
+    <div class="cat-box" data-aos="fade-up" data-aos-delay="300">
+      <a href="products_user.php?category=desserts_sides">🍰 Desserts & Sides</a>
+    </div>
   </div>
 </div>
 
