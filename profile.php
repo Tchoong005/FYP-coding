@@ -50,9 +50,9 @@ if (isset($_POST['change_password'])) {
     $confirm_password = mysqli_real_escape_string($conn, $_POST['confirm_password']);
 
     if ($new_password !== $confirm_password) {
-        $pass_message = "<span style='color:red;'>New passwords do not match.</span>";
+        $pass_message = "<span style='color:red;'>New password and confirm password do not match.</span>";
     } elseif (strlen($new_password) < 8 || !preg_match("/[A-Z]/", $new_password) || !preg_match("/[0-9]/", $new_password) || !preg_match("/[\W_]/", $new_password)) {
-        $pass_message = "<span style='color:red;'>Password must be at least 8 characters long, include an uppercase letter, a number, and a symbol.</span>";
+        $pass_message = "Password must be at least 8 characters long, contain an uppercase letter, a number, and a symbol.";
     } else {
         $check_sql = "SELECT * FROM customers WHERE id='$user_id' AND password='$old_password'";
         $check_result = mysqli_query($conn, $check_sql);
@@ -132,12 +132,31 @@ input, button, select {
     text-align: center;
     margin-bottom: 10px;
 }
+.toggle-password {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    font-size: 12px;
+    color: #d6001c;
+}
 </style>
 <script>
 function showTab(tab) {
     document.getElementById('infoTab').classList.remove('active');
     document.getElementById('passTab').classList.remove('active');
     document.getElementById(tab).classList.add('active');
+}
+function togglePassword(id, element) {
+    const input = document.getElementById(id);
+    if (input.type === "password") {
+        input.type = "text";
+        element.textContent = "Hide";
+    } else {
+        input.type = "password";
+        element.textContent = "Show";
+    }
 }
 </script>
 </head>
@@ -181,9 +200,18 @@ function showTab(tab) {
         <h2>Change Password</h2>
         <?php if ($pass_message) echo "<div class='pass-message'>$pass_message</div>"; ?>
         <form method="post">
-            <input type="password" name="old_password" placeholder="Old Password" required>
-            <input type="password" name="new_password" placeholder="New Password" required>
-            <input type="password" name="confirm_password" placeholder="Confirm New Password" required>
+            <div style="position: relative;">
+                <input type="password" name="old_password" id="old_password" placeholder="Old Password" required>
+                <span class="toggle-password" onclick="togglePassword('old_password', this)">Show</span>
+            </div>
+            <div style="position: relative;">
+                <input type="password" name="new_password" id="new_password" placeholder="New Password" required>
+                <span class="toggle-password" onclick="togglePassword('new_password', this)">Show</span>
+            </div>
+            <div style="position: relative;">
+                <input type="password" name="confirm_password" id="confirm_password" placeholder="Confirm New Password" required>
+                <span class="toggle-password" onclick="togglePassword('confirm_password', this)">Show</span>
+            </div>
             <button type="submit" name="change_password">Change Password</button>
         </form>
     </div>
