@@ -31,73 +31,111 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <title>Reset Password</title>
   <style>
     body {
-      font-family: Arial;
-      background: #fff0f0;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
+      background: #ffeeee;
+      font-family: Arial, sans-serif;
     }
-    .reset-box {
+
+    .reset-container {
       background: white;
-      padding: 30px;
-      border-radius: 10px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-      width: 350px;
+      width: 400px;
+      margin: 100px auto;
+      padding: 40px;
+      border-radius: 12px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
     }
-    input[type=email], input[type=password] {
+
+    h2 {
+      margin-bottom: 25px;
+      color: #000;
+    }
+
+    label {
+      font-weight: bold;
+      display: block;
+      margin-top: 15px;
+    }
+
+    input[type="email"],
+    input[type="password"] {
       width: 100%;
       padding: 10px;
-      margin-top: 10px;
+      margin-top: 5px;
       border: 1px solid #ccc;
-      border-radius: 6px;
+      border-radius: 5px;
+      font-size: 14px;
     }
-    .toggle {
-      margin-top: -10px;
-      margin-bottom: 10px;
-      font-size: 13px;
+
+    .checkbox {
+      margin-top: 10px;
     }
-    button {
-      width: 100%;
-      padding: 12px;
-      border: none;
+
+    .reset-btn {
       background: #d6001c;
       color: white;
-      font-weight: bold;
+      padding: 12px;
+      width: 100%;
+      border: none;
       border-radius: 6px;
-      margin-top: 10px;
+      font-weight: bold;
+      font-size: 16px;
+      margin-top: 20px;
       cursor: pointer;
     }
-    .message {
-      color: red;
-      margin-bottom: 10px;
+
+    .reset-btn:hover {
+      background: #a50013;
+    }
+
+    .back-login {
       text-align: center;
+      margin-top: 10px;
+    }
+
+    .back-login a {
+      color: #d6001c;
+      text-decoration: none;
     }
   </style>
 </head>
 <body>
-<div class="reset-box">
+
+<div class="reset-container">
   <h2>Reset Password</h2>
-  <?php if ($message): ?>
-    <div class="message"><?= $message ?></div>
-  <?php endif; ?>
-  <form method="POST">
-    <label>Email</label>
-    <input type="email" name="email" required>
+  <form method="POST" action="reset_password.php">
+    <label for="email">Email</label>
+    <input type="email" id="email" name="email" required>
 
-    <label>New Password</label>
-    <input type="password" name="new_password" id="new_password" required>
+    <label for="new_password">New Password</label>
+    <input type="password" id="new_password" name="new_password" required>
 
-    <label>Confirm Password</label>
-    <input type="password" name="confirm_password" id="confirm_password" required>
+    <label for="confirm_password">Confirm Password</label>
+    <input type="password" id="confirm_password" name="confirm_password" required>
 
-    <div class="toggle">
-      <input type="checkbox" onclick="togglePassword()"> Show Password
+    <div class="checkbox">
+      <input type="checkbox" id="show_password" onclick="togglePassword()"> Show Password
     </div>
 
-    <button type="submit">Reset Password</button>
+    <button type="submit" class="reset-btn">Reset Password</button>
+
+    <div class="back-login">
+      <a href="login.php">← Back to Login</a>
+    </div>
   </form>
 </div>
+
+<script>
+  function togglePassword() {
+    const newPass = document.getElementById('new_password');
+    const confirmPass = document.getElementById('confirm_password');
+    const type = newPass.type === "password" ? "text" : "password";
+    newPass.type = type;
+    confirmPass.type = type;
+  }
+</script>
+
+</body>
+</html>
+
 
 <script>
 function togglePassword() {

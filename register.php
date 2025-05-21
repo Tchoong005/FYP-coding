@@ -11,24 +11,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $password  = mysqli_real_escape_string($conn, $_POST['password']);
     $confirm   = mysqli_real_escape_string($conn, $_POST['confirm_password']);
 
-    // 验证邮箱格式
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = "Invalid email format.";
-    }
-    // 手机号验证
-    elseif (!preg_match('/^01[0-9]{8,9}$/', $phone)) {
+    } elseif (!preg_match('/^01[0-9]{8,9}$/', $phone)) {
         $error = "Phone number must start with 01 and be 10–11 digits.";
-    }
-    // 密码强度验证
-    elseif (!preg_match('/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/', $password)) {
+    } elseif (!preg_match('/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/', $password)) {
         $error = "Password must be at least 8 characters with uppercase, lowercase, and number.";
-    }
-    // 确认密码匹配
-    elseif ($password !== $confirm) {
+    } elseif ($password !== $confirm) {
         $error = "Passwords do not match.";
-    }
-    // 检查 email 或 phone 是否已存在
-    else {
+    } else {
         $check = mysqli_query($conn, "SELECT * FROM customers WHERE email='$email' OR phone='$phone'");
         if (mysqli_num_rows($check) > 0) {
             $error = "Email or phone number already used.";
@@ -49,7 +40,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <head>
   <meta charset="UTF-8">
   <title>Register - FastFood Express</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.css">
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -72,12 +62,24 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
       text-align: center;
       margin-bottom: 20px;
     }
+    label {
+      font-weight: bold;
+      display: block;
+      margin-top: 10px;
+    }
     input[type=text], input[type=email], input[type=password] {
       width: 100%;
       padding: 10px;
-      margin: 10px 0;
+      margin-top: 5px;
       border: 1px solid #ccc;
       border-radius: 8px;
+    }
+    .toggle-password {
+      float: right;
+      margin-top: -25px;
+      font-size: 12px;
+      color: #d6001c;
+      cursor: pointer;
     }
     button {
       background: #d6001c;
@@ -88,6 +90,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
       border-radius: 8px;
       font-weight: bold;
       cursor: pointer;
+      margin-top: 20px;
     }
     .bottom-link {
       text-align: center;
@@ -95,33 +98,30 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
     .error { color: red; text-align: center; margin-bottom: 10px; }
     .success { color: green; text-align: center; margin-bottom: 10px; }
-    .toggle-password {
-      float: right;
-      margin-right: 10px;
-      margin-top: -30px;
-      position: relative;
-      z-index: 2;
-      cursor: pointer;
-      font-size: 12px;
-      color: #555;
-    }
   </style>
 </head>
 <body>
 
-<div class="register-container" data-aos="zoom-in">
+<div class="register-container">
   <h2>Register</h2>
   <?php if ($error) echo "<div class='error'>$error</div>"; ?>
   <?php if ($success) echo "<div class='success'>$success</div>"; ?>
   <form method="post">
-    <input type="email" name="email" placeholder="Email" required>
-    <input type="text" name="username" placeholder="User ID" required>
-    <input type="text" name="phone" placeholder="Phone Number" required>
-    
-    <input type="password" name="password" id="password" placeholder="Password" required>
+    <label>Email</label>
+    <input type="email" name="email" required>
+
+    <label>User ID</label>
+    <input type="text" name="username" required>
+
+    <label>Phone Number</label>
+    <input type="text" name="phone" required>
+
+    <label>Password</label>
+    <input type="password" name="password" id="password" required>
     <span class="toggle-password" onclick="togglePassword('password')">Show</span>
-    
-    <input type="password" name="confirm_password" id="confirm_password" placeholder="Confirm Password" required>
+
+    <label>Confirm Password</label>
+    <input type="password" name="confirm_password" id="confirm_password" required>
     <span class="toggle-password" onclick="togglePassword('confirm_password')">Show</span>
 
     <button type="submit">Register</button>
@@ -129,14 +129,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
   </form>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
-<script>AOS.init();</script>
-
 <script>
 function togglePassword(id) {
   const input = document.getElementById(id);
-  const type = input.getAttribute('type') === 'password' ? 'text' : 'password';
-  input.setAttribute('type', type);
+  input.type = input.type === 'password' ? 'text' : 'password';
 }
 </script>
 

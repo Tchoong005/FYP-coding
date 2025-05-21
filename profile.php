@@ -26,7 +26,9 @@ if (isset($_POST['update_profile'])) {
     $birthday = mysqli_real_escape_string($conn, $_POST['birthday']);
 
     if (!preg_match("/^01\d{8,9}$/", $phone)) {
-        $error = "Phone number must start with 01 and be 10-11 digits long.";
+        $error = "Phone number must start with 01 and be 10–11 digits.";
+    } elseif (!preg_match("/^\d{5}$/", $postcode)) {
+        $error = "Postcode must be exactly 5 digits.";
     }
 
     if (empty($error)) {
@@ -79,9 +81,7 @@ body {
     opacity: 0;
     animation: fadeIn 1s forwards;
 }
-@keyframes fadeIn {
-    to { opacity: 1; }
-}
+@keyframes fadeIn { to { opacity: 1; } }
 .sidebar {
     width: 200px;
     background: #d6001c;
@@ -91,9 +91,7 @@ body {
     padding: 20px;
     box-sizing: border-box;
 }
-.sidebar h2 {
-    color: #ffd700;
-}
+.sidebar h2 { color: #ffd700; }
 .sidebar a {
     display: block;
     color: white;

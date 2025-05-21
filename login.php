@@ -48,10 +48,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
       text-align: center;
       margin-bottom: 20px;
     }
+    label {
+      font-weight: bold;
+      display: block;
+      margin-top: 10px;
+    }
     input[type=email], input[type=password] {
       width: 100%;
       padding: 10px;
-      margin: 10px 0;
+      margin-top: 5px;
       border: 1px solid #ccc;
       border-radius: 8px;
     }
@@ -60,6 +65,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
       font-size: 12px;
       color: #d6001c;
       cursor: pointer;
+      margin-top: 5px;
     }
     button {
       background: #d6001c;
@@ -70,6 +76,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
       border-radius: 8px;
       font-weight: bold;
       cursor: pointer;
+      margin-top: 20px;
     }
     .bottom-link {
       text-align: center;
@@ -88,11 +95,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
   <h2>Login</h2>
   <?php if ($error) echo "<div class='error'>$error</div>"; ?>
   <form method="post">
-    <input type="email" name="email" placeholder="Email" required>
-    <div style="position: relative;">
-      <input type="password" name="password" id="password" placeholder="Password" required>
-      <span class="password-toggle" onclick="togglePassword()">Show</span>
-    </div>
+    <label>Email</label>
+    <input type="email" name="email" required>
+
+    <label>Password</label>
+    <input type="password" name="password" id="password" required>
+    <span class="password-toggle" onclick="togglePassword()">Show</span>
+
     <button type="submit">Login</button>
     <div class="bottom-link">
       Don't have an account? <a href="register.php">Register</a><br>
