@@ -402,7 +402,7 @@ $products = $conn->query("SELECT * FROM products WHERE deleted_at IS NULL ORDER 
 <div class="top">
         <div class="topbar">
             <div class="logo">
-                <h2>KFG FOOD</h2>
+                <h2>FastFood Express</h2>
             </div>
             <div class="search">
                 <input type="text" id="search" placeholder="search here">
@@ -432,7 +432,7 @@ $products = $conn->query("SELECT * FROM products WHERE deleted_at IS NULL ORDER 
         </ul>
         <ul>
             <li>
-                <a href="adminorder.html">
+                <a href="adminorder.php">
                     <i class="fas fa-receipt"></i>
                     <h4>ORDERS</h4>
                 </a>
@@ -546,8 +546,8 @@ $products = $conn->query("SELECT * FROM products WHERE deleted_at IS NULL ORDER 
                             </button>
                             <form method="POST" style="display: inline;">
                                 <input type="hidden" name="id" value="<?php echo $product['id']; ?>">
-                                <button type="submit" name="hide_product" class="btn btn-hide" onclick="return confirm('Are you sure you want to hide this product?');">
-                                    <i class="fas fa-eye-slash"></i> Hide
+                                <button type="submit" name="hide_product" class="btn btn-hide" onclick="return confirm('Are you sure you want to delete this product?');">
+                                    <i class=""></i> Delete
                                 </button>
                             </form>
                         </td>

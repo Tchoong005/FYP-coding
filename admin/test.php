@@ -1,111 +1,110 @@
 <?php
-// Enable error reporting
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-
-// Start session securely
-if (session_status() === PHP_SESSION_NONE) {
-    session_start([
-        'cookie_secure' => true,
-        'cookie_httponly' => true,
-        'use_strict_mode' => true
-    ]);
-}
-
-// Connect to database
-$conn = new mysqli("localhost", "root", "", "fyp_fastfood");
+// Database connection
+$conn = new mysqli('127.0.0.1', 'root', '', 'fyp_fastfood');
 if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
 
-// Initialize variables
-$errors = [];
-$success = "";
-
 // Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $action = $_POST['action'] ?? '';
-    
-    // Common fields
-    $id = $_POST['id'] ?? '';
-    $name = $_POST['name'] ?? '';
-    $role = $_POST['role'] ?? '';
-    $phone = $_POST['phone'] ?? '';
-    $email = $_POST['email'] ?? '';
-    $password = $_POST['password'] ?? '';
-
-    // Validate inputs
-    if (empty($id)) $errors[] = "Staff ID is required";
-    
-    // Special handling for password reset
-    if ($action === 'reset_password') {
-        if (empty($password)) {
-            $errors[] = "New password is required";
-        } elseif (strlen($password) < 8) {
-            $errors[] = "Password must be at least 8 characters";
-        }
-    } 
-    // Validate for other actions
-    elseif ($action != 'delete') {
-        if (empty($name)) $errors[] = "Name is required";
-        if (!empty($phone) && !preg_match('/^01[0-9]{8,9}$/', $phone)) {
-            $errors[] = "Phone must be 10-11 digits starting with 01";
-        }
+    // Add new product
+    if (isset($_POST['add_product'])) {
+        $name = $_POST['name'];
+        $description = $_POST['description'];
+        $price = $_POST['price'];
+        $category = $_POST['category'];
+        $stock = $_POST['stock_quantity'];
+        $image_url = $_POST['image_url'];
+        
+        $stmt = $conn->prepare("INSERT INTO products (name, description, price, category, stock_quantity, image_url) VALUES (?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("ssdsis", $name, $description, $price, $category, $stock, $image_url);
+        $stmt->execute();
+        $stmt->close();
     }
-
-    // Prevent deletion of superadmin (ID 1)
-    if ($action == 'delete' && $id == '1') {
-        $errors[] = "Cannot delete superadmin account";
+    
+    // Update product
+    if (isset($_POST['update_product'])) {
+        $id = $_POST['id'];
+        $name = $_POST['name'];
+        $description = $_POST['description'];
+        $price = $_POST['price'];
+        $category = $_POST['category'];
+        $stock = $_POST['stock_quantity'];
+        $image_url = $_POST['image_url'];
+        
+        $stmt = $conn->prepare("UPDATE products SET name=?, description=?, price=?, category=?, stock_quantity=?, image_url=? WHERE id=?");
+        $stmt->bind_param("ssdsisi", $name, $description, $price, $category, $stock, $image_url, $id);
+        $stmt->execute();
+        $stmt->close();
     }
-
-    // Process if no errors
-    if (empty($errors)) {
-        try {
-            if ($action == 'add') {
-                $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-                $sql = "INSERT INTO staff (id, name, role, phone, email, password) VALUES (?, ?, ?, ?, ?, ?)";
-                $stmt = $conn->prepare($sql);
-                $stmt->bind_param("ssssss", $id, $name, $role, $phone, $email, $hashed_password);
-            } 
-            elseif ($action == 'edit') {
-                $sql = "UPDATE staff SET name=?, role=?, phone=?, email=? WHERE id=?";
-                $stmt = $conn->prepare($sql);
-                $stmt->bind_param("sssss", $name, $role, $phone, $email, $id);
-            } 
-            elseif ($action == 'reset_password') {
-                $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-                $sql = "UPDATE staff SET password=? WHERE id=?";
-                $stmt = $conn->prepare($sql);
-                $stmt->bind_param("ss", $hashed_password, $id);
-            } 
-            elseif ($action == 'delete') {
-                $sql = "DELETE FROM staff WHERE id=?";
-                $stmt = $conn->prepare($sql);
-                $stmt->bind_param("s", $id);
-            }
-
-            if (isset($stmt) && $stmt->execute()) {
-                $success = "Operation completed successfully!";
-                // Refresh page to show changes
-                echo "<script>setTimeout(function(){ window.location.reload(); }, 1500);</script>";
-            }
-        } catch (Exception $e) {
-            $errors[] = "Database error: " . $e->getMessage();
-        } finally {
-            if (isset($stmt)) $stmt->close();
+    
+    // Soft delete product
+    if (isset($_POST['hide_product'])) {
+        $id = $_POST['id'];
+        $stmt = $conn->prepare("UPDATE products SET deleted_at=NOW() WHERE id=?");
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+        $stmt->close();
+    }
+    
+    // Add new category
+    if (isset($_POST['add_category'])) {
+        $category_name = $_POST['category_name'];
+        $category_slug = $_POST['category_slug'];
+        
+        $stmt = $conn->prepare("INSERT INTO categories (name, slug) VALUES (?, ?)");
+        $stmt->bind_param("ss", $category_name, $category_slug);
+        $stmt->execute();
+        $stmt->close();
+    }
+    
+    // Update category
+    if (isset($_POST['update_category'])) {
+        $id = $_POST['category_id'];
+        $name = $_POST['category_name'];
+        $slug = $_POST['category_slug'];
+        
+        $stmt = $conn->prepare("UPDATE categories SET name=?, slug=? WHERE id=?");
+        $stmt->bind_param("ssi", $name, $slug, $id);
+        $stmt->execute();
+        $stmt->close();
+    }
+    
+    // Delete category
+    if (isset($_POST['delete_category'])) {
+        $id = $_POST['category_id'];
+        // First check if any products use this category
+        $check = $conn->prepare("SELECT COUNT(*) FROM products WHERE category = (SELECT slug FROM categories WHERE id = ?)");
+        $check->bind_param("i", $id);
+        $check->execute();
+        $check->bind_result($count);
+        $check->fetch();
+        $check->close();
+        
+        if ($count > 0) {
+            echo "<script>alert('Cannot delete category - it is being used by products.');</script>";
+        } else {
+            $stmt = $conn->prepare("DELETE FROM categories WHERE id=?");
+            $stmt->bind_param("i", $id);
+            $stmt->execute();
+            $stmt->close();
         }
     }
 }
 
-// Load all staff
-$staffList = $conn->query("SELECT * FROM staff ORDER BY id");
+// Fetch all active products (not deleted)
+$products = $conn->query("SELECT * FROM products WHERE deleted_at IS NULL ORDER BY category, name");
+
+// Fetch all categories
+$categories = $conn->query("SELECT * FROM categories ORDER BY name");
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Staff Management</title>
+    <title>Product Management - KFG FOOD</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
     <style>
         * {
@@ -115,66 +114,280 @@ $staffList = $conn->query("SELECT * FROM staff ORDER BY id");
             font-family: 'poppins', sans-serif;
         }
 
-        body {
-            background-color: #f5f5f5;
+        .user {
+            position: relative;
+            width: 50px;
+            height: 50px;
+        }
+
+        .user img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 100%;
+            object-fit: cover;
         }
 
         .topbar {
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
             background: white;
-            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.08);
-            padding: 10px 20px;
-            display: flex;
-            justify-content: space-between;
+            box-shadow: 0px 4px 8px 0 rgba(0, 0, 0, 0.08);
+            width: 100%;
+            padding: 0 20px;
+            display: grid;
+            grid-template-columns: 2fr 10fr 0.4fr 1fr;
             align-items: center;
-            z-index: 100;
-            height: 60px;
+            z-index: 1;
         }
 
         .logo h2 {
-            color: #dc4949;
-            font-size: 24px;
+            color: red;
         }
 
         .search {
             position: relative;
-            width: 40%;
-            max-width: 500px;
+            width: 60%;
+            justify-self: center;
         }
 
         .search input {
             width: 100%;
             height: 40px;
-            padding: 0 40px 0 15px;
+            padding: 0 40px;
             font-size: 16px;
             outline: none;
-            border: 1px solid #ddd;
-            border-radius: 20px;
+            border: none;
+            border-radius: 10px;
             background: #f5f5f5;
         }
 
         .search i {
             position: absolute;
-            right: 15px;
-            top: 50%;
-            transform: translateY(-50%);
+            right: 30px;
+            height: 15px;
+            top: 15px;
             cursor: pointer;
-            color: #777;
+        }
+
+        .list {
+            position: fixed;
+            top: 60px;
+            width: 260px;
+            height: 100%;
+            background: rgba(220, 73, 73, 0.897);
+            overflow-x: hidden;
+        }
+
+        .list ul {
+            margin-top: 20px;
+        }
+
+        .list ul li {
+            width: 100%;
+            list-style: none;
+        }
+
+        .list ul li a {
+            width: 100%;
+            text-decoration: none;
+            color: #fff;
+            height: 60px;
+            display: flex;
+            align-items: center;
+        }
+
+        .list ul li a i {
+            min-width: 60px;
+            font-size: 24px;
+            text-align: center;
+        }
+
+        .list ul li:hover {
+            background: rgb(227, 125, 125);
+        }
+
+        .main {
+            position: absolute;
+            top: 60px;
+            width: calc(100% - 260px);
+            left: 260px;
+            min-height: calc(100vh - 60px);
+            padding: 20px;
+            background: #f5f5f5;
+        }
+
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .card h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #dc4949;
+            color: white;
+        }
+
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+
+        .btn {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+
+        .btn-edit {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .btn-hide {
+            background-color: #f44336;
+            color: white;
+        }
+
+        .btn-add {
+            background-color: #2196F3;
+            color: white;
+            margin-bottom: 20px;
+        }
+
+        .btn-restore {
+            background-color: #ff9800;
+            color: white;
+        }
+
+        .btn:hover {
+            opacity: 0.8;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 10% auto;
+            padding: 20px;
+            border-radius: 10px;
+            width: 50%;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: black;
+        }
+
+        .product-image {
+            max-width: 100px;
+            max-height: 100px;
+            border-radius: 4px;
+        }
+
+        .category-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .beverages {
+            background-color: #e3f2fd;
+            color: #1976d2;
+        }
+
+        .chicken {
+            background-color: #fff8e1;
+            color: #ff8f00;
+        }
+
+        .burger {
+            background-color: #fce4ec;
+            color: #c2185b;
+        }
+
+        .desserts_sides {
+            background-color: #e8f5e9;
+            color: #388e3c;
+        }
+
+        .deleted-row {
+            opacity: 0.7;
+            background-color: #ffeeee;
+        }
+
+        .deleted-row:hover {
+            opacity: 1;
         }
 
         .user-dropdown {
             position: relative;
+            display: inline-block;
         }
 
         .user-dropdown img {
-            width: 40px;
-            height: 40px;
+            width: 50px;
+            height: 50px;
             border-radius: 50%;
             cursor: pointer;
-            object-fit: cover;
         }
 
         .dropdown-content {
@@ -182,20 +395,17 @@ $staffList = $conn->query("SELECT * FROM staff ORDER BY id");
             position: absolute;
             right: 0;
             background-color: white;
-            min-width: 160px;
-            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+            min-width: 120px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
             z-index: 1;
             border-radius: 6px;
-            overflow: hidden;
         }
 
         .dropdown-content a {
-            color: #333;
+            color: black;
             padding: 10px 16px;
             text-decoration: none;
             display: block;
-            font-size: 14px;
-            transition: background 0.2s;
         }
 
         .dropdown-content a:hover {
@@ -205,841 +415,428 @@ $staffList = $conn->query("SELECT * FROM staff ORDER BY id");
         .user-dropdown.show .dropdown-content {
             display: block;
         }
-
-        .list {
-            position: fixed;
-            top: 60px;
-            left: 0;
-            bottom: 0;
-            width: 260px;
-            background: rgba(220, 73, 73, 0.9);
-            overflow-y: auto;
-            z-index: 90;
-        }
-
-        .list ul {
-            padding-top: 20px;
-        }
-
-        .list ul li {
-            list-style: none;
-        }
-
-        .list ul li a {
-            display: flex;
-            align-items: center;
-            padding: 15px 20px;
-            color: white;
-            text-decoration: none;
-            transition: background 0.2s;
-        }
-
-        .list ul li a:hover {
-            background: rgba(227, 125, 125, 0.8);
-        }
-
-        .list ul li a i {
-            font-size: 20px;
-            width: 30px;
-            text-align: center;
-            margin-right: 10px;
-        }
-
-        .list ul li a h4 {
-            font-size: 16px;
-            font-weight: 500;
-        }
-
-        .main {
-            margin-left: 260px;
-            margin-top: 60px;
-            padding: 30px;
-            min-height: calc(100vh - 60px);
-        }
-
-        .page-title {
-            color: #dc4949;
-            margin-bottom: 25px;
-            font-size: 24px;
-            font-weight: 600;
-        }
-
-        .staff-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 30px;
-            background: white;
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-        }
-
-        .staff-table th {
-            background-color: #dc4949;
-            color: white;
-            padding: 15px;
-            text-align: left;
-            font-weight: 500;
-        }
-
-        .staff-table td {
-            padding: 15px;
-            border-bottom: 1px solid #eee;
-        }
-
-        .staff-table tr:last-child td {
-            border-bottom: none;
-        }
-
-        .staff-table tr:nth-child(even) {
-            background-color: #f9f9f9;
-        }
-
-        .staff-table tr:hover {
-            background-color: #f5f5f5;
-        }
-
-        .action-form {
-            background-color: white;
-            padding: 25px;
-            border-radius: 8px;
-            margin-top: 30px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-        }
-
-        .form-title {
-            color: #dc4949;
-            margin-bottom: 20px;
-            font-size: 18px;
-            font-weight: 500;
-        }
-
-        .form-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            gap: 20px;
-            margin-bottom: 20px;
-        }
-
-        .form-group {
-            margin-bottom: 15px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 500;
-            color: #555;
-            font-size: 14px;
-        }
-
-        .form-control {
-            width: 100%;
-            padding: 10px 15px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            font-size: 14px;
-            transition: border 0.3s;
-        }
-
-        .form-control:focus {
-            border-color: #dc4949;
-            outline: none;
-        }
-
-        select.form-control {
-            appearance: none;
-            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-            background-repeat: no-repeat;
-            background-position: right 10px center;
-            background-size: 16px;
-        }
-
-        .btn {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 6px;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .btn i {
-            margin-right: 8px;
-        }
-
-        .btn-primary {
-            background-color: #dc4949;
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background-color: #c53737;
-        }
-
-        .btn-secondary {
-            background-color: #6c757d;
-            color: white;
-        }
-
-        .btn-secondary:hover {
-            background-color: #5a6268;
-        }
-
-        .btn-danger {
-            background-color: #dc3545;
-            color: white;
-        }
-
-        .btn-danger:hover {
-            background-color: #c82333;
-        }
-
-        .btn-warning {
-            background-color: #ffc107;
-            color: #212529;
-        }
-
-        .btn-warning:hover {
-            background-color: #e0a800;
-        }
-
-        .btn-light {
-            background-color: #f8f9fa;
-            color: #212529;
-        }
-
-        .btn-light:hover {
-            background-color: #e2e6ea;
-        }
-
-        .action-buttons {
-            display: flex;
-            gap: 10px;
-            justify-content: flex-end;
-            flex-wrap: wrap;
-        }
-
-        .alert {
-            padding: 15px;
-            margin-bottom: 20px;
-            border-radius: 6px;
-        }
-
-        .alert-success {
-            background-color: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-
-        .alert-error {
-            background-color: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-
-        .status-badge {
-            display: inline-block;
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 500;
-        }
-
-        .badge-admin {
-            background-color: #d4edff;
-            color: #004085;
-        }
-
-        .badge-superadmin {
-            background-color: #d1e7dd;
-            color: #0f5132;
-        }
-
-        .badge-staff {
-            background-color: #e2e3e5;
-            color: #383d41;
-        }
-
-        .dropdown {
-            position: relative;
-            display: inline-block;
-        }
-
-        .dropdown-toggle {
-            background-color: #dc4949;
-            color: white;
-            padding: 8px 12px;
-            min-width: 40px;
-            text-align: center;
-        }
-
-        .dropdown-menu {
-            display: none;
-            position: absolute;
-            right: 0;
-            background-color: white;
-            min-width: 160px;
-            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
-            z-index: 1;
-            border-radius: 6px;
-            overflow: hidden;
-        }
-
-        .dropdown-menu button {
-            width: 100%;
-            text-align: left;
-            background: none;
-            border: none;
-            padding: 10px 16px;
-            cursor: pointer;
-            color: #333;
-            font-size: 14px;
-            transition: background 0.2s;
-        }
-
-        .dropdown-menu button:hover {
-            background-color: #f1f1f1;
-        }
-
-        .dropdown.show .dropdown-menu {
-            display: block;
-        }
-
-        .password-reset-form {
-            display: none;
-            margin-top: 20px;
-            padding: 20px;
-            background-color: #f8f9fa;
-            border-radius: 8px;
-            border: 1px solid #eee;
-        }
-
-        .password-container {
-            position: relative;
-        }
-
-        .password-strength {
-            height: 4px;
-            margin-top: 8px;
-            background: #eee;
-            border-radius: 2px;
-            overflow: hidden;
-        }
-
-        .password-strength-bar {
-            height: 100%;
-            width: 0;
-            transition: width 0.3s ease;
-        }
-
-        .weak {
-            background-color: #ff4757;
-            width: 30%;
-        }
-
-        .medium {
-            background-color: #ffa502;
-            width: 60%;
-        }
-
-        .strong {
-            background-color: #2ed573;
-            width: 100%;
-        }
-
-        .password-feedback {
-            font-size: 12px;
-            margin-top: 5px;
-            color: #666;
-        }
-
-        .password-match {
-            font-size: 12px;
-            margin-top: 5px;
-        }
-
-        .match {
-            color: #2ed573;
-        }
-
-        .no-match {
-            color: #ff4757;
-        }
-
-        .fa-spinner {
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        @media (max-width: 992px) {
-            .list {
-                width: 220px;
-            }
-            .main {
-                margin-left: 220px;
-            }
-            .form-grid {
-                grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            }
-        }
-
-        @media (max-width: 768px) {
-            .list {
-                width: 60px;
-                overflow: hidden;
-            }
-            .list ul li a h4 {
-                display: none;
-            }
-            .list ul li a i {
-                margin-right: 0;
-                font-size: 24px;
-            }
-            .main {
-                margin-left: 60px;
-                padding: 15px;
-            }
-            .form-grid {
-                grid-template-columns: 1fr;
-            }
-            .action-buttons {
-                justify-content: flex-start;
-            }
-        }
     </style>
 </head>
 <body>
+<div class="top">
     <div class="topbar">
         <div class="logo">
-            <h2>KFG FOOD</h2>
+            <h2>FastFood Express</h2>
         </div>
         <div class="search">
-            <input type="text" placeholder="Search here">
-            <i class="fas fa-search"></i>
+            <input type="text" id="search" placeholder="search here">
+            <label for="search"><i class="fas fa-search"></i></label>
         </div>
         <div class="user-dropdown" id="userDropdown">
-            <img src="img/72-729716_user-avatar-png-graphic-free-download-icon.png" alt="User">
+            <img src="img/72-729716_user-avatar-png-graphic-free-download-icon.png" alt="User Avatar">
             <div class="dropdown-content">
-                <a href="profile.php"><i class="fas fa-user-edit"></i> Edit Profile</a>
-                <a href="adminlogout.php"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                <a href="profile.php">Edit profile</a>
+                <a href="adminlogout.php">Logout</a>
             </div>
         </div>
     </div>
+</div>
 
-    <div class="list">
-        <ul>
-            <li>
-                <a href="adminhome.html">
-                    <i class="fas fa-home"></i>
-                    <h4>DASHBOARD</h4>
-                </a>
-            </li>
-            <li>
-                <a href="adminorder.html">
-                    <i class="fas fa-receipt"></i>
-                    <h4>ORDERS</h4>
-                </a>
-            </li>
-            <li>
-                <a href="adminProduct.html">
-                    <i class="fas fa-box-open"></i>
-                    <h4>PRODUCTS</h4>
-                </a>
-            </li>
-            <li>
-                <a href="adminStaff.php">
-                    <i class="fas fa-user-tie"></i>
-                    <h4>STAFFS</h4>
-                </a>
-            </li>
-            <li>
-                <a href="adminCustomer.html">
-                    <i class="fas fa-users"></i>
-                    <h4>CUSTOMER</h4>
-                </a>
-            </li>
-            <li>
-                <a href="adminReport.html">
-                    <i class="fas fa-chart-line"></i>
-                    <h4>REPORT</h4>
-                </a>
-            </li>
-            <li>
-                <a href="adminAboutUs.html">
-                    <i class="fas fa-info-circle"></i>
-                    <h4>ABOUT US</h4>
-                </a>
-            </li>
-        </ul>
-    </div>
-
-    <div class="main">
-        <h1 class="page-title">Staff Management</h1>
+<div class="list">
+    <ul>
+        <li>
+            <a href="adminhome.html">
+                <i class="fas fa-home"></i>
+                <h4>DASHBOARD</h4>
+            </a>
+        </li>
+    </ul>
+    <ul>
+        <li>
+            <a href="adminorder.html">
+                <i class="fas fa-receipt"></i>
+                <h4>ORDERS</h4>
+            </a>
+        </li>
+    </ul>
+    <ul>
+        <li>
+            <a href="adminProduct.php">
+                <i class="fas fa-box-open"></i>
+                <h4>PRODUCTS</h4>
+            </a>
+        </li>
+    </ul>
+    <ul>
+        <li>
+            <a href="adminStaff.php">
+                <i class="fas fa-user-tie"></i>
+                <h4>STAFFS</h4>
+            </a>
+        </li>
+    </ul>
+    <ul>
+        <li>
+            <a href="adminCustomer.php">
+                <i class="fas fa-users"></i>
+                <h4>CUSTOMER</h4>
+            </a>
+        </li>
+    </ul>
+    <ul>
+        <li>
+            <a href="adminReport.html">
+                <i class="fas fa-chart-line"></i>
+                <h4>REPORT</h4>
+            </a>
+        </li>
+    </ul>
+    <ul>
+        <li>
+            <a href="adminAboutUs.html">
+                <i class="fas fa-info-circle"></i>
+                <h4>ABOURT US</h4>
+            </a>
+        </li>
+    </ul>
+</div>
+ 
+<div class="main">
+    <div class="card">
+        <h3>Product Management</h3>
         
-        <?php if (!empty($success)): ?>
-            <div class="alert alert-success">
-                <i class="fas fa-check-circle"></i> <?= htmlspecialchars($success) ?>
-            </div>
-        <?php endif; ?>
+        <button class="btn btn-add" onclick="openAddModal()">
+            <i class="fas fa-plus"></i> Add New Product
+        </button>
         
-        <?php if (!empty($errors)): ?>
-            <div class="alert alert-error">
-                <?php foreach ($errors as $error): ?>
-                    <p><i class="fas fa-exclamation-circle"></i> <?= htmlspecialchars($error) ?></p>
-                <?php endforeach; ?>
-            </div>
-        <?php endif; ?>
-
-        <table class="staff-table">
+        <a href="adminDeletedProducts.php" class="btn btn-restore">
+            <i class="fas fa-trash-restore"></i> View Deleted Products
+        </a>
+        
+        <table>
             <thead>
                 <tr>
-                    <th>ID</th>
+                    <th>Image</th>
                     <th>Name</th>
-                    <th>Role</th>
-                    <th>Phone</th>
-                    <th>Email</th>
+                    <th>Description</th>
+                    <th>Price (RM)</th>
+                    <th>Category</th>
+                    <th>Stock</th>
                     <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
-                <?php while($row = $staffList->fetch_assoc()): ?>
-                    <tr>
-                        <td><?= htmlspecialchars($row['id']) ?></td>
-                        <td><?= htmlspecialchars($row['name']) ?></td>
-                        <td>
+                <?php while($product = $products->fetch_assoc()): ?>
+                <tr>
+                    <td>
+                        <?php if($product['image_url']): ?>
+                            <img src="<?php echo htmlspecialchars($product['image_url']); ?>" alt="<?php echo htmlspecialchars($product['name']); ?>" class="product-image">
+                        <?php else: ?>
+                            <i class="fas fa-image" style="font-size: 24px;"></i>
+                        <?php endif; ?>
+                    </td>
+                    <td><?php echo htmlspecialchars($product['name']); ?></td>
+                    <td><?php echo htmlspecialchars($product['description']); ?></td>
+                    <td><?php echo number_format($product['price'], 2); ?></td>
+                    <td>
+                        <span class="category-badge <?php echo $product['category']; ?>">
                             <?php 
-                            $badgeClass = 'badge-staff';
-                            if ($row['id'] == '1') $badgeClass = 'badge-superadmin';
-                            elseif ($row['usertype'] == 'admin') $badgeClass = 'badge-admin';
+                                $cat_result = $conn->query("SELECT name FROM categories WHERE slug = '{$product['category']}' LIMIT 1");
+                                if ($cat_result && $cat_row = $cat_result->fetch_assoc()) {
+                                    echo htmlspecialchars($cat_row['name']);
+                                } else {
+                                    echo htmlspecialchars($product['category']);
+                                }
                             ?>
-                            <span class="status-badge <?= $badgeClass ?>">
-                                <?= htmlspecialchars($row['role']) ?>
-                            </span>
-                        </td>
-                        <td><?= htmlspecialchars($row['phone']) ?></td>
-                        <td><?= htmlspecialchars($row['email']) ?></td>
-                        <td>
-                            <div class="dropdown">
-                                <button class="btn dropdown-toggle" onclick="toggleDropdown(this)">
-                                    <i class="fas fa-ellipsis-v"></i>
-                                </button>
-                                <div class="dropdown-menu">
-                                    <button onclick="fillEditForm(
-                                        '<?= $row['id'] ?>',
-                                        '<?= htmlspecialchars($row['name'], ENT_QUOTES) ?>',
-                                        '<?= htmlspecialchars($row['role'], ENT_QUOTES) ?>',
-                                        '<?= htmlspecialchars($row['phone'], ENT_QUOTES) ?>',
-                                        '<?= htmlspecialchars($row['email'], ENT_QUOTES) ?>'
-                                    )">
-                                        <i class="fas fa-edit"></i> Edit Profile
-                                    </button>
-                                    
-                                    <button onclick="showResetPasswordForm('<?= $row['id'] ?>')">
-                                        <i class="fas fa-key"></i> Reset Password
-                                    </button>
-                                    
-                                    <?php if ($row['id'] != '1'): ?>
-                                        <button onclick="confirmDelete('<?= $row['id'] ?>')" style="color: #dc3545;">
-                                            <i class="fas fa-trash"></i> Delete
-                                        </button>
-                                    <?php endif; ?>
-                                </div>
-                            </div>
-                        </td>
-                    </tr>
+                        </span>
+                    </td>
+                    <td><?php echo $product['stock_quantity']; ?></td>
+                    <td>
+                        <button class="btn btn-edit" onclick="openEditModal(
+                            <?php echo $product['id']; ?>,
+                            '<?php echo addslashes($product['name']); ?>',
+                            '<?php echo addslashes($product['description']); ?>',
+                            <?php echo $product['price']; ?>,
+                            '<?php echo $product['category']; ?>',
+                            <?php echo $product['stock_quantity']; ?>,
+                            '<?php echo addslashes($product['image_url']); ?>'
+                        )">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                        <form method="POST" style="display: inline;">
+                            <input type="hidden" name="id" value="<?php echo $product['id']; ?>">
+                            <button type="submit" name="hide_product" class="btn btn-hide" onclick="return confirm('Are you sure you want to delete this product?');">
+                                <i class="fas fa-trash"></i> Delete
+                            </button>
+                        </form>
+                    </td>
+                </tr>
                 <?php endwhile; ?>
             </tbody>
         </table>
-
-        <div class="action-form">
-            <h3 class="form-title">Staff Actions</h3>
-            <form method="post" id="staffForm">
-                <input type="hidden" name="action" id="formAction" value="add">
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label for="id">Staff ID</label>
-                        <input type="text" id="id" name="id" class="form-control" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="name">Full Name</label>
-                        <input type="text" id="name" name="name" class="form-control" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="role">Role</label>
-                        <select id="role" name="role" class="form-control" required>
-                            <option value="IT Technician">IT Technician</option>
-                            <option value="IT Support">IT Support</option>
-                            <option value="Manager">Manager</option>
-                            <option value="Cashier">Cashier</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="phone">Phone Number</label>
-                        <input type="text" id="phone" name="phone" class="form-control" placeholder="01XXXXXXXX" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="email">Email</label>
-                        <input type="email" id="email" name="email" class="form-control" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="password">Password</label>
-                        <input type="password" id="password" name="password" class="form-control">
-                        <small class="text-muted">Required for new staff only</small>
-                    </div>
-                </div>
-                
-                <div class="action-buttons">
-                    <button type="submit" name="action" value="add" class="btn btn-primary">
-                        <i class="fas fa-plus"></i> Add Staff
-                    </button>
-                    <button type="submit" name="action" value="edit" class="btn btn-secondary">
-                        <i class="fas fa-save"></i> Update Profile
-                    </button>
-                    <button type="button" onclick="clearForm()" class="btn btn-light">
-                        <i class="fas fa-times"></i> Clear
-                    </button>
-                </div>
-            </form>
-            
-            <div id="passwordResetForm" class="password-reset-form">
-                <h4><i class="fas fa-key"></i> Reset Password</h4>
-                <form method="post" id="resetForm">
-                    <input type="hidden" name="action" value="reset_password">
-                    <input type="hidden" id="reset_id" name="id">
-                    <div class="form-group password-container">
-                        <label for="new_password">New Password</label>
-                        <input type="password" id="new_password" name="password" class="form-control" required>
-                        <div class="password-strength">
-                            <div class="password-strength-bar" id="passwordStrengthBar"></div>
-                        </div>
-                        <div class="password-feedback" id="passwordFeedback"></div>
-                    </div>
-                    <div class="form-group">
-                        <label for="confirm_password">Confirm Password</label>
-                        <input type="password" id="confirm_password" class="form-control" required>
-                        <div class="password-match" id="passwordMatch"></div>
-                    </div>
-                    <div class="action-buttons">
-                        <button type="submit" class="btn btn-warning" id="resetBtn">
-                            <i class="fas fa-sync-alt"></i> Reset Password
-                        </button>
-                        <button type="button" onclick="hideResetPasswordForm()" class="btn btn-light">
-                            <i class="fas fa-times"></i> Cancel
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
     </div>
 
-    <script>
-        // Toggle dropdown menu
-        function toggleDropdown(button) {
-            const dropdown = button.nextElementSibling;
-            dropdown.classList.toggle("show");
-            
-            // Close other dropdowns
-            document.querySelectorAll('.dropdown-menu').forEach(item => {
-                if (item !== dropdown) {
-                    item.classList.remove('show');
-                }
-            });
-        }
+    <!-- Category Management Section -->
+    <div class="card" style="margin-top: 30px;">
+        <h3>Category Management</h3>
         
-        // Close dropdowns when clicking outside
-        window.onclick = function(event) {
-            if (!event.target.matches('.dropdown-toggle') && !event.target.matches('.dropdown-toggle *')) {
-                document.querySelectorAll('.dropdown-menu').forEach(item => {
-                    item.classList.remove('show');
-                });
-            }
-            
-            // Close user dropdown
-            if (!event.target.matches('.user-dropdown') && !event.target.matches('.user-dropdown *')) {
-                document.getElementById('userDropdown').classList.remove('show');
-            }
-        }
+        <button class="btn btn-add" onclick="openAddCategoryModal()">
+            <i class="fas fa-plus"></i> Add New Category
+        </button>
         
-        // Fill edit form
-        function fillEditForm(id, name, role, phone, email) {
-            document.getElementById('id').value = id;
-            document.getElementById('name').value = name;
-            document.getElementById('role').value = role;
-            document.getElementById('phone').value = phone;
-            document.getElementById('email').value = email;
-            document.getElementById('password').required = false;
-            document.getElementById('password').placeholder = "(Leave blank to keep current)";
-            document.getElementById('formAction').value = 'edit';
-            
-            // Scroll to form
-            document.querySelector('.action-form').scrollIntoView({ behavior: 'smooth' });
-            
-            // Close dropdown
-            document.querySelectorAll('.dropdown-menu').forEach(item => {
-                item.classList.remove('show');
-            });
-        }
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Slug</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php 
+                $categories = $conn->query("SELECT * FROM categories ORDER BY name");
+                while($category = $categories->fetch_assoc()): 
+                ?>
+                <tr>
+                    <td><?php echo $category['id']; ?></td>
+                    <td><?php echo htmlspecialchars($category['name']); ?></td>
+                    <td><?php echo htmlspecialchars($category['slug']); ?></td>
+                    <td>
+                        <button class="btn btn-edit" onclick="openEditCategoryModal(
+                            <?php echo $category['id']; ?>,
+                            '<?php echo addslashes($category['name']); ?>',
+                            '<?php echo addslashes($category['slug']); ?>'
+                        )">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                        <form method="POST" style="display: inline;">
+                            <input type="hidden" name="category_id" value="<?php echo $category['id']; ?>">
+                            <button type="submit" name="delete_category" class="btn btn-hide" onclick="return confirm('Are you sure you want to delete this category?');">
+                                <i class="fas fa-trash"></i> Delete
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                <?php endwhile; ?>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Add Product Modal -->
+<div id="addModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeAddModal()">&times;</span>
+        <h3>Add New Product</h3>
+        <form method="POST">
+            <div class="form-group">
+                <label for="name">Product Name</label>
+                <input type="text" id="name" name="name" required>
+            </div>
+            <div class="form-group">
+                <label for="description">Description</label>
+                <textarea id="description" name="description" rows="3"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="price">Price (RM)</label>
+                <input type="number" id="price" name="price" step="0.01" min="0" required>
+            </div>
+            <div class="form-group">
+                <label for="category">Category</label>
+                <select id="category" name="category" required>
+                    <?php 
+                    $categories = $conn->query("SELECT * FROM categories ORDER BY name");
+                    while($cat = $categories->fetch_assoc()): 
+                    ?>
+                        <option value="<?php echo $cat['slug']; ?>"><?php echo htmlspecialchars($cat['name']); ?></option>
+                    <?php endwhile; ?>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="stock_quantity">Stock Quantity</label>
+                <input type="number" id="stock_quantity" name="stock_quantity" min="0" required>
+            </div>
+            <div class="form-group">
+                <label for="image_url">Image URL</label>
+                <input type="text" id="image_url" name="image_url" placeholder="https://example.com/image.jpg">
+            </div>
+            <button type="submit" name="add_product" class="btn btn-add">Add Product</button>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Product Modal -->
+<div id="editModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeEditModal()">&times;</span>
+        <h3>Edit Product</h3>
+        <form method="POST">
+            <input type="hidden" id="edit_id" name="id">
+            <div class="form-group">
+                <label for="edit_name">Product Name</label>
+                <input type="text" id="edit_name" name="name" required>
+            </div>
+            <div class="form-group">
+                <label for="edit_description">Description</label>
+                <textarea id="edit_description" name="description" rows="3"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="edit_price">Price (RM)</label>
+                <input type="number" id="edit_price" name="price" step="0.01" min="0" required>
+            </div>
+            <div class="form-group">
+                <label for="edit_category">Category</label>
+                <select id="edit_category" name="category" required>
+                    <?php 
+                    $categories = $conn->query("SELECT * FROM categories ORDER BY name");
+                    while($cat = $categories->fetch_assoc()): 
+                    ?>
+                        <option value="<?php echo $cat['slug']; ?>"><?php echo htmlspecialchars($cat['name']); ?></option>
+                    <?php endwhile; ?>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="edit_stock_quantity">Stock Quantity</label>
+                <input type="number" id="edit_stock_quantity" name="stock_quantity" min="0" required>
+            </div>
+            <div class="form-group">
+                <label for="edit_image_url">Image URL</label>
+                <input type="text" id="edit_image_url" name="image_url" placeholder="https://example.com/image.jpg">
+            </div>
+            <button type="submit" name="update_product" class="btn btn-edit">Update Product</button>
+        </form>
+    </div>
+</div>
+
+<!-- Add Category Modal -->
+<div id="addCategoryModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeAddCategoryModal()">&times;</span>
+        <h3>Add New Category</h3>
+        <form method="POST">
+            <div class="form-group">
+                <label for="category_name">Category Name</label>
+                <input type="text" id="category_name" name="category_name" required>
+            </div>
+            <div class="form-group">
+                <label for="category_slug">Slug (URL-friendly name)</label>
+                <input type="text" id="category_slug" name="category_slug" required>
+                <small>Use lowercase letters, numbers and underscores only (e.g., "burgers", "chicken_items")</small>
+            </div>
+            <button type="submit" name="add_category" class="btn btn-add">Add Category</button>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Category Modal -->
+<div id="editCategoryModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeEditCategoryModal()">&times;</span>
+        <h3>Edit Category</h3>
+        <form method="POST">
+            <input type="hidden" id="edit_category_id" name="category_id">
+            <div class="form-group">
+                <label for="edit_category_name">Category Name</label>
+                <input type="text" id="edit_category_name" name="category_name" required>
+            </div>
+            <div class="form-group">
+                <label for="edit_category_slug">Slug (URL-friendly name)</label>
+                <input type="text" id="edit_category_slug" name="category_slug" required>
+                <small>Use lowercase letters, numbers and underscores only</small>
+            </div>
+            <button type="submit" name="update_category" class="btn btn-edit">Update Category</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    // Modal functions
+    function openAddModal() {
+        document.getElementById('addModal').style.display = 'block';
+    }
+
+    function closeAddModal() {
+        document.getElementById('addModal').style.display = 'none';
+    }
+
+    function openEditModal(id, name, description, price, category, stock, image_url) {
+        document.getElementById('edit_id').value = id;
+        document.getElementById('edit_name').value = name;
+        document.getElementById('edit_description').value = description;
+        document.getElementById('edit_price').value = price;
+        document.getElementById('edit_category').value = category;
+        document.getElementById('edit_stock_quantity').value = stock;
+        document.getElementById('edit_image_url').value = image_url;
         
-        // Clear form
-        function clearForm() {
-            document.getElementById('staffForm').reset();
-            document.getElementById('password').required = true;
-            document.getElementById('password').placeholder = "";
-            document.getElementById('formAction').value = 'add';
-        }
+        document.getElementById('editModal').style.display = 'block';
+    }
+
+    function closeEditModal() {
+        document.getElementById('editModal').style.display = 'none';
+    }
+
+    // Category Modal functions
+    function openAddCategoryModal() {
+        document.getElementById('addCategoryModal').style.display = 'block';
+    }
+
+    function closeAddCategoryModal() {
+        document.getElementById('addCategoryModal').style.display = 'none';
+    }
+
+    function openEditCategoryModal(id, name, slug) {
+        document.getElementById('edit_category_id').value = id;
+        document.getElementById('edit_category_name').value = name;
+        document.getElementById('edit_category_slug').value = slug;
         
-        // Enhanced password strength checker
-        document.getElementById('new_password').addEventListener('input', function() {
-            const password = this.value;
-            const strengthBar = document.getElementById('passwordStrengthBar');
-            const feedback = document.getElementById('passwordFeedback');
-            
-            // Reset
-            strengthBar.className = 'password-strength-bar';
-            feedback.textContent = '';
-            
-            if (password.length === 0) return;
-            
-            // Check strength
-            let strength = 0;
-            if (password.length >= 8) strength++;
-            if (password.match(/[A-Z]/)) strength++;
-            if (password.match(/[0-9]/)) strength++;
-            if (password.match(/[^A-Za-z0-9]/)) strength++;
-            
-            // Update UI
-            if (strength < 2) {
-                strengthBar.className = 'password-strength-bar weak';
-                feedback.textContent = 'Weak password - add more characters, numbers, or symbols';
-            } else if (strength < 4) {
-                strengthBar.className = 'password-strength-bar medium';
-                feedback.textContent = 'Medium strength password - could be stronger';
-            } else {
-                strengthBar.className = 'password-strength-bar strong';
-                feedback.textContent = 'Strong password';
-            }
-            
-            // Check password match if confirmation field has value
-            if (document.getElementById('confirm_password').value.length > 0) {
-                checkPasswordMatch();
-            }
-        });
+        document.getElementById('editCategoryModal').style.display = 'block';
+    }
 
-        // Password confirmation check
-        document.getElementById('confirm_password').addEventListener('input', checkPasswordMatch);
-        
-        function checkPasswordMatch() {
-            const password = document.getElementById('new_password').value;
-            const confirm = document.getElementById('confirm_password').value;
-            const matchDiv = document.getElementById('passwordMatch');
-            
-            if (confirm.length === 0) {
-                matchDiv.textContent = '';
-                matchDiv.className = 'password-match';
-                document.getElementById('resetBtn').disabled = true;
-                return;
-            }
-            
-            if (password !== confirm) {
-                matchDiv.textContent = 'Passwords do not match';
-                matchDiv.className = 'password-match no-match';
-                document.getElementById('resetBtn').disabled = true;
-            } else {
-                matchDiv.textContent = 'Passwords match';
-                matchDiv.className = 'password-match match';
-                document.getElementById('resetBtn').disabled = false;
-            }
+    function closeEditCategoryModal() {
+        document.getElementById('editCategoryModal').style.display = 'none';
+    }
+
+    // Close modals when clicking outside
+    window.onclick = function(event) {
+        if (event.target.className === 'modal') {
+            event.target.style.display = 'none';
         }
+    }
 
-        // Enhanced showResetPasswordForm
-        function showResetPasswordForm(id) {
-            // Hide all dropdowns
-            document.querySelectorAll('.dropdown-menu').forEach(item => {
-                item.classList.remove('show');
-            });
-            
-            // Reset and show form
-            document.getElementById('resetForm').reset();
-            document.getElementById('reset_id').value = id;
-            document.getElementById('passwordResetForm').style.display = 'block';
-            
-            // Clear any previous messages
-            document.getElementById('passwordMatch').textContent = '';
-            document.getElementById('passwordStrengthBar').className = 'password-strength-bar';
-            document.getElementById('passwordFeedback').textContent = '';
-            document.getElementById('resetBtn').disabled = true;
-            
-            // Focus on password field
-            document.getElementById('new_password').focus();
-            
-            // Scroll to form
-            document.getElementById('passwordResetForm').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    // User dropdown functionality
+    const dropdown = document.getElementById('userDropdown');
+    dropdown.addEventListener('click', function (event) {
+        event.stopPropagation();
+        this.classList.toggle('show');
+    });
+  
+    // Close dropdown if clicked outside
+    window.addEventListener('click', function () {
+        dropdown.classList.remove('show');
+    });
+
+    // Auto-generate slug from category name
+    document.getElementById('category_name').addEventListener('input', function() {
+        const slugInput = document.getElementById('category_slug');
+        if (!slugInput.value) {
+            const slug = this.value.toLowerCase()
+                .replace(/\s+/g, '_')      // Replace spaces with _
+                .replace(/[^\w_]+/g, '')   // Remove all non-word chars
+                .replace(/_+/g, '_')        // Replace multiple _ with single _
+                .replace(/^_+|_+$/g, '');   // Trim _ from start and end
+            slugInput.value = slug;
         }
+    });
 
-        // Enhanced hideResetPasswordForm
-        function hideResetPasswordForm() {
-            document.getElementById('passwordResetForm').style.display = 'none';
-            document.getElementById('resetForm').reset();
-            document.getElementById('resetBtn').disabled = false;
+    // Same for edit modal
+    document.getElementById('edit_category_name').addEventListener('input', function() {
+        const slugInput = document.getElementById('edit_category_slug');
+        if (!slugInput.value || slugInput.value === document.getElementById('edit_category_slug').defaultValue) {
+            const slug = this.value.toLowerCase()
+                .replace(/\s+/g, '_')
+                .replace(/[^\w_]+/g, '')
+                .replace(/_+/g, '_')
+                .replace(/^_+|_+$/g, '');
+            slugInput.value = slug;
         }
-
-        // Confirm before deleting
-        function confirmDelete(id) {
-            if (confirm('Are you sure you want to delete this staff member?')) {
-                document.getElementById('id').value = id;
-                document.getElementById('formAction').value = 'delete';
-                document.getElementById('staffForm').submit();
-            }
-        }
-        
-        // Phone number validation
-        document.getElementById('phone').addEventListener('input', function(e) {
-            this.value = this.value.replace(/[^0-9]/g, '');
-            if (!this.value.startsWith('01') && this.value.length > 0) {
-                this.value = '01' + this.value.substring(0, 9);
-            }
-            if (this.value.length > 11) {
-                this.value = this.value.substring(0, 11);
-            }
-        });
-
-        // Form submission handler
-        document.getElementById('resetForm').addEventListener('submit', function(e) {
-            const password = document.getElementById('new_password').value;
-            const confirm = document.getElementById('confirm_password').value;
-            
-            if (password !== confirm) {
-                e.preventDefault();
-                alert('Passwords do not match!');
-                return;
-            }
-            
-            if (password.length < 8) {
-                e.preventDefault();
-                alert('Password must be at least 8 characters!');
-                return;
-            }
-            
-            // Show loading state
-            const btn = document.getElementById('resetBtn');
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Resetting...';
-        });
-
-        // User dropdown functionality
-        document.getElementById('userDropdown').addEventListener('click', function(event) {
-            event.stopPropagation();
-            this.classList.toggle('show');
-        });
-    </script>
+    });
+</script>
 </body>
 </html>
+<?php $conn->close(); ?>

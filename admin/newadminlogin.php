@@ -151,7 +151,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
 <body>
     
-    <h1>KFG FOOD</h1>
+    <h1>FastFood Express</h1>
     
     <form method="POST">
     <div class="smallbox">
