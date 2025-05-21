@@ -13,7 +13,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $question  = mysqli_real_escape_string($conn, $_POST['security_question']);
     $answer    = mysqli_real_escape_string($conn, $_POST['security_answer']);
 
-    // 验证
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = "Invalid email format.";
     } elseif (!preg_match('/^01[0-9]{8,9}$/', $phone)) {
@@ -40,7 +39,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -134,7 +132,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <span class="toggle-password" onclick="togglePassword('confirm_password')">Show</span>
 
     <label>Security Question</label>
-    <input type="text" name="security_question" placeholder="e.g. What is your favorite color?" required>
+    <input type="text" name="security_question" placeholder="e.g. What is your pet's name?" required>
 
     <label>Answer</label>
     <input type="text" name="security_answer" required>

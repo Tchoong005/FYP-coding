@@ -23,7 +23,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -34,7 +33,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       background: #ffeeee;
       font-family: Arial, sans-serif;
     }
-
     .reset-container {
       background: white;
       width: 400px;
@@ -43,18 +41,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       border-radius: 12px;
       box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
     }
-
     h2 {
       margin-bottom: 25px;
       color: #000;
     }
-
     label {
       font-weight: bold;
       display: block;
       margin-top: 15px;
     }
-
     input[type="email"],
     input[type="password"] {
       width: 100%;
@@ -64,11 +59,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       border-radius: 5px;
       font-size: 14px;
     }
-
     .checkbox {
       margin-top: 10px;
     }
-
     .reset-btn {
       background: #d6001c;
       color: white;
@@ -81,19 +74,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       margin-top: 20px;
       cursor: pointer;
     }
-
     .reset-btn:hover {
       background: #a50013;
     }
-
     .back-login {
       text-align: center;
       margin-top: 10px;
     }
-
     .back-login a {
       color: #d6001c;
       text-decoration: none;
+    }
+    .message {
+      text-align: center;
+      margin-bottom: 10px;
+      color: #d6001c;
     }
   </style>
 </head>
@@ -101,7 +96,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <div class="reset-container">
   <h2>Reset Password</h2>
-  <form method="POST" action="reset_password.php">
+  <?php if (!empty($message)) echo "<div class='message'>$message</div>"; ?>
+  <form method="POST" action="">
     <label for="email">Email</label>
     <input type="email" id="email" name="email" required>
 
@@ -133,17 +129,5 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   }
 </script>
 
-</body>
-</html>
-
-
-<script>
-function togglePassword() {
-  var np = document.getElementById("new_password");
-  var cp = document.getElementById("confirm_password");
-  np.type = np.type === "password" ? "text" : "password";
-  cp.type = cp.type === "password" ? "text" : "password";
-}
-</script>
 </body>
 </html>
