@@ -1,101 +1,111 @@
 <?php
 session_start();
 include 'db.php';
-$error = "";
-$success = "";
 
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
+$message = "";
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = mysqli_real_escape_string($conn, $_POST['email']);
-    $security_answer = mysqli_real_escape_string($conn, $_POST['security_answer']);
-    $new_password = mysqli_real_escape_string($conn, $_POST['new_password']);
+    $new_password = $_POST['new_password'];
+    $confirm_password = $_POST['confirm_password'];
 
-    $query = "SELECT * FROM customers WHERE email='$email' AND security_question='Where is your hometown?' AND security_answer='$security_answer'";
-    $result = mysqli_query($conn, $query);
-
-    if (mysqli_num_rows($result) == 1) {
-        $update_query = "UPDATE customers SET password='$new_password' WHERE email='$email'";
-        if (mysqli_query($conn, $update_query)) {
-            $success = "Password reset successful! You can now login.";
-        } else {
-            $error = "Something went wrong. Please try again.";
-        }
+    if ($new_password !== $confirm_password) {
+        $message = "Passwords do not match!";
+    } elseif (!preg_match('/^(?=.*[A-Z])(?=.*[a-z])(?=.*\d).{8,}$/', $new_password)) {
+        $message = "Password must be at least 8 characters long, with uppercase, lowercase, and a number.";
     } else {
-        $error = "Invalid email or security answer.";
+        $sql = "UPDATE customers SET password='$new_password' WHERE email='$email'";
+        if (mysqli_query($conn, $sql)) {
+            $message = "Password successfully reset!";
+        } else {
+            $message = "Error updating password.";
+        }
     }
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Reset Password - FastFood Express</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.css">
+  <title>Reset Password</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
+      font-family: Arial;
       background: #fff0f0;
       display: flex;
       justify-content: center;
       align-items: center;
       height: 100vh;
-      margin: 0;
     }
-    .reset-container {
+    .reset-box {
       background: white;
-      padding: 30px 40px;
+      padding: 30px;
       border-radius: 10px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
       width: 350px;
     }
-    h2 {
-      color: #d6001c;
-      text-align: center;
-      margin-bottom: 20px;
-    }
-    input[type=email], input[type=text], input[type=password] {
+    input[type=email], input[type=password] {
       width: 100%;
       padding: 10px;
-      margin: 10px 0;
+      margin-top: 10px;
       border: 1px solid #ccc;
-      border-radius: 8px;
+      border-radius: 6px;
+    }
+    .toggle {
+      margin-top: -10px;
+      margin-bottom: 10px;
+      font-size: 13px;
     }
     button {
-      background: #d6001c;
-      color: white;
       width: 100%;
       padding: 12px;
       border: none;
-      border-radius: 8px;
+      background: #d6001c;
+      color: white;
       font-weight: bold;
+      border-radius: 6px;
+      margin-top: 10px;
       cursor: pointer;
     }
-    .error { color: red; text-align: center; margin-bottom: 10px; }
-    .success { color: green; text-align: center; margin-bottom: 10px; }
-    .bottom-link { text-align: center; margin-top: 10px; }
+    .message {
+      color: red;
+      margin-bottom: 10px;
+      text-align: center;
+    }
   </style>
 </head>
 <body>
-
-<div class="reset-container" data-aos="zoom-in">
+<div class="reset-box">
   <h2>Reset Password</h2>
-  <?php
-    if ($error) echo "<div class='error'>$error</div>";
-    if ($success) echo "<div class='success'>$success</div>";
-  ?>
-  <form method="post">
-    <input type="email" name="email" placeholder="Your Registered Email" required>
-    <label for="security_answer">Where is your hometown?</label>
-    <input type="text" name="security_answer" placeholder="Your Answer" required>
-    <input type="password" name="new_password" placeholder="New Password" required>
-    <button type="submit">Reset Password</button>
-    <div class="bottom-link">
-      Back to <a href="login.php">Login</a>
+  <?php if ($message): ?>
+    <div class="message"><?= $message ?></div>
+  <?php endif; ?>
+  <form method="POST">
+    <label>Email</label>
+    <input type="email" name="email" required>
+
+    <label>New Password</label>
+    <input type="password" name="new_password" id="new_password" required>
+
+    <label>Confirm Password</label>
+    <input type="password" name="confirm_password" id="confirm_password" required>
+
+    <div class="toggle">
+      <input type="checkbox" onclick="togglePassword()"> Show Password
     </div>
+
+    <button type="submit">Reset Password</button>
   </form>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
-<script>AOS.init();</script>
-
+<script>
+function togglePassword() {
+  var np = document.getElementById("new_password");
+  var cp = document.getElementById("confirm_password");
+  np.type = np.type === "password" ? "text" : "password";
+  cp.type = cp.type === "password" ? "text" : "password";
+}
+</script>
 </body>
 </html>

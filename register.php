@@ -1,35 +1,40 @@
 <?php
 session_start();
 include 'db.php';
-$error = "";
-$success = "";
+
+$error = $success = "";
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $user_id = mysqli_real_escape_string($conn, $_POST['user_id']);
-    $email    = mysqli_real_escape_string($conn, $_POST['email']);
-    $phone    = mysqli_real_escape_string($conn, $_POST['phone']);
-    $password = mysqli_real_escape_string($conn, $_POST['password']);
-    $hometown = mysqli_real_escape_string($conn, $_POST['hometown']);
+    $email     = mysqli_real_escape_string($conn, $_POST['email']);
+    $username  = mysqli_real_escape_string($conn, $_POST['username']);
+    $phone     = mysqli_real_escape_string($conn, $_POST['phone']);
+    $password  = mysqli_real_escape_string($conn, $_POST['password']);
+    $confirm   = mysqli_real_escape_string($conn, $_POST['confirm_password']);
 
-    // 手机号格式验证
-    if (!preg_match('/^01\d{8,9}$/', $phone)) {
-        $error = "Phone number must start with 01 and have 10-11 digits.";
-    } else {
-        // 检查 email 是否已存在
-        $check_query_email = "SELECT * FROM customers WHERE email='$email'";
-        $check_result_email = mysqli_query($conn, $check_query_email);
-
-        // 检查 phone 是否已存在
-        $check_query_phone = "SELECT * FROM customers WHERE phone='$phone'";
-        $check_result_phone = mysqli_query($conn, $check_query_phone);
-
-        if (mysqli_num_rows($check_result_email) > 0) {
-            $error = "Email already registered.";
-        } elseif (mysqli_num_rows($check_result_phone) > 0) {
-            $error = "Phone number already registered.";
+    // 验证邮箱格式
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $error = "Invalid email format.";
+    }
+    // 手机号验证
+    elseif (!preg_match('/^01[0-9]{8,9}$/', $phone)) {
+        $error = "Phone number must start with 01 and be 10–11 digits.";
+    }
+    // 密码强度验证
+    elseif (!preg_match('/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/', $password)) {
+        $error = "Password must be at least 8 characters with uppercase, lowercase, and number.";
+    }
+    // 确认密码匹配
+    elseif ($password !== $confirm) {
+        $error = "Passwords do not match.";
+    }
+    // 检查 email 或 phone 是否已存在
+    else {
+        $check = mysqli_query($conn, "SELECT * FROM customers WHERE email='$email' OR phone='$phone'");
+        if (mysqli_num_rows($check) > 0) {
+            $error = "Email or phone number already used.";
         } else {
-            $query = "INSERT INTO customers (username, email, phone, password, hometown) VALUES ('$user_id', '$email', '$phone', '$password', '$hometown')";
-            if (mysqli_query($conn, $query)) {
+            $insert = "INSERT INTO customers (email, username, phone, password) VALUES ('$email', '$username', '$phone', '$password')";
+            if (mysqli_query($conn, $insert)) {
                 $success = "Registration successful! You can now login.";
             } else {
                 $error = "Something went wrong. Please try again.";
@@ -38,6 +43,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -89,11 +95,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
     .error { color: red; text-align: center; margin-bottom: 10px; }
     .success { color: green; text-align: center; margin-bottom: 10px; }
-    label {
-      font-weight: bold;
-      color: #d6001c;
-      margin-top: 10px;
-      display: block;
+    .toggle-password {
+      float: right;
+      margin-right: 10px;
+      margin-top: -30px;
+      position: relative;
+      z-index: 2;
+      cursor: pointer;
+      font-size: 12px;
+      color: #555;
     }
   </style>
 </head>
@@ -101,16 +111,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
 <div class="register-container" data-aos="zoom-in">
   <h2>Register</h2>
-  <?php
-    if ($error) echo "<div class='error'>$error</div>";
-    if ($success) echo "<div class='success'>$success</div>";
-  ?>
+  <?php if ($error) echo "<div class='error'>$error</div>"; ?>
+  <?php if ($success) echo "<div class='success'>$success</div>"; ?>
   <form method="post">
-    <input type="text" name="user_id" placeholder="User ID" required>
     <input type="email" name="email" placeholder="Email" required>
-    <input type="text" name="phone" placeholder="Phone Number (10-11 digits, starts with 01)" pattern="01\d{8,9}" required>
-    <input type="password" name="password" placeholder="Password" required>
-    <input type="text" name="hometown" placeholder="Where is your hometown?" required>
+    <input type="text" name="username" placeholder="User ID" required>
+    <input type="text" name="phone" placeholder="Phone Number" required>
+    
+    <input type="password" name="password" id="password" placeholder="Password" required>
+    <span class="toggle-password" onclick="togglePassword('password')">Show</span>
+    
+    <input type="password" name="confirm_password" id="confirm_password" placeholder="Confirm Password" required>
+    <span class="toggle-password" onclick="togglePassword('confirm_password')">Show</span>
+
     <button type="submit">Register</button>
     <div class="bottom-link">Already have an account? <a href="login.php">Login</a></div>
   </form>
@@ -118,6 +131,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
 <script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
 <script>AOS.init();</script>
+
+<script>
+function togglePassword(id) {
+  const input = document.getElementById(id);
+  const type = input.getAttribute('type') === 'password' ? 'text' : 'password';
+  input.setAttribute('type', type);
+}
+</script>
 
 </body>
 </html>

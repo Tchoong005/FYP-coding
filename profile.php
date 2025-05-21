@@ -12,7 +12,7 @@ $sql = "SELECT * FROM customers WHERE id='$user_id'";
 $result = mysqli_query($conn, $sql);
 $user = mysqli_fetch_assoc($result);
 
-$show_notice = empty($user['address']) || empty($user['birthday']);
+$show_notice = empty($user['address']) || empty($user['birthday']) || empty($user['postcode']) || empty($user['city']) || empty($user['state']);
 $success = $error = $pass_message = "";
 
 // 更新个人信息
@@ -20,31 +20,21 @@ if (isset($_POST['update_profile'])) {
     $username = mysqli_real_escape_string($conn, $_POST['username']);
     $phone = mysqli_real_escape_string($conn, $_POST['phone']);
     $address = mysqli_real_escape_string($conn, $_POST['address']);
+    $postcode = mysqli_real_escape_string($conn, $_POST['postcode']);
+    $city = mysqli_real_escape_string($conn, $_POST['city']);
+    $state = mysqli_real_escape_string($conn, $_POST['state']);
     $birthday = mysqli_real_escape_string($conn, $_POST['birthday']);
-    
-    // 验证手机号
+
     if (!preg_match("/^01\d{8,9}$/", $phone)) {
         $error = "Phone number must start with 01 and be 10-11 digits long.";
     }
 
-    // 验证email是否唯一
-    $email = $user['email']; // email无法修改
-    $check_email_query = "SELECT * FROM customers WHERE email='$email' AND id != '$user_id'";
-    $check_email_result = mysqli_query($conn, $check_email_query);
-    if (mysqli_num_rows($check_email_result) > 0) {
-        $error = "This email is already registered.";
-    }
-
-    // 更新数据
     if (empty($error)) {
-        $update_sql = "UPDATE customers SET username='$username', phone='$phone', address='$address', birthday='$birthday' WHERE id='$user_id'";
+        $update_sql = "UPDATE customers SET username='$username', phone='$phone', address='$address', postcode='$postcode', city='$city', state='$state', birthday='$birthday' WHERE id='$user_id'";
         if (mysqli_query($conn, $update_sql)) {
             $success = "Profile updated!";
             $show_notice = false;
-            $user['username'] = $username;
-            $user['phone'] = $phone;
-            $user['address'] = $address;
-            $user['birthday'] = $birthday;
+            $user = array_merge($user, $_POST);
         } else {
             $error = "Update failed!";
         }
@@ -56,7 +46,6 @@ if (isset($_POST['change_password'])) {
     $old_password = mysqli_real_escape_string($conn, $_POST['old_password']);
     $new_password = mysqli_real_escape_string($conn, $_POST['new_password']);
 
-    // 验证密码
     if (strlen($new_password) < 8 || !preg_match("/[A-Z]/", $new_password) || !preg_match("/[0-9]/", $new_password) || !preg_match("/[\W_]/", $new_password)) {
         $pass_message = "Password must be at least 8 characters long, contain an uppercase letter, a number, and a symbol.";
     } else {
@@ -85,7 +74,6 @@ if (isset($_POST['change_password'])) {
 <style>
 body {
     font-family: Arial;
-    background: #fff;
     margin: 0;
     padding: 0;
     opacity: 0;
@@ -176,6 +164,12 @@ function showTab(tab) {
             <input type="text" name="phone" value="<?php echo $user['phone']; ?>" required>
             <label>Address</label>
             <input type="text" name="address" value="<?php echo $user['address']; ?>">
+            <label>Postcode</label>
+            <input type="text" name="postcode" value="<?php echo $user['postcode']; ?>">
+            <label>City</label>
+            <input type="text" name="city" value="<?php echo $user['city']; ?>">
+            <label>State</label>
+            <input type="text" name="state" value="<?php echo $user['state']; ?>">
             <label>Birthday</label>
             <input type="date" name="birthday" value="<?php echo $user['birthday']; ?>">
             <button type="submit" name="update_profile">Update Profile</button>
