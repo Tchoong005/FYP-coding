@@ -47,9 +47,12 @@ if (isset($_POST['update_profile'])) {
 if (isset($_POST['change_password'])) {
     $old_password = mysqli_real_escape_string($conn, $_POST['old_password']);
     $new_password = mysqli_real_escape_string($conn, $_POST['new_password']);
+    $confirm_password = mysqli_real_escape_string($conn, $_POST['confirm_password']);
 
-    if (strlen($new_password) < 8 || !preg_match("/[A-Z]/", $new_password) || !preg_match("/[0-9]/", $new_password) || !preg_match("/[\W_]/", $new_password)) {
-        $pass_message = "Password must be at least 8 characters long, contain an uppercase letter, a number, and a symbol.";
+    if ($new_password !== $confirm_password) {
+        $pass_message = "<span style='color:red;'>New passwords do not match.</span>";
+    } elseif (strlen($new_password) < 8 || !preg_match("/[A-Z]/", $new_password) || !preg_match("/[0-9]/", $new_password) || !preg_match("/[\W_]/", $new_password)) {
+        $pass_message = "<span style='color:red;'>Password must be at least 8 characters long, include an uppercase letter, a number, and a symbol.</span>";
     } else {
         $check_sql = "SELECT * FROM customers WHERE id='$user_id' AND password='$old_password'";
         $check_result = mysqli_query($conn, $check_sql);
@@ -180,6 +183,7 @@ function showTab(tab) {
         <form method="post">
             <input type="password" name="old_password" placeholder="Old Password" required>
             <input type="password" name="new_password" placeholder="New Password" required>
+            <input type="password" name="confirm_password" placeholder="Confirm New Password" required>
             <button type="submit" name="change_password">Change Password</button>
         </form>
     </div>
