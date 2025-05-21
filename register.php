@@ -10,7 +10,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $phone     = mysqli_real_escape_string($conn, $_POST['phone']);
     $password  = mysqli_real_escape_string($conn, $_POST['password']);
     $confirm   = mysqli_real_escape_string($conn, $_POST['confirm_password']);
+    $question  = mysqli_real_escape_string($conn, $_POST['security_question']);
+    $answer    = mysqli_real_escape_string($conn, $_POST['security_answer']);
 
+    // 验证
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = "Invalid email format.";
     } elseif (!preg_match('/^01[0-9]{8,9}$/', $phone)) {
@@ -19,12 +22,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $error = "Password must be at least 8 characters with uppercase, lowercase, and number.";
     } elseif ($password !== $confirm) {
         $error = "Passwords do not match.";
+    } elseif (empty($question) || empty($answer)) {
+        $error = "Security question and answer are required.";
     } else {
         $check = mysqli_query($conn, "SELECT * FROM customers WHERE email='$email' OR phone='$phone'");
         if (mysqli_num_rows($check) > 0) {
             $error = "Email or phone number already used.";
         } else {
-            $insert = "INSERT INTO customers (email, username, phone, password) VALUES ('$email', '$username', '$phone', '$password')";
+            $insert = "INSERT INTO customers (email, username, phone, password, security_question, security_answer)
+                       VALUES ('$email', '$username', '$phone', '$password', '$question', '$answer')";
             if (mysqli_query($conn, $insert)) {
                 $success = "Registration successful! You can now login.";
             } else {
@@ -55,7 +61,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
       padding: 30px 40px;
       border-radius: 10px;
       box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-      width: 350px;
+      width: 400px;
     }
     h2 {
       color: #d6001c;
@@ -74,13 +80,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
       border: 1px solid #ccc;
       border-radius: 8px;
     }
-    .toggle-password {
-      float: right;
-      margin-top: -25px;
-      font-size: 12px;
-      color: #d6001c;
-      cursor: pointer;
-    }
     button {
       background: #d6001c;
       color: white;
@@ -90,7 +89,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
       border-radius: 8px;
       font-weight: bold;
       cursor: pointer;
-      margin-top: 20px;
+      margin-top: 15px;
     }
     .bottom-link {
       text-align: center;
@@ -98,6 +97,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
     .error { color: red; text-align: center; margin-bottom: 10px; }
     .success { color: green; text-align: center; margin-bottom: 10px; }
+    .toggle-password {
+      float: right;
+      margin-top: -25px;
+      margin-right: 10px;
+      font-size: 12px;
+      color: #555;
+      cursor: pointer;
+      position: relative;
+      z-index: 2;
+    }
   </style>
 </head>
 <body>
@@ -110,7 +119,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <label>Email</label>
     <input type="email" name="email" required>
 
-    <label>User ID</label>
+    <label>User Name</label>
     <input type="text" name="username" required>
 
     <label>Phone Number</label>
@@ -124,15 +133,25 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <input type="password" name="confirm_password" id="confirm_password" required>
     <span class="toggle-password" onclick="togglePassword('confirm_password')">Show</span>
 
+    <label>Security Question</label>
+    <input type="text" name="security_question" placeholder="e.g. What is your favorite color?" required>
+
+    <label>Answer</label>
+    <input type="text" name="security_answer" required>
+
     <button type="submit">Register</button>
-    <div class="bottom-link">Already have an account? <a href="login.php">Login</a></div>
+    <div class="bottom-link">
+      Already have an account? <a href="login.php">Login</a>
+    </div>
   </form>
 </div>
 
 <script>
 function togglePassword(id) {
   const input = document.getElementById(id);
-  input.type = input.type === 'password' ? 'text' : 'password';
+  const type = input.type === 'password' ? 'text' : 'password';
+  input.type = type;
+  event.target.textContent = type === 'password' ? 'Show' : 'Hide';
 }
 </script>
 
