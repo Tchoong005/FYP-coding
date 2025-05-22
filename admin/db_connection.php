@@ -1,5 +1,5 @@
 <?php
-$servername = "127.0.0.1";
+$servername = "localhost";
 $username = "root"; // Change to your database username
 $password = ""; // Change to your database password
 $dbname = "fyp_fastfood";
