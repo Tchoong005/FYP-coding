@@ -5,55 +5,57 @@ include 'db.php';
 $message = "";
 $security_question = "";
 
-// Fetch security question if email is provided
+// 第一步：获取用户邮箱并验证是否存在
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['email'])) {
     $email = mysqli_real_escape_string($conn, $_GET['email']);
     $sql = "SELECT security_question, password FROM customers WHERE email='$email'";
     $result = mysqli_query($conn, $sql);
+    
     if (mysqli_num_rows($result) > 0) {
         $row = mysqli_fetch_assoc($result);
         $security_question = $row['security_question'];
-        $_SESSION['current_hashed_password'] = $row['password']; // Store current password for comparison
+        $_SESSION['current_password'] = $row['password']; // 存储当前明文密码
     } else {
         $message = "Email not found in our system.";
     }
 }
 
+// 第二步：处理密码重置请求
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = mysqli_real_escape_string($conn, $_POST['email']);
     $new_password = $_POST['new_password'];
     $confirm_password = $_POST['confirm_password'];
     $security_answer = mysqli_real_escape_string($conn, $_POST['security_answer']);
 
-    // First verify the security answer and get current password
+    // 获取安全答案和当前密码
     $sql = "SELECT security_answer, password FROM customers WHERE email='$email'";
     $result = mysqli_query($conn, $sql);
     $row = mysqli_fetch_assoc($result);
     $stored_answer = $row['security_answer'];
-    $current_hashed_password = $row['password'];
+    $current_password = $row['password'];
 
-    if (!password_verify($security_answer, $stored_answer)) {
+    // 验证流程
+    if ($security_answer != $stored_answer) {
         $message = "Security answer is incorrect!";
-    } elseif (password_verify($new_password, $current_hashed_password)) {
-        $message = "New password cannot be the same as your current password!";
+    } elseif ($new_password == $current_password) {
+        $message = "New password cannot be the same as current password!";
     } elseif ($new_password !== $confirm_password) {
         $message = "Passwords do not match!";
     } elseif (!preg_match('/^(?=.*[A-Z])(?=.*[a-z])(?=.*\d).{8,}$/', $new_password)) {
         $message = "Password must be at least 8 characters long, with uppercase, lowercase, and a number.";
     } else {
-        // Hash the new password before storing
-        $hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
-        $sql = "UPDATE customers SET password='$hashed_password' WHERE email='$email'";
+        // 直接存储明文密码
+        $sql = "UPDATE customers SET password='$new_password' WHERE email='$email'";
         if (mysqli_query($conn, $sql)) {
             $message = "Password successfully reset!";
-            $security_question = ""; // Clear the question after successful reset
-            unset($_SESSION['current_hashed_password']);
+            $security_question = "";
+            unset($_SESSION['current_password']);
         } else {
-            $message = "Error updating password.";
+            $message = "Error updating password: " . mysqli_error($conn);
         }
     }
     
-    // Get the security question again to display in case of error
+    // 重新获取安全问题用于显示
     if (!empty($email)) {
         $sql = "SELECT security_question FROM customers WHERE email='$email'";
         $result = mysqli_query($conn, $sql);
@@ -146,7 +148,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <h2>Reset Password</h2>
   <?php if (!empty($message)) echo "<div class='message'>$message</div>"; ?>
   
-  <!-- Email input form (first step) -->
+  <!-- 邮箱输入表单 -->
   <form method="GET" action="" class="email-form" id="emailForm">
     <label for="email">Email</label>
     <input type="email" id="email" name="email" required>
@@ -158,7 +160,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
   </form>
   
-  <!-- Security question and password form (second step) -->
+  <!-- 安全问题和密码表单 -->
   <form method="POST" action="" class="security-form" id="securityForm">
     <input type="hidden" name="email" value="<?php echo isset($_GET['email']) ? htmlspecialchars($_GET['email']) : ''; ?>">
     
@@ -199,7 +201,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     confirmPass.type = type;
   }
   
-  // If we have a security question to show, switch forms
+  // 自动切换表单显示
   <?php if (!empty($security_question)): ?>
     document.getElementById('emailForm').style.display = 'none';
     document.getElementById('securityForm').style.display = 'block';
