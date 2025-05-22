@@ -3,22 +3,58 @@ session_start();
 include 'db.php';
 
 $message = "";
+$security_question = "";
+
+// Fetch security question if email is provided
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['email'])) {
+    $email = mysqli_real_escape_string($conn, $_GET['email']);
+    $sql = "SELECT security_question FROM customers WHERE email='$email'";
+    $result = mysqli_query($conn, $sql);
+    if (mysqli_num_rows($result) > 0) {
+        $row = mysqli_fetch_assoc($result);
+        $security_question = $row['security_question'];
+    } else {
+        $message = "Email not found in our system.";
+    }
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = mysqli_real_escape_string($conn, $_POST['email']);
     $new_password = $_POST['new_password'];
     $confirm_password = $_POST['confirm_password'];
+    $security_answer = mysqli_real_escape_string($conn, $_POST['security_answer']);
 
-    if ($new_password !== $confirm_password) {
+    // First verify the security answer
+    $sql = "SELECT security_answer FROM customers WHERE email='$email'";
+    $result = mysqli_query($conn, $sql);
+    $row = mysqli_fetch_assoc($result);
+    $stored_answer = $row['security_answer'];
+
+    if (!password_verify($security_answer, $stored_answer)) {
+        $message = "Security answer is incorrect!";
+    } elseif ($new_password !== $confirm_password) {
         $message = "Passwords do not match!";
     } elseif (!preg_match('/^(?=.*[A-Z])(?=.*[a-z])(?=.*\d).{8,}$/', $new_password)) {
         $message = "Password must be at least 8 characters long, with uppercase, lowercase, and a number.";
     } else {
-        $sql = "UPDATE customers SET password='$new_password' WHERE email='$email'";
+        // Hash the new password before storing
+        $hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
+        $sql = "UPDATE customers SET password='$hashed_password' WHERE email='$email'";
         if (mysqli_query($conn, $sql)) {
             $message = "Password successfully reset!";
+            $security_question = ""; // Clear the question after successful reset
         } else {
             $message = "Error updating password.";
+        }
+    }
+    
+    // Get the security question again to display in case of error
+    if (!empty($email)) {
+        $sql = "SELECT security_question FROM customers WHERE email='$email'";
+        $result = mysqli_query($conn, $sql);
+        if (mysqli_num_rows($result) > 0) {
+            $row = mysqli_fetch_assoc($result);
+            $security_question = $row['security_question'];
         }
     }
 }
@@ -51,7 +87,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       margin-top: 15px;
     }
     input[type="email"],
-    input[type="password"] {
+    input[type="password"],
+    input[type="text"] {
       width: 100%;
       padding: 10px;
       margin-top: 5px;
@@ -90,6 +127,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       margin-bottom: 10px;
       color: #d6001c;
     }
+    .email-form {
+      display: <?php echo empty($security_question) ? 'block' : 'none'; ?>;
+    }
+    .security-form {
+      display: <?php echo !empty($security_question) ? 'block' : 'none'; ?>;
+    }
   </style>
 </head>
 <body>
@@ -97,10 +140,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <div class="reset-container">
   <h2>Reset Password</h2>
   <?php if (!empty($message)) echo "<div class='message'>$message</div>"; ?>
-  <form method="POST" action="">
+  
+  <!-- Email input form (first step) -->
+  <form method="GET" action="" class="email-form" id="emailForm">
     <label for="email">Email</label>
     <input type="email" id="email" name="email" required>
-
+    
+    <button type="submit" class="reset-btn">Continue</button>
+    
+    <div class="back-login">
+      <a href="login.php">← Back to Login</a>
+    </div>
+  </form>
+  
+  <!-- Security question and password form (second step) -->
+  <form method="POST" action="" class="security-form" id="securityForm">
+    <input type="hidden" name="email" value="<?php echo isset($_GET['email']) ? htmlspecialchars($_GET['email']) : ''; ?>">
+    
+    <div id="securityQuestionDisplay">
+      <?php if (!empty($security_question)): ?>
+        <label>Security Question:</label>
+        <p><?php echo htmlspecialchars($security_question); ?></p>
+        
+        <label for="security_answer">Your Answer</label>
+        <input type="text" id="security_answer" name="security_answer" required>
+      <?php endif; ?>
+    </div>
+    
     <label for="new_password">New Password</label>
     <input type="password" id="new_password" name="new_password" required>
 
@@ -127,6 +193,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     newPass.type = type;
     confirmPass.type = type;
   }
+  
+  // If we have a security question to show, switch forms
+  <?php if (!empty($security_question)): ?>
+    document.getElementById('emailForm').style.display = 'none';
+    document.getElementById('securityForm').style.display = 'block';
+  <?php endif; ?>
 </script>
 
 </body>
