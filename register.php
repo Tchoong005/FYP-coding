@@ -1,6 +1,8 @@
 <?php
 session_start();
 include 'db.php';
+
+$showOTPField = false;
 require 'PHPMailer/src/PHPMailer.php';
 require 'PHPMailer/src/SMTP.php';
 require 'PHPMailer/src/Exception.php';
