@@ -112,6 +112,7 @@
             border-radius: 40px;
             box-shadow: 0 4px 12px  rgba(0, 0, 0, 0.08);
             max-width: 1000px;
+            width: calc(100% - 300px);
         }
 
         table{
@@ -217,6 +218,57 @@
             color: #4CAF50;
             font-weight: bold;
         }
+        
+        /* Search container styles */
+        .search-container {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        
+        .search-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .search-controls input {
+            padding: 8px 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 300px;
+            font-size: 14px;
+        }
+        
+        .search-controls button {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+        
+        #searchBtn {
+            background-color: #dc4949;
+            color: white;
+        }
+        
+        #searchBtn:hover {
+            background-color: #c53737;
+        }
+        
+        #resetBtn {
+            background-color: #f5f5f5;
+            color: #333;
+            border: 1px solid #ddd !important;
+        }
+        
+        #resetBtn:hover {
+            background-color: #e0e0e0;
+        }
     </style>
 </head>
 
@@ -224,11 +276,11 @@
     <div class="top">
         <div class="topbar">
             <div class="logo">
-                <h2>KFG FOOD</h2>
+                <h2>FastFood Express</h2>
             </div>
             <div class="search">
-                <input type="text" id="search" placeholder="search here">
-                <label for="search"><i class="fas fa-search"></i></label>
+                <input type="text" id="search" placeholder="Search here...">
+                <i class="fas fa-search"></i>
             </div>
             <div class="user-dropdown" id="userDropdown">
                 <img src="img/72-729716_user-avatar-png-graphic-free-download-icon.png" alt="User Avatar">
@@ -251,7 +303,7 @@
         </ul>
         <ul>
             <li>
-                <a href="adminorder.html">
+                <a href="adminorder.php">
                     <i class="fas fa-receipt"></i>
                     <h4>ORDERS</h4>
                 </a>
@@ -301,10 +353,18 @@
 
     <div class="main">
         <h2>Customer Management</h2>
+        <div class="search-container">
+            <div class="search-controls">
+                <input type="text" id="tableSearch" placeholder="Search by email or username...">
+                <button id="searchBtn"><i class="fas fa-search"></i> Search</button>
+                <button id="resetBtn"><i class="fas fa-undo"></i> Reset</button>
+            </div>
+        </div>
+        
         <table>
             <thead>
                 <tr>
-                    <th>ID</th>
+                    <th>No</th>
                     <th>Username</th>
                     <th>Email</th>
                     <th>Phone</th>
@@ -348,6 +408,7 @@
                 $sql = "SELECT id, username, email, phone, is_banned FROM customers";
                 $result = $conn->query($sql);
                 
+                $counter = 1;
                 if ($result->num_rows > 0) {
                     // Output data of each row
                     while($row = $result->fetch_assoc()) {
@@ -365,13 +426,14 @@
                             </form>';
                         
                         echo "<tr>
-                                <td>".$row["id"]."</td>
+                                <td>".$counter."</td>
                                 <td>".$row["username"]."</td>
                                 <td>".$row["email"]."</td>
                                 <td>".$row["phone"]."</td>
                                 <td>".$status."</td>
                                 <td>".$actionBtn."</td>
                               </tr>";
+                        $counter++;
                     }
                 } else {
                     echo "<tr><td colspan='6'>No customers found</td></tr>";
@@ -383,6 +445,7 @@
     </div>
 
     <script>
+        // User dropdown functionality
         const dropdown = document.getElementById('userDropdown');
         dropdown.addEventListener('click', function (event) {
             event.stopPropagation();
@@ -393,6 +456,42 @@
         window.addEventListener('click', function () {
             dropdown.classList.remove('show');
         });
+        
+        // Table search functionality
+        document.getElementById('searchBtn').addEventListener('click', function() {
+            performSearch();
+        });
+
+        // Allow search on Enter key press
+        document.getElementById('tableSearch').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                performSearch();
+            }
+        });
+
+        // Reset functionality
+        document.getElementById('resetBtn').addEventListener('click', function() {
+            document.getElementById('tableSearch').value = '';
+            const rows = document.querySelectorAll('tbody tr');
+            rows.forEach(row => {
+                row.style.display = '';
+            });
+        });
+
+        function performSearch() {
+            const searchTerm = document.getElementById('tableSearch').value.toLowerCase();
+            const rows = document.querySelectorAll('tbody tr');
+            
+            rows.forEach(row => {
+                const email = row.cells[2].textContent.toLowerCase(); // Email column
+                const username = row.cells[1].textContent.toLowerCase(); // Username column
+                if (email.includes(searchTerm) || username.includes(searchTerm)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
     </script>
 </body>
 </html>

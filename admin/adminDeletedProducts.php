@@ -369,7 +369,7 @@ $deletedProducts = $conn->query("SELECT * FROM products WHERE deleted_at IS NOT 
         </ul>
         <ul>
             <li>
-                <a href="adminorder.html">
+                <a href="adminorder.php">
                     <i class="fas fa-receipt"></i>
                     <h4>ORDERS</h4>
                 </a>

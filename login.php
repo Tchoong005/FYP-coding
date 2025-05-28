@@ -1,23 +1,23 @@
 <?php
 session_start();
 include 'db.php';
+
 $error = "";
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $user_id = mysqli_real_escape_string($conn, $_POST['user_id']);
+    $email = mysqli_real_escape_string($conn, $_POST['email']);
     $password = mysqli_real_escape_string($conn, $_POST['password']);
 
-    $query = "SELECT * FROM customers WHERE username='$user_id' AND password='$password'";
+    $query = "SELECT * FROM customers WHERE email='$email' AND password='$password'";
     $result = mysqli_query($conn, $query);
 
     if (mysqli_num_rows($result) == 1) {
-        $row = mysqli_fetch_assoc($result);
-        $_SESSION['user_id'] = $row['id'];
-        $_SESSION['username'] = $row['username'];
+        $user = mysqli_fetch_assoc($result);
+        $_SESSION['user_id'] = $user['id'];
         header("Location: index_user.php");
         exit();
     } else {
-        $error = "Invalid User ID or Password.";
+        $error = "Invalid email or password.";
     }
 }
 ?>
@@ -26,7 +26,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <head>
   <meta charset="UTF-8">
   <title>Login - FastFood Express</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.css">
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -49,12 +48,24 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
       text-align: center;
       margin-bottom: 20px;
     }
-    input[type=text], input[type=password] {
+    label {
+      font-weight: bold;
+      display: block;
+      margin-top: 10px;
+    }
+    input[type=email], input[type=password] {
       width: 100%;
       padding: 10px;
-      margin: 10px 0;
+      margin-top: 5px;
       border: 1px solid #ccc;
       border-radius: 8px;
+    }
+    .password-toggle {
+      float: right;
+      font-size: 12px;
+      color: #d6001c;
+      cursor: pointer;
+      margin-top: 5px;
     }
     button {
       background: #d6001c;
@@ -65,24 +76,32 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
       border-radius: 8px;
       font-weight: bold;
       cursor: pointer;
+      margin-top: 20px;
     }
     .bottom-link {
       text-align: center;
       margin-top: 15px;
     }
-    .error { color: red; text-align: center; margin-bottom: 10px; }
+    .error {
+      color: red;
+      text-align: center;
+      margin-bottom: 10px;
+    }
   </style>
 </head>
 <body>
 
-<div class="login-container" data-aos="zoom-in">
+<div class="login-container">
   <h2>Login</h2>
-  <?php
-    if ($error) echo "<div class='error'>$error</div>";
-  ?>
+  <?php if ($error) echo "<div class='error'>$error</div>"; ?>
   <form method="post">
-    <input type="text" name="user_id" placeholder="User ID" required>
-    <input type="password" name="password" placeholder="Password" required>
+    <label>Email</label>
+    <input type="email" name="email" required>
+
+    <label>Password</label>
+    <input type="password" name="password" id="password" required>
+    <span class="password-toggle" onclick="togglePassword()">Show</span>
+
     <button type="submit">Login</button>
     <div class="bottom-link">
       Don't have an account? <a href="register.php">Register</a><br>
@@ -91,8 +110,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
   </form>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
-<script>AOS.init();</script>
+<script>
+function togglePassword() {
+  const pwd = document.getElementById("password");
+  const toggle = document.querySelector(".password-toggle");
+  if (pwd.type === "password") {
+    pwd.type = "text";
+    toggle.textContent = "Hide";
+  } else {
+    pwd.type = "password";
+    toggle.textContent = "Show";
+  }
+}
+</script>
 
 </body>
 </html>

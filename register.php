@@ -1,123 +1,202 @@
 <?php
 session_start();
 include 'db.php';
-$error = "";
-$success = "";
+
+$showOTPField = false;
+require 'PHPMailer/src/PHPMailer.php';
+require 'PHPMailer/src/SMTP.php';
+require 'PHPMailer/src/Exception.php';
+
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
+
+$error = $success = "";
+
+function generateOTP($length = 6) {
+    return str_pad(random_int(0, pow(10, $length)-1), $length, '0', STR_PAD_LEFT);
+}
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $user_id = mysqli_real_escape_string($conn, $_POST['user_id']);
     $email    = mysqli_real_escape_string($conn, $_POST['email']);
+    $username = mysqli_real_escape_string($conn, $_POST['username']);
     $phone    = mysqli_real_escape_string($conn, $_POST['phone']);
     $password = mysqli_real_escape_string($conn, $_POST['password']);
-    $hometown = mysqli_real_escape_string($conn, $_POST['hometown']);
+    $confirm  = mysqli_real_escape_string($conn, $_POST['confirm_password']);
+    $question = mysqli_real_escape_string($conn, $_POST['security_question']);
+    $answer   = mysqli_real_escape_string($conn, $_POST['security_answer']);
 
-    // 手机号格式验证
-    if (!preg_match('/^01\d{8,9}$/', $phone)) {
-        $error = "Phone number must start with 01 and have 10-11 digits.";
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $error = "Invalid email format.";
+    } elseif (!preg_match('/^01[0-9]{8,9}$/', $phone)) {
+        $error = "Phone number must start with 01 and be 10–11 digits.";
+    } elseif (!preg_match('/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/', $password)) {
+        $error = "Password must be at least 8 characters with uppercase, lowercase, and number.";
+    } elseif ($password !== $confirm) {
+        $error = "Passwords do not match.";
+    } elseif (empty($question) || empty($answer)) {
+        $error = "Security question and answer are required.";
     } else {
-        // 检查 email 是否已存在
-        $check_query_email = "SELECT * FROM customers WHERE email='$email'";
-        $check_result_email = mysqli_query($conn, $check_query_email);
-
-        // 检查 phone 是否已存在
-        $check_query_phone = "SELECT * FROM customers WHERE phone='$phone'";
-        $check_result_phone = mysqli_query($conn, $check_query_phone);
-
-        if (mysqli_num_rows($check_result_email) > 0) {
-            $error = "Email already registered.";
-        } elseif (mysqli_num_rows($check_result_phone) > 0) {
-            $error = "Phone number already registered.";
+        $check = mysqli_query($conn, "SELECT * FROM customers WHERE email='$email' OR phone='$phone'");
+        if (mysqli_num_rows($check) > 0) {
+            $error = "Email or phone already exists.";
         } else {
-            $query = "INSERT INTO customers (username, email, phone, password, hometown) VALUES ('$user_id', '$email', '$phone', '$password', '$hometown')";
-            if (mysqli_query($conn, $query)) {
-                $success = "Registration successful! You can now login.";
+            $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+            $otp = generateOTP();
+
+            $insert = "INSERT INTO customers (email, username, phone, password, security_question, security_answer, verification_code, is_verified)
+                       VALUES ('$email', '$username', '$phone', '$hashed_password', '$question', '$answer', '$otp', 0)";
+            if (mysqli_query($conn, $insert)) {
+                // Send OTP via email
+                $mail = new PHPMailer(true);
+                try {
+                    $mail->isSMTP();
+                    $mail->Host = 'smtp.gmail.com';
+                    $mail->SMTPAuth = true;
+                    $mail->Username = 'yewshunyaodennis@gmail.com';
+                    $mail->Password = 'ydgu hfqw qgjh daqg';
+                    $mail->SMTPSecure = 'tls';
+                    $mail->Port = 587;
+
+                    $mail->setFrom('yewshunyaodennis@gmail.com', 'FastFood Express');
+                    $mail->addAddress($email);
+                    $mail->isHTML(true);
+                    $mail->Subject = 'Your FastFood Express OTP Code';
+                    $mail->Body    = "Hi $username,<br><br>Your OTP code is: <strong>$otp</strong><br>Please enter this code to verify your email.";
+
+                    $mail->send();
+                    $_SESSION['pending_email'] = $email;
+                    header("Location: verify_code.php");
+                    exit();
+                } catch (Exception $e) {
+                    $error = "Email sending failed. Please try again.";
+                }
             } else {
-                $error = "Something went wrong. Please try again.";
+                $error = "Registration failed. Please try again.";
             }
         }
     }
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <title>Register - FastFood Express</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #fff0f0;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      margin: 0;
-    }
-    .register-container {
-      background: white;
-      padding: 30px 40px;
-      border-radius: 10px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-      width: 350px;
-    }
-    h2 {
-      color: #d6001c;
-      text-align: center;
-      margin-bottom: 20px;
-    }
-    input[type=text], input[type=email], input[type=password] {
-      width: 100%;
-      padding: 10px;
-      margin: 10px 0;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-    }
-    button {
-      background: #d6001c;
-      color: white;
-      width: 100%;
-      padding: 12px;
-      border: none;
-      border-radius: 8px;
-      font-weight: bold;
-      cursor: pointer;
-    }
-    .bottom-link {
-      text-align: center;
-      margin-top: 15px;
-    }
-    .error { color: red; text-align: center; margin-bottom: 10px; }
-    .success { color: green; text-align: center; margin-bottom: 10px; }
-    label {
-      font-weight: bold;
-      color: #d6001c;
-      margin-top: 10px;
-      display: block;
-    }
+    body { background-color: #ffecec; }
+    .card { border: none; border-radius: 12px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    .btn-danger { background-color: #d50000; border: none; }
+    .btn-danger:hover { background-color: #b40000; }
+    .input-group-text.toggle-pass { cursor: pointer; }
+    .otp-container { max-width: 300px; margin: 0 auto; }
   </style>
 </head>
 <body>
-
-<div class="register-container" data-aos="zoom-in">
-  <h2>Register</h2>
-  <?php
-    if ($error) echo "<div class='error'>$error</div>";
-    if ($success) echo "<div class='success'>$success</div>";
-  ?>
-  <form method="post">
-    <input type="text" name="user_id" placeholder="User ID" required>
-    <input type="email" name="email" placeholder="Email" required>
-    <input type="text" name="phone" placeholder="Phone Number (10-11 digits, starts with 01)" pattern="01\d{8,9}" required>
-    <input type="password" name="password" placeholder="Password" required>
-    <input type="text" name="hometown" placeholder="Where is your hometown?" required>
-    <button type="submit">Register</button>
-    <div class="bottom-link">Already have an account? <a href="login.php">Login</a></div>
-  </form>
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-md-6 col-lg-5">
+      <div class="card p-4">
+        <h2 class="text-center text-danger mb-4">Register</h2>
+        
+        <?php if ($error): ?>
+          <div class="alert alert-danger"><?php echo $error; ?></div>
+        <?php endif; ?>
+        
+        <?php if ($success): ?>
+          <div class="alert alert-success"><?php echo $success; ?></div>
+        <?php endif; ?>
+        
+        <?php if (!$showOTPField): ?>
+        <!-- 初始注册表单 -->
+        <form method="post">
+          <div class="mb-3">
+            <label for="email" class="form-label">Email</label>
+            <input type="email" class="form-control" id="email" name="email" required 
+                   value="<?php echo isset($_POST['email']) ? htmlspecialchars($_POST['email']) : ''; ?>">
+          </div>
+          
+          <div class="mb-3">
+            <label for="username" class="form-label">User Name</label>
+            <input type="text" class="form-control" id="username" name="username" required 
+                   value="<?php echo isset($_POST['username']) ? htmlspecialchars($_POST['username']) : ''; ?>">
+          </div>
+          
+          <div class="mb-3">
+            <label for="phone" class="form-label">Phone Number</label>
+            <input type="tel" class="form-control" id="phone" name="phone" required 
+                   value="<?php echo isset($_POST['phone']) ? htmlspecialchars($_POST['phone']) : ''; ?>" 
+                   placeholder="01XXXXXXXX">
+          </div>
+          
+          <div class="mb-3">
+            <label for="password" class="form-label">Password</label>
+            <div class="input-group">
+              <input type="password" class="form-control" id="password" name="password" required>
+              <span class="input-group-text toggle-pass" onclick="togglePassword('password', this)">Show</span>
+            </div>
+            <small class="text-muted">Must contain: 8+ chars, uppercase, lowercase, number</small>
+          </div>
+          
+          <div class="mb-3">
+            <label for="confirm_password" class="form-label">Confirm Password</label>
+            <div class="input-group">
+              <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+              <span class="input-group-text toggle-pass" onclick="togglePassword('confirm_password', this)">Show</span>
+            </div>
+          </div>
+          
+          <div class="mb-3">
+            <label for="security_question" class="form-label">Security Question</label>
+            <input type="text" class="form-control" id="security_question" name="security_question" required 
+                   value="<?php echo isset($_POST['security_question']) ? htmlspecialchars($_POST['security_question']) : ''; ?>" 
+                   placeholder="e.g. What is your pet's name?">
+          </div>
+          
+          <div class="mb-3">
+            <label for="security_answer" class="form-label">Answer</label>
+            <input type="text" class="form-control" id="security_answer" name="security_answer" required 
+                   value="<?php echo isset($_POST['security_answer']) ? htmlspecialchars($_POST['security_answer']) : ''; ?>">
+          </div>
+          
+          <button type="submit" class="btn btn-danger w-100">Send OTP</button>
+        </form>
+        <?php else: ?>
+        <!-- OTP验证表单 -->
+        <form method="post" class="otp-container">
+          <div class="mb-3">
+            <label for="otp" class="form-label">Enter OTP</label>
+            <input type="text" class="form-control text-center" id="otp" name="otp" required 
+                   maxlength="6" pattern="\d{6}" title="Please enter 6-digit OTP">
+            <small class="text-muted">Check your email for the 6-digit code</small>
+          </div>
+          <button type="submit" name="verify_otp" class="btn btn-danger w-100">Verify OTP</button>
+          <div class="text-center mt-3">
+            <a href="register.php" class="text-danger">Resend OTP</a>
+          </div>
+        </form>
+        <?php endif; ?>
+        
+        <div class="text-center mt-3">
+          Already have an account? <a href="login.php" class="text-danger fw-semibold">Login</a>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
-<script>AOS.init();</script>
-
+<script>
+function togglePassword(fieldId, toggleSpan) {
+  const input = document.getElementById(fieldId);
+  if (input.type === "password") {
+    input.type = "text";
+    toggleSpan.textContent = "Hide";
+  } else {
+    input.type = "password";
+    toggleSpan.textContent = "Show";
+  }
+}
+</script>
 </body>
 </html>

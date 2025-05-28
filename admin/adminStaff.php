@@ -5,6 +5,18 @@ if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
 
+
+
+
+
+
+
+// Handle search
+$search_email = '';
+if (isset($_GET['search_email'])) {
+    $search_email = trim($_GET['search_email']);
+}
+
 // Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
@@ -16,7 +28,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = $_POST['email'] ?? '';
     $password = $_POST['password'] ?? '';
     
-
     // Validate inputs
     $errors = [];
     
@@ -25,7 +36,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = "Cannot delete superadmin account";
     }
     
-    if (empty($id)) $errors[] = "Staff ID is required";
     if ($action != 'delete' && empty($name)) $errors[] = "Name is required";
     
     // Validate phone format
@@ -33,48 +43,82 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = "Phone must be 10-11 digits starting with 01";
     }
 
+    // Check for duplicate email (except for current record when editing)
+    if ($action == 'add' || $action == 'edit') {
+        $check_email_sql = "SELECT id FROM staff WHERE email = ? AND deleted = 0";
+        if ($action == 'edit') {
+            $check_email_sql .= " AND id != ?";
+        }
+        
+        $stmt = $conn->prepare($check_email_sql);
+        if ($action == 'edit') {
+            $stmt->bind_param("ss", $email, $id);
+        } else {
+            $stmt->bind_param("s", $email);
+        }
+        $stmt->execute();
+        $stmt->store_result();
+        
+        if ($stmt->num_rows > 0) {
+            $errors[] = "Email address is already in use by another staff member";
+        }
+        $stmt->close();
+    }
+
     if (empty($errors)) {
         if ($action == 'add') {
             // Hash password
             $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-            $sql = "INSERT INTO staff (id, name, role, phone, email, password) 
-                    VALUES (?, ?, ?, ?, ?, ?)";
+            $sql = "INSERT INTO staff (name, role, phone, email, password) 
+                    VALUES (?, ?, ?, ?, ?)";
             $stmt = $conn->prepare($sql);
-            $stmt->bind_param("ssssss", $id, $name, $role, $phone, $email, $hashed_password);
+            $stmt->bind_param("sssss", $name, $role, $phone, $email, $hashed_password);
         } elseif ($action == 'edit') {
-            // Regular edit - no password change
-            $sql = "UPDATE staff SET name=?, role=?, phone=?, email=? WHERE id=?";
-            $stmt = $conn->prepare($sql);
-            $stmt->bind_param("sssss", $name, $role, $phone, $email, $id);
-        } elseif ($action == 'reset_password') {
-            // Password reset only
-            if (empty($password)) {
-                $errors[] = "New password is required";
-            } else {
+            // Handle password update (only if provided)
+            if (!empty($password)) {
                 $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-                $sql = "UPDATE staff SET password=? WHERE id=?";
+                $sql = "UPDATE staff SET name=?, role=?, phone=?, email=?, password=? WHERE id=? AND deleted = 0";
                 $stmt = $conn->prepare($sql);
-                $stmt->bind_param("ss", $hashed_password, $id);
+                $stmt->bind_param("ssssss", $name, $role, $phone, $email, $hashed_password, $id);
+            } else {
+                $sql = "UPDATE staff SET name=?, role=?, phone=?, email=? WHERE id=? AND deleted = 0";
+                $stmt = $conn->prepare($sql);
+                $stmt->bind_param("sssss", $name, $role, $phone, $email, $id);
             }
         } elseif ($action == 'delete') {
-            $sql = "DELETE FROM staff WHERE id=?";
+            // Soft delete - set deleted flag to 1
+            $sql = "UPDATE staff SET deleted = 1 WHERE id=?";
             $stmt = $conn->prepare($sql);
             $stmt->bind_param("s", $id);
         }
 
-        if (empty($errors)) {
-            if ($stmt->execute()) {
-                $success = "Operation completed successfully!";
-            } else {
-                $errors[] = "Error: " . $stmt->error;
-            }
-            $stmt->close();
+        if ($stmt->execute()) {
+            $success = "Operation completed successfully!";
+            // Clear search after successful operation
+            $search_email = '';
+        } else {
+            $errors[] = "Error: " . $stmt->error;
         }
+        $stmt->close();
     }
 }
 
-// Load all staff
-$staffList = $conn->query("SELECT * FROM staff ORDER BY id");
+// Build the staff query based on search
+$staff_query = "SELECT * FROM staff WHERE deleted = 0";
+if (!empty($search_email)) {
+    $staff_query .= " AND email LIKE ?";
+    $search_param = "%$search_email%";
+}
+
+$staff_query .= " ORDER BY name";
+
+// Prepare and execute the query
+$stmt = $conn->prepare($staff_query);
+if (!empty($search_email)) {
+    $stmt->bind_param("s", $search_param);
+}
+$stmt->execute();
+$staffList = $stmt->get_result();
 ?>
 
 <!DOCTYPE html>
@@ -86,13 +130,11 @@ $staffList = $conn->query("SELECT * FROM staff ORDER BY id");
     <title>Staff Management</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
     <style>
-       * {
+               * {
             padding: 0;
             margin: 0;
             box-sizing: border-box;
             font-family: 'poppins', sans-serif;
-
-
         }
 
         .user {
@@ -151,7 +193,6 @@ $staffList = $conn->query("SELECT * FROM staff ORDER BY id");
             cursor: pointer;
         }
 
-
         .list {
             position: fixed;
             top: 60px;
@@ -159,18 +200,15 @@ $staffList = $conn->query("SELECT * FROM staff ORDER BY id");
             height: 100%;
             background: rgba(220, 73, 73, 0.897);
             overflow-x: hidden;
-
         }
 
         .list ul {
             margin-top: 20px;
-
         }
 
         .list ul li {
             width: 100%;
             list-style: none;
-
         }
 
         .list ul li a {
@@ -180,24 +218,17 @@ $staffList = $conn->query("SELECT * FROM staff ORDER BY id");
             height: 60px;
             display: flex;
             align-items: center;
-
-
         }
 
         .list ul li a i {
-
             min-width: 60px;
             font-size: 24px;
             text-align: center;
-
         }
 
         .list ul li:hover {
             background: rgb(227, 125, 125);
         }
-
-
-      
 
         .user-dropdown {
             position: relative;
@@ -236,7 +267,6 @@ $staffList = $conn->query("SELECT * FROM staff ORDER BY id");
         .user-dropdown.show .dropdown-content {
             display: block;
         }
-
         
         .main {
             position: absolute;
@@ -464,13 +494,41 @@ $staffList = $conn->query("SELECT * FROM staff ORDER BY id");
         .show {
             display: block;
         }
-
-        .password-reset-form {
-            display: none;
-            margin-top: 20px;
-            padding: 15px;
-            background-color: #f1f1f1;
+        .search-box {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        .search-box input {
+            padding: 10px 15px;
+            border: 1px solid #ddd;
             border-radius: 6px;
+            font-size: 14px;
+            width: 300px;
+        }
+        .search-box button {
+            padding: 10px 20px;
+            background-color: #dc4949;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .search-box button:hover {
+            background-color: #c53737;
+        }
+        .clear-search {
+            padding: 10px 15px;
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .clear-search:hover {
+            background-color: #5a6268;
         }
     </style>
 </head>
@@ -479,12 +537,11 @@ $staffList = $conn->query("SELECT * FROM staff ORDER BY id");
     <div class="top">
         <div class="topbar">
             <div class="logo">
-                <h2>KFG FOOD</h2>
+                <h2>FastFood Express</h2>
             </div>
             <div class="search">
                 <input type="text" id="search" placeholder="search here">
                 <label for="search"><i class="fas fa-search"></i></label>
-
             </div>
             <div class="user-dropdown" id="userDropdown">
                 <img src="img/72-729716_user-avatar-png-graphic-free-download-icon.png" alt="User Avatar">
@@ -493,13 +550,11 @@ $staffList = $conn->query("SELECT * FROM staff ORDER BY id");
                     <a href="adminlogout.php">Logout</a>
                 </div>
             </div>
-
         </div>
-
     </div>
 
     <div class="list">
-    <ul>
+        <ul>
             <li>
                 <a href="adminhome.html">
                     <i class="fas fa-home"></i>
@@ -509,7 +564,7 @@ $staffList = $conn->query("SELECT * FROM staff ORDER BY id");
         </ul>
         <ul>
             <li>
-                <a href="adminorder.html">
+                <a href="adminorder.php">
                     <i class="fas fa-receipt"></i>
                     <h4>ORDERS</h4>
                 </a>
@@ -572,10 +627,21 @@ $staffList = $conn->query("SELECT * FROM staff ORDER BY id");
             </div>
         <?php endif; ?>
 
+        <!-- Search Box -->
+        <div class="search-box">
+            <form method="get" action="">
+                <input type="text" name="search_email" placeholder="Search by email..." value="<?= htmlspecialchars($search_email) ?>">
+                <button type="submit"><i class="fas fa-search"></i> Search</button>
+                <?php if (!empty($search_email)): ?>
+                    <a href="adminStaff.php" class="clear-search">Clear Search</a>
+                <?php endif; ?>
+            </form>
+        </div>
+
         <table class="staff-table">
             <thead>
                 <tr>
-                    <th>ID</th>
+                    <th>No.</th>
                     <th>Name</th>
                     <th>Role</th>
                     <th>Phone</th>
@@ -584,15 +650,17 @@ $staffList = $conn->query("SELECT * FROM staff ORDER BY id");
                 </tr>
             </thead>
             <tbody>
-                <?php while($row = $staffList->fetch_assoc()): ?>
+                <?php 
+                $counter = 1;
+                while($row = $staffList->fetch_assoc()): ?>
                     <tr>
-                        <td><?= htmlspecialchars($row['id']) ?></td>
+                        <td><?= $counter++ ?></td>
                         <td><?= htmlspecialchars($row['name']) ?></td>
                         <td>
                             <?php 
                             $badgeClass = 'badge-staff';
                             if ($row['id'] == '1') $badgeClass = 'badge-superadmin';
-                            elseif ($row['usertype'] == 'admin') $badgeClass = 'badge-admin';
+                            elseif ($row['role'] == 'admin') $badgeClass = 'badge-admin';
                             ?>
                             <span class="status-badge <?= $badgeClass ?>">
                                 <?= htmlspecialchars($row['role']) ?>
@@ -614,27 +682,27 @@ $staffList = $conn->query("SELECT * FROM staff ORDER BY id");
                                         '<?= htmlspecialchars($row['email'], ENT_QUOTES) ?>'
                                     )">Edit Profile</button>
                                     
-                                    <button onclick="showResetPasswordForm('<?= $row['id'] ?>')">Reset Password</button>
-                                    
                                     <?php if ($row['id'] != '1'): ?>
-                                        <button onclick="confirmDelete('<?= $row['id'] ?>')" style="color: #dc3545;">Delete</button>
+                                        <button onclick="confirmDelete('<?= $row['id'] ?>', '<?= htmlspecialchars($row['name'], ENT_QUOTES) ?>')" style="color: #dc3545;">Delete</button>
                                     <?php endif; ?>
                                 </div>
                             </div>
                         </td>
                     </tr>
                 <?php endwhile; ?>
+                <?php if ($staffList->num_rows === 0): ?>
+                    <tr>
+                        <td colspan="6" style="text-align: center;">No staff members found<?= !empty($search_email) ? ' matching your search' : '' ?></td>
+                    </tr>
+                <?php endif; ?>
             </tbody>
         </table>
 
         <div class="action-form">
             <h3 class="form-title">Staff Actions</h3>
             <form method="post" id="staffForm">
+                <input type="hidden" id="id" name="id">
                 <div class="form-grid">
-                    <div class="form-group">
-                        <label for="id">Staff ID</label>
-                        <input type="text" id="id" name="id" class="form-control" required>
-                    </div>
                     <div class="form-group">
                         <label for="name">Full Name</label>
                         <input type="text" id="name" name="name" class="form-control" required>
@@ -644,6 +712,7 @@ $staffList = $conn->query("SELECT * FROM staff ORDER BY id");
                         <select id="role" name="role" class="form-control" required>
                             <option value="IT Technician">IT Technician</option>
                             <option value="IT Support">IT Support</option>
+                            <option value="admin">Admin</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -657,7 +726,7 @@ $staffList = $conn->query("SELECT * FROM staff ORDER BY id");
                     <div class="form-group">
                         <label for="password">Password</label>
                         <input type="password" id="password" name="password" class="form-control" required>
-                        <small>Required for new staff only</small>
+                        <small id="passwordHelp" class="form-text text-muted">Required for new staff, leave blank to keep current when editing</small>
                     </div>
                 </div>
                 
@@ -667,25 +736,10 @@ $staffList = $conn->query("SELECT * FROM staff ORDER BY id");
                     <button type="button" onclick="clearForm()" class="btn">Clear</button>
                 </div>
             </form>
-            
-            <div id="passwordResetForm" class="password-reset-form">
-                <h4>Reset Password</h4>
-                <form method="post" id="resetForm">
-                    <input type="hidden" id="reset_id" name="id">
-                    <div class="form-group">
-                        <label for="new_password">New Password</label>
-                        <input type="password" id="new_password" name="password" class="form-control" required>
-                    </div>
-                    <div class="action-buttons">
-                        <button type="submit" name="action" value="reset_password" class="btn btn-warning">Reset Password</button>
-                        <button type="button" onclick="hideResetPasswordForm()" class="btn">Cancel</button>
-                    </div>
-                </form>
-            </div>
         </div>
     </div>
 
-    <script>
+     <script>
         // Toggle dropdown menu
         function toggleDropdown(button) {
             const dropdown = button.nextElementSibling;
@@ -716,7 +770,7 @@ $staffList = $conn->query("SELECT * FROM staff ORDER BY id");
             document.getElementById('phone').value = phone;
             document.getElementById('email').value = email;
             document.getElementById('password').required = false;
-            document.getElementById('password').placeholder = "(Leave blank to keep current)";
+            document.getElementById('passwordHelp').textContent = "Leave blank to keep current password";
             
             // Scroll to form
             document.querySelector('.action-form').scrollIntoView({ behavior: 'smooth' });
@@ -731,32 +785,31 @@ $staffList = $conn->query("SELECT * FROM staff ORDER BY id");
         function clearForm() {
             document.getElementById('staffForm').reset();
             document.getElementById('password').required = true;
-            document.getElementById('password').placeholder = "";
-        }
-        
-        // Show password reset form
-        function showResetPasswordForm(id) {
-            document.getElementById('reset_id').value = id;
-            document.getElementById('passwordResetForm').style.display = 'block';
-            
-            // Close dropdown
-            document.querySelectorAll('.dropdown-content').forEach(item => {
-                item.classList.remove('show');
-            });
-        }
-        
-        // Hide password reset form
-        function hideResetPasswordForm() {
-            document.getElementById('passwordResetForm').style.display = 'none';
-            document.getElementById('resetForm').reset();
+            document.getElementById('passwordHelp').textContent = "Required for new staff, leave blank to keep current when editing";
+            document.getElementById('id').value = "";
         }
         
         // Confirm before deleting
-        function confirmDelete(id) {
-            if (confirm('Are you sure you want to delete this staff member?')) {
-                document.getElementById('id').value = id;
-                document.getElementById('staffForm').action.value = 'delete';
-                document.getElementById('staffForm').submit();
+        function confirmDelete(id, name) {
+            if (confirm(`Are you sure you want to delete staff member "${name}"? This action will remove their access but preserve their records.`)) {
+                const form = document.createElement('form');
+                form.method = 'post';
+                form.action = '';
+                
+                const idInput = document.createElement('input');
+                idInput.type = 'hidden';
+                idInput.name = 'id';
+                idInput.value = id;
+                
+                const actionInput = document.createElement('input');
+                actionInput.type = 'hidden';
+                actionInput.name = 'action';
+                actionInput.value = 'delete';
+                
+                form.appendChild(idInput);
+                form.appendChild(actionInput);
+                document.body.appendChild(form);
+                form.submit();
             }
         }
         
@@ -772,15 +825,15 @@ $staffList = $conn->query("SELECT * FROM staff ORDER BY id");
         });
         
         const dropdown = document.getElementById('userDropdown');
-    dropdown.addEventListener('click', function (event) {
-      event.stopPropagation();
-      this.classList.toggle('show');
-    });
-  
-    // Close dropdown if clicked outside
-    window.addEventListener('click', function () {
-      dropdown.classList.remove('show');
-    });
+        dropdown.addEventListener('click', function (event) {
+            event.stopPropagation();
+            this.classList.toggle('show');
+        });
+    
+        // Close dropdown if clicked outside
+        window.addEventListener('click', function () {
+            dropdown.classList.remove('show');
+        });
     </script>
 </body>
 </html>
