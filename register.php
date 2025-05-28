@@ -15,6 +15,7 @@ function generateOTP($length = 6) {
     return str_pad(random_int(0, pow(10, $length)-1), $length, '0', STR_PAD_LEFT);
 }
 
+// Handle Registration
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $email    = mysqli_real_escape_string($conn, $_POST['email']);
     $username = mysqli_real_escape_string($conn, $_POST['username']);
@@ -22,6 +23,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $password = mysqli_real_escape_string($conn, $_POST['password']);
     $confirm  = mysqli_real_escape_string($conn, $_POST['confirm_password']);
 
+    // Validation
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = "Invalid email format.";
     } elseif (!preg_match('/^011\d{8}$/', $phone) && !preg_match('/^01[2-9]\d{7}$/', $phone)) {
@@ -31,9 +33,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     } elseif ($password !== $confirm) {
         $error = "Passwords do not match.";
     } else {
-        $check = mysqli_query($conn, "SELECT * FROM customers WHERE email='$email' OR phone='$phone'");
+        // 检查 email, phone 和 username 是否已存在
+        $check = mysqli_query($conn, "SELECT * FROM customers WHERE email='$email' OR phone='$phone' OR username='$username'");
         if (mysqli_num_rows($check) > 0) {
-            $error = "Email or phone already exists.";
+            $error = "Email, phone number, or username already exists.";
         } else {
             $hashed_password = password_hash($password, PASSWORD_DEFAULT);
             $otp = generateOTP();
@@ -72,7 +75,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
 }
 ?>
-
 
 <!DOCTYPE html>
 <html lang="en">
