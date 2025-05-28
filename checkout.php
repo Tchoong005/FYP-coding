@@ -101,27 +101,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $delivery_fee = ($delivery_method === 'delivery') ? 6.00 : 0.00;
                 $final_total = $total_price + $delivery_fee;
                 
-                // 根据支付方式设置状态
-                $status = 'pending';
+                // 根据支付方式设置支付状态
+                $payment_status = 'pending';
                 if ($payment_method === 'cash') {
-                    $status = 'cash_on_delivery';
+                    $payment_status = 'cash_on_delivery';
                 } elseif ($payment_method === 'counter') {
-                    $status = 'pay_at_counter';
+                    $payment_status = 'pay_at_counter';
                 }
                 
+                // 订单状态始终为pending
+                $order_status = 'pending';
+                
+                // 修改SQL语句：将status改为payment_status，添加order_status字段
                 $sql_order = "INSERT INTO orders (user_id, recipient_name, recipient_phone, recipient_address, 
-                              delivery_method, total_price, delivery_fee, final_total, payment_method, status, created_at)
-                              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                              delivery_method, total_price, delivery_fee, final_total, payment_method, 
+                              payment_status, order_status, created_at)
+                              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
                 $stmt = $conn->prepare($sql_order);
                 if (!$stmt) {
                     throw new Exception("Prepare failed: " . $conn->error);
                 }
                 
-                // 绑定参数（注意三个价格字段使用'd'表示double）
-                $stmt->bind_param("issssdddsss", $user_id, $recipient_name, $recipient_phone,
+                // 修改绑定参数：增加order_status参数，类型字符串增加一个"s"
+                $stmt->bind_param("issssdddssss", $user_id, $recipient_name, $recipient_phone,
                     $recipient_address, $delivery_method, $total_price, $delivery_fee, $final_total, 
-                    $payment_method, $status, $now);
+                    $payment_method, $payment_status, $order_status, $now);
                 
                 if (!$stmt->execute()) {
                     throw new Exception("Execute failed: " . $stmt->error);
@@ -130,7 +135,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $order_id = $conn->insert_id;
                 $stmt->close();
 
-                // 添加订单项
+                // 添加订单项（保持不变）
                 foreach ($cart as $item) {
                     $pid = (int)$item['product_id'];
                     // 确保产品信息存在
@@ -209,41 +214,81 @@ $final_total = $total_price + $delivery_fee;
 <head>
     <meta charset="UTF-8">
     <title>Checkout - FastFood Express</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body { 
-            font-family: 'Arial', sans-serif; 
-            margin: 0; 
-            background: #f5f5f5; 
-            color: #333;
+        :root {
+            --primary: #d6001c;
+            --primary-dark: #b80018;
+            --secondary: #ff9800;
+            --light-bg: #f8f9fa;
+            --dark-bg: #222;
+            --text: #333;
+            --text-light: #666;
+            --border: #e0e0e0;
+            --success: #4caf50;
+            --warning: #ff9800;
+            --danger: #f44336;
         }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f7fa;
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        /* 🔝 更新后的顶部导航栏 */
         .topbar {
-            background-color: #222;
+            background-color: var(--dark-bg);
             color: white;
             display: flex;
             justify-content: space-between;
             align-items: center;
             padding: 15px 30px;
             flex-wrap: wrap;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            position: sticky;
+            top: 0;
+            z-index: 100;
         }
+
         .topbar .logo {
             font-size: 24px;
             font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
+
+        .topbar .logo span {
+            color: var(--primary);
+        }
+
         .topbar .nav-links {
             display: flex;
             align-items: center;
             gap: 20px;
         }
+
         .topbar a {
             color: white;
             text-decoration: none;
             font-weight: bold;
             padding: 0 10px;
             line-height: 1.5;
+            transition: color 0.3s;
         }
+
         .topbar a:hover {
-            text-decoration: underline;
+            color: var(--primary);
         }
+
         .cart-icon {
             position: relative;
             cursor: pointer;
@@ -252,12 +297,13 @@ $final_total = $total_price + $delivery_fee;
             line-height: 1.5;
             user-select: none;
         }
+
         .cart-icon::after {
             content: attr(data-count);
             position: absolute;
             top: -6px;
             right: -10px;
-            background: red;
+            background: var(--primary);
             color: white;
             border-radius: 12px;
             padding: 2px 8px;
@@ -268,6 +314,87 @@ $final_total = $total_price + $delivery_fee;
             box-sizing: border-box;
             display: inline-block;
         }
+
+        .dropdown {
+            position: relative;
+            display: inline-block;
+        }
+
+        .dropbtn {
+            background-color: transparent;
+            color: white;
+            font-weight: bold;
+            padding: 0 10px;
+            line-height: 1.5;
+            font-size: inherit;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: color 0.3s;
+        }
+
+        .dropbtn:hover {
+            color: var(--primary);
+        }
+
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            background-color: #333;
+            min-width: 180px;
+            box-shadow: 0px 8px 16px rgba(0,0,0,0.2);
+            z-index: 1;
+            border-radius: 4px;
+            overflow: hidden;
+            top: 100%;
+            left: 0;
+        }
+
+        .dropdown-content a {
+            color: white;
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+            font-size: 14px;
+            border-bottom: 1px solid #444;
+            transition: background-color 0.3s;
+        }
+
+        .dropdown-content a:hover {
+            background-color: var(--primary);
+        }
+
+        .dropdown:hover .dropdown-content {
+            display: block;
+        }
+
+        .dropdown-icon {
+            font-size: 14px;
+            transition: transform 0.3s;
+        }
+
+        .dropdown:hover .dropdown-icon {
+            transform: rotate(180deg);
+        }
+
+        .active-link {
+            position: relative;
+        }
+
+        .active-link::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 10px;
+            right: 10px;
+            height: 3px;
+            background: var(--primary);
+            border-radius: 2px;
+        }
+
+        /* 结账页面特有样式 */
         main {
             max-width: 1200px; 
             margin: 30px auto; 
@@ -275,6 +402,7 @@ $final_total = $total_price + $delivery_fee;
             display: flex;
             gap: 30px;
         }
+        
         .left-column {
             flex: 1;
             background: white;
@@ -282,6 +410,7 @@ $final_total = $total_price + $delivery_fee;
             padding: 25px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.05);
         }
+        
         .right-column {
             width: 400px;
             background: white;
@@ -289,6 +418,7 @@ $final_total = $total_price + $delivery_fee;
             padding: 25px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.05);
         }
+        
         h2 { 
             color: #d6001c; 
             font-size: 24px; 
@@ -296,47 +426,57 @@ $final_total = $total_price + $delivery_fee;
             padding-bottom: 10px;
             border-bottom: 1px solid #eee;
         }
+        
         h3 {
             font-size: 18px;
             color: #555;
             margin-top: 0;
         }
+        
         .order-item {
             display: flex;
             gap: 15px;
             padding: 15px 0;
             border-bottom: 1px solid #eee;
         }
+        
         .order-item:last-child {
             border-bottom: none;
         }
+        
         .item-image {
             width: 80px;
             height: 80px;
             border-radius: 4px;
             object-fit: cover;
         }
+        
         .item-details {
             flex: 1;
         }
+        
         .item-name {
             font-weight: bold;
             margin-bottom: 5px;
         }
+        
         .item-price {
             color: #d6001c;
             font-weight: bold;
         }
+        
         .item-extras {
             font-size: 13px;
             color: #666;
             margin-top: 5px;
         }
+        
         .delivery-method {
             display: flex;
             gap: 15px;
             margin: 15px 0;
         }
+        
         .delivery-option {
             flex: 1;
             padding: 10px;
@@ -345,19 +485,23 @@ $final_total = $total_price + $delivery_fee;
             text-align: center;
             cursor: pointer;
         }
+        
         .delivery-option.selected {
             border-color: #d6001c;
             background: #fff0f0;
         }
+        
         .form-group {
             margin-bottom: 15px;
         }
+        
         label {
             display: block;
             margin-bottom: 5px;
             font-weight: bold;
             font-size: 14px;
         }
+        
         input[type="text"],
         input[type="tel"],
         textarea,
@@ -368,10 +512,12 @@ $final_total = $total_price + $delivery_fee;
             border-radius: 4px;
             font-family: inherit;
         }
+        
         textarea {
             height: 80px;
             resize: vertical;
         }
+        
         .payment-option {
             display: flex;
             align-items: center;
@@ -381,33 +527,40 @@ $final_total = $total_price + $delivery_fee;
             margin-bottom: 10px;
             cursor: pointer;
         }
+        
         .payment-option.selected {
             border-color: #d6001c;
             background: #fff0f0;
         }
+        
         .payment-option input {
             margin-right: 10px;
         }
+        
         .payment-option.disabled {
             opacity: 0.5;
             cursor: not-allowed;
             pointer-events: none;
         }
+        
         .payment-icon {
             margin-right: 10px;
             font-size: 20px;
         }
+        
         .summary-row {
             display: flex;
             justify-content: space-between;
             padding: 8px 0;
             border-bottom: 1px solid #eee;
         }
+        
         .summary-total {
             font-weight: bold;
             font-size: 18px;
             color: #d6001c;
         }
+        
         .btn {
             background: #d6001c;
             color: white;
@@ -420,16 +573,20 @@ $final_total = $total_price + $delivery_fee;
             width: 100%;
             transition: background 0.3s;
         }
+        
         .btn:hover {
             background: #b50018;
         }
+        
         .btn-update {
             background: #666;
             margin-top: 10px;
         }
+        
         .btn-update:hover {
             background: #555;
         }
+        
         .error {
             color: #d6001c;
             background: #fff0f0;
@@ -437,6 +594,7 @@ $final_total = $total_price + $delivery_fee;
             border-radius: 4px;
             margin-bottom: 15px;
         }
+        
         .footer {
             background-color: #eee;
             text-align: center;
@@ -444,6 +602,7 @@ $final_total = $total_price + $delivery_fee;
             font-size: 14px;
             margin-top: 40px;
         }
+        
         /* Message overlay styles */
         .message-overlay {
             position: fixed;
@@ -460,10 +619,12 @@ $final_total = $total_price + $delivery_fee;
             visibility: hidden;
             transition: all 0.3s;
         }
+        
         .message-overlay.active {
             opacity: 1;
             visibility: visible;
         }
+        
         .message-box {
             background: white;
             padding: 30px;
@@ -472,13 +633,16 @@ $final_total = $total_price + $delivery_fee;
             max-width: 400px;
             width: 90%;
         }
+        
         .message-box h3 {
             color: #d6001c;
             margin-bottom: 20px;
         }
+        
         .message-box p {
             margin-bottom: 20px;
         }
+        
         .spinner {
             border: 4px solid rgba(0,0,0,0.1);
             border-radius: 50%;
@@ -488,23 +652,64 @@ $final_total = $total_price + $delivery_fee;
             animation: spin 1s linear infinite;
             margin: 0 auto 20px;
         }
+        
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .topbar {
+                padding: 12px 15px;
+            }
+            
+            .nav-links {
+                gap: 10px;
+            }
+            
+            main {
+                flex-direction: column;
+            }
+            
+            .right-column {
+                width: 100%;
+            }
+            
+            .delivery-method {
+                flex-direction: column;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .topbar .logo {
+                font-size: 20px;
+            }
+        }
     </style>
 </head>
 <body>
+<!-- 🔝 更新后的顶部导航栏 -->
 <div class="topbar">
-    <div class="logo">🍔 FastFood Express</div>
+    <div class="logo"><i class="fas fa-hamburger"></i> Fast<span>Food</span> Express</div>
     <div class="nav-links">
         <a href="index_user.php">Home</a>
-        <a href="products_user.php">Products</a>
+        
+        <!-- Orders Dropdown -->
+        <div class="dropdown">
+            <button class="dropbtn">Orders <span class="dropdown-icon">▼</span></button>
+            <div class="dropdown-content">
+                <a href="products_user.php">Products</a>
+                <a href="order_trace.php">Order Trace</a>
+                <a href="order_history.php">Order History</a>
+            </div>
+        </div>
+        
         <a href="profile.php">Profile</a>
         <a href="about.php">About</a>
         <a href="contact.php">Contact</a>
         <a href="logout.php">Logout</a>
-        <div class="cart-icon" data-count="<?php echo $cart_count; ?>" onclick="location.href='order_list.php'">🛒</div>
+        <div class="cart-icon" data-count="<?php echo $cart_count; ?>" onclick="location.href='order_list.php'"><i class="fas fa-shopping-cart"></i></div>
     </div>
 </div>
 

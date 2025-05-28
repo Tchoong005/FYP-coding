@@ -13,7 +13,7 @@ function esc($str) {
     return htmlspecialchars($str, ENT_QUOTES, 'UTF-8');
 }
 
-// 处理购物车数量增减（无需修改）
+// 处理购物车数量增减
 if (isset($_GET['action'], $_GET['key']) && ($_GET['type'] ?? '') === 'session') {
     $key = $_GET['key'];
     $cart = $_SESSION['cart'] ?? [];
@@ -37,7 +37,7 @@ if (isset($_GET['action'], $_GET['key']) && ($_GET['type'] ?? '') === 'session')
     exit;
 }
 
-// 处理编辑订单项（无需修改）
+// 处理编辑订单项
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'edit_item') {
     $key = $_POST['edit_key'] ?? '';
     $sauce = $_POST['edit_sauce'] ?? '';
@@ -53,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 }
 
-// 获取购物车数据（无需修改）
+// 获取购物车数据
 $cart = $_SESSION['cart'] ?? [];
 $cart_count = array_sum(array_column($cart, 'quantity'));
 ?>
@@ -62,36 +62,81 @@ $cart_count = array_sum(array_column($cart, 'quantity'));
 <head>
 <meta charset="UTF-8" />
 <title>Your Order List</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style>
-body { font-family: Arial, sans-serif; background: #fff; margin: 0; }
+:root {
+    --primary: #d6001c;
+    --primary-dark: #b80018;
+    --secondary: #ff9800;
+    --light-bg: #f8f9fa;
+    --dark-bg: #222;
+    --text: #333;
+    --text-light: #666;
+    --border: #e0e0e0;
+    --success: #4caf50;
+    --warning: #ff9800;
+    --danger: #f44336;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f5f7fa;
+    color: var(--text);
+    line-height: 1.6;
+}
+
+/* 🔝 Topbar - 与products_user.php相同 */
 .topbar {
-    background-color: #222;
+    background-color: var(--dark-bg);
     color: white;
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: 15px 30px;
     flex-wrap: wrap;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    position: sticky;
+    top: 0;
+    z-index: 100;
 }
+
 .topbar .logo {
     font-size: 24px;
     font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
+
+.topbar .logo span {
+    color: var(--primary);
+}
+
 .topbar .nav-links {
     display: flex;
     align-items: center;
     gap: 20px;
 }
+
 .topbar a {
     color: white;
     text-decoration: none;
     font-weight: bold;
     padding: 0 10px;
     line-height: 1.5;
+    transition: color 0.3s;
 }
+
 .topbar a:hover {
-    text-decoration: underline;
+    color: var(--primary);
 }
+
 .cart-icon {
     position: relative;
     cursor: pointer;
@@ -100,12 +145,13 @@ body { font-family: Arial, sans-serif; background: #fff; margin: 0; }
     line-height: 1.5;
     user-select: none;
 }
+
 .cart-icon::after {
     content: attr(data-count);
     position: absolute;
     top: -6px;
     right: -10px;
-    background: red;
+    background: var(--primary);
     color: white;
     border-radius: 12px;
     padding: 2px 8px;
@@ -116,16 +162,99 @@ body { font-family: Arial, sans-serif; background: #fff; margin: 0; }
     box-sizing: border-box;
     display: inline-block;
 }
+
+.dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.dropbtn {
+    background-color: transparent;
+    color: white;
+    font-weight: bold;
+    padding: 0 10px;
+    line-height: 1.5;
+    font-size: inherit;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: color 0.3s;
+}
+
+.dropbtn:hover {
+    color: var(--primary);
+}
+
+.dropdown-content {
+    display: none;
+    position: absolute;
+    background-color: #333;
+    min-width: 180px;
+    box-shadow: 0px 8px 16px rgba(0,0,0,0.2);
+    z-index: 1;
+    border-radius: 4px;
+    overflow: hidden;
+    top: 100%;
+    left: 0;
+}
+
+.dropdown-content a {
+    color: white;
+    padding: 12px 16px;
+    text-decoration: none;
+    display: block;
+    font-size: 14px;
+    border-bottom: 1px solid #444;
+    transition: background-color 0.3s;
+}
+
+.dropdown-content a:hover {
+    background-color: var(--primary);
+}
+
+.dropdown:hover .dropdown-content {
+    display: block;
+}
+
+.dropdown-icon {
+    font-size: 14px;
+    transition: transform 0.3s;
+}
+
+.dropdown:hover .dropdown-icon {
+    transform: rotate(180deg);
+}
+
+.active-link {
+    position: relative;
+}
+
+.active-link::after {
+    content: '';
+    position: absolute;
+    bottom: -5px;
+    left: 10px;
+    right: 10px;
+    height: 3px;
+    background: var(--primary);
+    border-radius: 2px;
+}
+
+/* 购物车页面特有样式 */
 main {
     max-width: 900px;
     margin: 30px auto;
     padding: 0 20px;
 }
+
 h2 {
     color: #d6001c;
     font-size: 28px;
     margin-bottom: 30px;
 }
+
 .order-item {
     display: flex;
     justify-content: space-between;
@@ -138,6 +267,7 @@ h2 {
     box-shadow: 0 1px 6px rgba(0,0,0,0.1);
     flex-wrap: wrap;
 }
+
 .order-info {
     display: flex;
     align-items: center;
@@ -145,23 +275,27 @@ h2 {
     flex: 1;
     min-width: 250px;
 }
+
 .order-info img {
     width: 100px;
     height: 100px;
     object-fit: cover;
     border-radius: 8px;
 }
+
 .order-details strong {
     font-size: 18px;
     color: #333;
     display: block;
 }
+
 .order-details span {
     display: block;
     font-size: 14px;
     color: #555;
     margin-top: 4px;
 }
+
 .order-actions {
     display: flex;
     align-items: center;
@@ -169,6 +303,7 @@ h2 {
     flex-shrink: 0;
     margin-top: 12px;
 }
+
 .order-actions a {
     display: inline-flex;
     align-items: center;
@@ -183,12 +318,14 @@ h2 {
     text-decoration: none;
     user-select: none;
 }
+
 .order-actions a.edit {
     width: auto;
     border-radius: 6px;
     padding: 6px 12px;
     font-size: 14px;
 }
+
 .qty {
     font-weight: bold;
     font-size: 16px;
@@ -196,6 +333,7 @@ h2 {
     text-align: center;
     color: #222;
 }
+
 .total {
     font-size: 22px;
     font-weight: bold;
@@ -205,10 +343,12 @@ h2 {
     border-top: 2px solid #ccc;
     padding-top: 15px;
 }
+
 .checkout-btn {
     text-align: right;
     margin-top: 20px;
 }
+
 .checkout-btn button {
     background: #d6001c;
     color: white;
@@ -219,10 +359,12 @@ h2 {
     border: none;
     cursor: pointer;
 }
+
 .checkout-btn button:disabled {
     background: #999;
     cursor: not-allowed;
 }
+
 .loading-overlay {
     position: fixed;
     top:0; left:0; right:0; bottom:0;
@@ -236,6 +378,7 @@ h2 {
     display: none;
     z-index: 9999;
 }
+
 .footer {
     background-color: #eee;
     text-align: center;
@@ -254,6 +397,7 @@ h2 {
     justify-content: center;
     z-index: 10000;
 }
+
 #editModal .modal-content {
     background: white;
     border-radius: 8px;
@@ -262,17 +406,20 @@ h2 {
     box-sizing: border-box;
     box-shadow: 0 4px 12px rgba(0,0,0,0.3);
 }
+
 #editModal h3 {
     margin-top: 0;
     margin-bottom: 15px;
     color: #d6001c;
 }
+
 #editModal label {
     display: block;
     margin-top: 12px;
     font-weight: bold;
     font-size: 14px;
 }
+
 #editModal input[type="text"],
 #editModal select,
 #editModal textarea {
@@ -284,13 +431,16 @@ h2 {
     border: 1px solid #ccc;
     border-radius: 4px;
 }
+
 #editModal textarea {
     resize: vertical;
 }
+
 #editModal .modal-buttons {
     margin-top: 20px;
     text-align: right;
 }
+
 #editModal button {
     background: #d6001c;
     color: white;
@@ -301,29 +451,78 @@ h2 {
     cursor: pointer;
     margin-left: 10px;
 }
+
 #editModal button.cancel-btn {
     background: #999;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .topbar {
+        padding: 12px 15px;
+    }
+    
+    .nav-links {
+        gap: 10px;
+    }
+    
+    .order-grid {
+        gap: 15px;
+        padding: 0 10px;
+    }
+    
+    .order-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .order-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+}
+
+@media (max-width: 480px) {
+    .topbar .logo {
+        font-size: 20px;
+    }
+    
+    .order-item {
+        width: 100%;
+    }
 }
 </style>
 </head>
 <body>
+
+<!-- 🔝 更新后的顶部导航栏 -->
 <div class="topbar">
-    <div class="logo">🍔 FastFood Express</div>
+    <div class="logo"><i class="fas fa-hamburger"></i> Fast<span>Food</span> Express</div>
     <div class="nav-links">
         <a href="index_user.php">Home</a>
-        <a href="products_user.php">Products</a>
+        
+        <!-- Orders Dropdown -->
+        <div class="dropdown">
+            <button class="dropbtn">Orders <span class="dropdown-icon">▼</span></button>
+            <div class="dropdown-content">
+                <a href="products_user.php">Products</a>
+                <a href="order_trace.php">Order Trace</a>
+                <a href="order_history.php">Order History</a>
+            </div>
+        </div>
+        
         <a href="profile.php">Profile</a>
         <a href="about.php">About</a>
         <a href="contact.php">Contact</a>
         <a href="logout.php">Logout</a>
-        <div class="cart-icon" data-count="<?php echo $cart_count; ?>" onclick="location.href='order_list.php'">🛒</div>
+        <div class="cart-icon" data-count="<?php echo $cart_count; ?>" onclick="location.href='order_list.php'"><i class="fas fa-shopping-cart"></i></div>
     </div>
 </div>
 
 <main>
-    <h2>Your Cart (Session)</h2>
+    <h2>Your Orders</h2>
     <?php if (empty($cart)): ?>
-        <p>Your cart is empty.</p>
+        <p>Your orderlist is empty.</p>
     <?php else: 
         $total = 0;
         foreach ($cart as $key => $item):
@@ -487,6 +686,18 @@ function submitEditForm() {
 document.getElementById('checkoutBtn')?.addEventListener('click', function() {
     // 直接跳转到结账页面，不发送AJAX请求
     window.location.href = 'checkout.php';
+});
+
+// 添加当前页面活动链接指示器
+document.addEventListener('DOMContentLoaded', function() {
+    const currentPage = window.location.pathname.split('/').pop();
+    const navLinks = document.querySelectorAll('.topbar a, .dropdown-content a');
+    
+    navLinks.forEach(link => {
+        if (link.getAttribute('href') === currentPage) {
+            link.classList.add('active-link');
+        }
+    });
 });
 </script>
 
