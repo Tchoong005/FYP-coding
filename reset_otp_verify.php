@@ -2,167 +2,171 @@
 session_start();
 include 'db.php';
 
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\Exception;
-
-require 'PHPMailer/src/PHPMailer.php';
-require 'PHPMailer/src/SMTP.php';
-require 'PHPMailer/src/Exception.php';
-
 $error = $success = '';
-$email = $_SESSION['pending_email'] ?? $_SESSION['reset_email'] ?? null;
+$remaining_seconds = 0;
 
-// 如果没 email，跳回首页
-if (!$email) {
-    header("Location: login.php");
+if (!isset($_SESSION['reset_email']) || !isset($_SESSION['reset_otp'])) {
+    header("Location: forgot_password.php");
     exit();
 }
 
-// 处理重新发送 OTP（仅 GET）
-if (isset($_GET['resend'])) {
-    $newOTP = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-    $column = isset($_SESSION['pending_email']) ? 'verification_code' : 'reset_otp';
+// 倒计时计算
+if (isset($_SESSION['reset_otp_time'])) {
+    $elapsed = time() - $_SESSION['reset_otp_time'];
+    if ($elapsed < 60) {
+        $remaining_seconds = 60 - $elapsed;
+    }
+}
 
-    $update = "UPDATE customers SET $column = '$newOTP' WHERE email = '$email'";
-    if (mysqli_query($conn, $update)) {
+// 处理 resend 请求
+if (isset($_GET['resend'])) {
+    if ($remaining_seconds === 0) {
+        $newOTP = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $_SESSION['reset_otp'] = $newOTP;
+        $_SESSION['reset_otp_time'] = time();
+
+        require 'PHPMailer/src/PHPMailer.php';
+        require 'PHPMailer/src/SMTP.php';
+        require 'PHPMailer/src/Exception.php';
+
+        $mail = new PHPMailer\PHPMailer\PHPMailer(true);
         try {
-            $mail = new PHPMailer(true);
             $mail->isSMTP();
             $mail->Host = 'smtp.gmail.com';
             $mail->SMTPAuth = true;
             $mail->Username = 'yewshunyaodennis@gmail.com';
-            $mail->Password = 'ydgu hfqw qgjh daqg'; // 应使用 App Password
+            $mail->Password = 'ydgu hfqw qgjh daqg';
             $mail->SMTPSecure = 'tls';
             $mail->Port = 587;
 
             $mail->setFrom('yewshunyaodennis@gmail.com', 'FastFood Express');
-            $mail->addAddress($email);
+            $mail->addAddress($_SESSION['reset_email']);
             $mail->isHTML(true);
-            $mail->Subject = 'Your OTP Code';
-            $mail->Body = "
-                <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>
-                    <h2 style='color: #d6001c;'>Your OTP Code</h2>
-                    <p>Use the code below to proceed:</p>
-                    <h1 style='color: #d6001c; text-align: center;'>$newOTP</h1>
-                </div>";
+            $mail->Subject = 'Your New OTP Code';
+            $mail->Body    = "Your new OTP is: <strong>$newOTP</strong>";
 
             $mail->send();
-            $success = "OTP resent to your email.";
+            $success = "New OTP sent!";
+            $remaining_seconds = 60;
         } catch (Exception $e) {
-            $error = "Failed to send OTP.";
+            $error = "Failed to resend OTP.";
         }
     } else {
-        $error = "Database error.";
+        $error = "Please wait before resending.";
     }
 }
 
-// 处理 OTP 验证（仅 POST）
+// 提交 OTP
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $enteredOTP = $_POST['otp'] ?? '';
-    $column = isset($_SESSION['pending_email']) ? 'verification_code' : 'reset_otp';
-
-    $query = "SELECT * FROM customers WHERE email = '$email' AND $column = '$enteredOTP'";
-    $result = mysqli_query($conn, $query);
-
-    if (mysqli_num_rows($result) === 1) {
-        if ($column === 'verification_code') {
-            mysqli_query($conn, "UPDATE customers SET is_verified = 1, verification_code = NULL WHERE email = '$email'");
-            unset($_SESSION['pending_email']);
-            $_SESSION['registration_success'] = "Email verified. Please login.";
-            header("Location: login.php");
-            exit();
-        } else {
-            mysqli_query($conn, "UPDATE customers SET reset_otp = NULL WHERE email = '$email'");
-            $_SESSION['reset_verified'] = true;
-            header("Location: reset_password.php");
-            exit();
-        }
+    $entered = $_POST['otp'];
+    if ($entered === $_SESSION['reset_otp']) {
+        $_SESSION['reset_verified'] = true;
+        header("Location: reset_password.php");
+        exit();
     } else {
         $error = "Invalid OTP. Please try again.";
     }
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Verify OTP</title>
-    <style>
-        body {
-            background: #fff0f0;
-            font-family: Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-        }
-        .box {
-            background: white;
-            padding: 30px 40px;
-            border-radius: 12px;
-            width: 350px;
-            text-align: center;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }
-        h2 {
-            color: #d6001c;
-            margin-bottom: 10px;
-        }
-        .message {
-            margin: 10px 0;
-            padding: 10px;
-            border-radius: 6px;
-        }
-        .error { color: #d6001c; background: #ffeeee; }
-        .success { color: green; background: #eaffea; }
-        input[name="otp"] {
-            width: 100%;
-            padding: 12px;
-            font-size: 18px;
-            letter-spacing: 5px;
-            margin: 20px 0;
-            text-align: center;
-            border: 1px solid #ccc;
-            border-radius: 8px;
-        }
-        button {
-            background: #d6001c;
-            color: white;
-            padding: 12px;
-            width: 100%;
-            font-weight: bold;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-        }
-        button:hover {
-            background: #a00015;
-        }
-        .resend-link {
-            display: block;
-            margin-top: 15px;
-            font-size: 14px;
-            color: #d6001c;
-            text-decoration: none;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>Verify OTP</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      background-color: #ffeeee;
+      font-family: Arial, sans-serif;
+    }
+    .card {
+      border-radius: 12px;
+      border: none;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    .btn-danger {
+      background-color: #d6001c;
+      border: none;
+    }
+    .btn-danger:hover {
+      background-color: #b40000;
+    }
+    .message {
+      text-align: center;
+      margin-bottom: 10px;
+      padding: 10px;
+      border-radius: 6px;
+    }
+    .error {
+      background-color: #fff0f0;
+      color: #d6001c;
+    }
+    .success {
+      background-color: #e7fff0;
+      color: #0a8a42;
+    }
+    .resend-link {
+      color: #d6001c;
+      text-decoration: none;
+      font-size: 14px;
+    }
+    .resend-link.disabled {
+      pointer-events: none;
+      opacity: 0.5;
+    }
+  </style>
 </head>
 <body>
-    <div class="box">
-        <h2>Verify OTP</h2>
-        <p>OTP sent to: <strong><?php echo htmlspecialchars($email); ?></strong></p>
+  <div class="container d-flex justify-content-center align-items-center" style="min-height: 100vh;">
+    <div class="col-md-5">
+      <div class="card p-4">
+        <h3 class="text-center text-danger mb-3">OTP Verification</h3>
+        <p class="text-center text-muted">Enter the 6-digit code sent to <strong><?php echo htmlspecialchars($_SESSION['reset_email']); ?></strong></p>
 
-        <?php if ($error) echo "<div class='message error'>$error</div>"; ?>
-        <?php if ($success) echo "<div class='message success'>$success</div>"; ?>
+        <?php if ($error): ?>
+          <div class="message error"><?= $error ?></div>
+        <?php endif; ?>
+        <?php if ($success): ?>
+          <div class="message success"><?= $success ?></div>
+        <?php endif; ?>
 
-        <form method="POST" action="">
-            <input type="text" name="otp" maxlength="6" pattern="\d{6}" required placeholder="Enter 6-digit OTP">
-            <button type="submit">Verify OTP</button>
+        <form method="POST">
+          <div class="mb-3">
+            <label for="otp" class="form-label fw-bold">OTP Code</label>
+            <input type="text" class="form-control text-center fw-bold" maxlength="6" pattern="\d{6}" id="otp" name="otp" required placeholder="123456">
+          </div>
+          <button type="submit" class="btn btn-danger w-100">Verify OTP</button>
         </form>
 
-        <a href="?resend=1" class="resend-link">Didn't receive? Resend OTP</a>
+        <div class="text-center mt-3">
+          <?php if ($remaining_seconds > 0): ?>
+            <span class="text-muted">Resend available in <span id="countdown"><?= $remaining_seconds ?></span>s</span>
+          <?php else: ?>
+            <a href="?resend" class="resend-link">Resend OTP</a>
+          <?php endif; ?>
+        </div>
+
+        <div class="text-center mt-3">
+          <a href="login.php" class="resend-link">← Back to Login</a>
+        </div>
+      </div>
     </div>
+  </div>
+
+  <?php if ($remaining_seconds > 0): ?>
+  <script>
+    let countdown = <?= $remaining_seconds ?>;
+    const timer = document.getElementById('countdown');
+    const interval = setInterval(() => {
+      countdown--;
+      if (countdown <= 0) {
+        clearInterval(interval);
+        location.reload();
+      } else {
+        timer.innerText = countdown;
+      }
+    }, 1000);
+  </script>
+  <?php endif; ?>
 </body>
 </html>
