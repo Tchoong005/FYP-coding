@@ -15,58 +15,19 @@ function generateOTP($length = 6) {
     return str_pad(random_int(0, pow(10, $length)-1), $length, '0', STR_PAD_LEFT);
 }
 
-// === Handle OTP resend ===
-if (isset($_GET['resend'])) {
-    if (isset($_SESSION['otp_sent_time']) && time() - $_SESSION['otp_sent_time'] < 60) {
-        $error = "Please wait " . (60 - (time() - $_SESSION['otp_sent_time'])) . " seconds before resending.";
-    } else {
-        $email = $_SESSION['pending_email'];
-        $result = mysqli_query($conn, "SELECT * FROM customers WHERE email='$email'");
-        if (mysqli_num_rows($result) === 1) {
-            $row = mysqli_fetch_assoc($result);
-            $otp = generateOTP();
-            mysqli_query($conn, "UPDATE customers SET verification_code='$otp' WHERE email='$email'");
-
-            $mail = new PHPMailer(true);
-            try {
-                $mail->isSMTP();
-                $mail->Host = 'smtp.gmail.com';
-                $mail->SMTPAuth = true;
-                $mail->Username = 'yewshunyaodennis@gmail.com';
-                $mail->Password = 'ydgu hfqw qgjh daqg';
-                $mail->SMTPSecure = 'tls';
-                $mail->Port = 587;
-
-                $mail->setFrom('yewshunyaodennis@gmail.com', 'FastFood Express');
-                $mail->addAddress($email);
-                $mail->isHTML(true);
-                $mail->Subject = 'Your new OTP Code';
-                $mail->Body    = "Your new OTP code is: <strong>$otp</strong>";
-
-                $mail->send();
-                $_SESSION['otp_sent_time'] = time();
-                $success = "New OTP sent to your email.";
-            } catch (Exception $e) {
-                $error = "Failed to resend OTP.";
-            }
-        } else {
-            $error = "User not found.";
-        }
-    }
-}
-
-// === Handle Registration ===
-if ($_SERVER["REQUEST_METHOD"] == "POST" && !isset($_POST['verify_otp'])) {
+// Handle Registration
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $email    = mysqli_real_escape_string($conn, $_POST['email']);
     $username = mysqli_real_escape_string($conn, $_POST['username']);
     $phone    = mysqli_real_escape_string($conn, $_POST['phone']);
     $password = mysqli_real_escape_string($conn, $_POST['password']);
     $confirm  = mysqli_real_escape_string($conn, $_POST['confirm_password']);
 
+    // Validation
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = "Invalid email format.";
-    } elseif (!preg_match('/^01[0-9]{8,9}$/', $phone)) {
-        $error = "Phone number must start with 01 and be 10–11 digits.";
+    } elseif (!preg_match('/^011\d{8}$/', $phone) && !preg_match('/^01[2-9]\d{7}$/', $phone)) {
+        $error = "Phone number must start with 011 (11 digits) or 012–019 (10 digits).";
     } elseif (!preg_match('/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/', $password)) {
         $error = "Password must be at least 8 characters with uppercase, lowercase, and number.";
     } elseif ($password !== $confirm) {
@@ -125,7 +86,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && !isset($_POST['verify_otp'])) {
     .btn-danger { background-color: #d50000; border: none; }
     .btn-danger:hover { background-color: #b40000; }
     .input-group-text.toggle-pass { cursor: pointer; }
-    .otp-container { max-width: 300px; margin: 0 auto; }
   </style>
 </head>
 <body>
@@ -159,6 +119,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && !isset($_POST['verify_otp'])) {
           <div class="mb-3">
             <label for="phone" class="form-label">Phone Number</label>
             <input type="tel" class="form-control" id="phone" name="phone" required 
+                   pattern="^(011\d{8}|01[2-9]\d{7})$"
+                   title="Phone number must start with 011 (11 digits) or 012–019 (10 digits)"
                    value="<?php echo isset($_POST['phone']) ? htmlspecialchars($_POST['phone']) : ''; ?>" 
                    placeholder="01XXXXXXXX">
           </div>
