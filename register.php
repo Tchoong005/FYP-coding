@@ -1,80 +1,132 @@
 <?php
 session_start();
-include 'db.php';
-
-$showOTPField = false;
-require 'PHPMailer/src/PHPMailer.php';
-require 'PHPMailer/src/SMTP.php';
-require 'PHPMailer/src/Exception.php';
+require 'db.php';
+require 'PHPMailer/PHPMailer.php';
+require 'PHPMailer/SMTP.php';
+require 'PHPMailer/Exception.php';
 
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
-$error = $success = "";
+$error = '';
+$success = '';
+$showOTPField = false;
 
-function generateOTP($length = 6) {
-    return str_pad(random_int(0, pow(10, $length)-1), $length, '0', STR_PAD_LEFT);
+function generateOTP() {
+  return str_pad(rand(0, 999999), 6, '0', STR_PAD_LEFT);
 }
 
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $email    = mysqli_real_escape_string($conn, $_POST['email']);
-    $username = mysqli_real_escape_string($conn, $_POST['username']);
-    $phone    = mysqli_real_escape_string($conn, $_POST['phone']);
-    $password = mysqli_real_escape_string($conn, $_POST['password']);
-    $confirm  = mysqli_real_escape_string($conn, $_POST['confirm_password']);
-    $question = mysqli_real_escape_string($conn, $_POST['security_question']);
-    $answer   = mysqli_real_escape_string($conn, $_POST['security_answer']);
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['verify_otp'])) {
+  $email = trim($_POST['email']);
+  $username = trim($_POST['username']);
+  $phone = trim($_POST['phone']);
+  $password = $_POST['password'];
+  $confirm_password = $_POST['confirm_password'];
+  $security_question = trim($_POST['security_question']);
+  $security_answer = trim($_POST['security_answer']);
 
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $error = "Invalid email format.";
-    } elseif (!preg_match('/^01[0-9]{8,9}$/', $phone)) {
-        $error = "Phone number must start with 01 and be 10–11 digits.";
-    } elseif (!preg_match('/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/', $password)) {
-        $error = "Password must be at least 8 characters with uppercase, lowercase, and number.";
-    } elseif ($password !== $confirm) {
-        $error = "Passwords do not match.";
-    } elseif (empty($question) || empty($answer)) {
-        $error = "Security question and answer are required.";
+  if (!preg_match('/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/', $password)) {
+    $error = "Password must be at least 8 characters and include uppercase, lowercase and a number.";
+  } elseif ($password !== $confirm_password) {
+    $error = "Passwords do not match.";
+  } else {
+    $stmt = $conn->prepare("SELECT * FROM customers WHERE email = ? OR username = ?");
+    $stmt->bind_param("ss", $email, $username);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    if ($result->num_rows > 0) {
+      $error = "Email or Username already exists.";
     } else {
-        $check = mysqli_query($conn, "SELECT * FROM customers WHERE email='$email' OR phone='$phone'");
-        if (mysqli_num_rows($check) > 0) {
-            $error = "Email or phone already exists.";
-        } else {
-            $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-            $otp = generateOTP();
+      $otp = generateOTP();
+      $hashed_password = password_hash($password, PASSWORD_DEFAULT);
 
-            $insert = "INSERT INTO customers (email, username, phone, password, security_question, security_answer, verification_code, is_verified)
-                       VALUES ('$email', '$username', '$phone', '$hashed_password', '$question', '$answer', '$otp', 0)";
-            if (mysqli_query($conn, $insert)) {
-                // Send OTP via email
-                $mail = new PHPMailer(true);
-                try {
-                    $mail->isSMTP();
-                    $mail->Host = 'smtp.gmail.com';
-                    $mail->SMTPAuth = true;
-                    $mail->Username = 'yewshunyaodennis@gmail.com';
-                    $mail->Password = 'ydgu hfqw qgjh daqg';
-                    $mail->SMTPSecure = 'tls';
-                    $mail->Port = 587;
+      $stmt = $conn->prepare("INSERT INTO customers (email, username, phone, password, security_question, security_answer, verification_code, is_verified) VALUES (?, ?, ?, ?, ?, ?, ?, 0)");
+      $stmt->bind_param("sssssss", $email, $username, $phone, $hashed_password, $security_question, $security_answer, $otp);
+      if ($stmt->execute()) {
+        $mail = new PHPMailer(true);
+        try {
+          $mail->isSMTP();
+          $mail->Host = 'smtp.gmail.com';
+          $mail->SMTPAuth = true;
+          $mail->Username = 'your_email@gmail.com'; // 替换
+          $mail->Password = 'your_app_password';     // 替换
+          $mail->SMTPSecure = 'tls';
+          $mail->Port = 587;
 
-                    $mail->setFrom('yewshunyaodennis@gmail.com', 'FastFood Express');
-                    $mail->addAddress($email);
-                    $mail->isHTML(true);
-                    $mail->Subject = 'Your FastFood Express OTP Code';
-                    $mail->Body    = "Hi $username,<br><br>Your OTP code is: <strong>$otp</strong><br>Please enter this code to verify your email.";
+          $mail->setFrom('your_email@gmail.com', 'FastFood Express');
+          $mail->addAddress($email, $username);
+          $mail->isHTML(true);
+          $mail->Subject = 'Your Verification Code';
+          $mail->Body = "<p>Your verification code is: <strong>$otp</strong></p>";
 
-                    $mail->send();
-                    $_SESSION['pending_email'] = $email;
-                    header("Location: verify_code.php");
-                    exit();
-                } catch (Exception $e) {
-                    $error = "Email sending failed. Please try again.";
-                }
-            } else {
-                $error = "Registration failed. Please try again.";
-            }
+          $mail->send();
+          $_SESSION['pending_email'] = $email;
+          $showOTPField = true;
+        } catch (Exception $e) {
+          $error = "Email sending failed. " . $mail->ErrorInfo;
         }
+      } else {
+        $error = "Database error: Could not register.";
+      }
     }
+  }
+}
+
+if (isset($_POST['verify_otp'])) {
+  $entered_otp = trim($_POST['otp']);
+  $email = $_SESSION['pending_email'] ?? '';
+
+  if (!$email) {
+    $error = "Session expired. Please register again.";
+  } else {
+    $stmt = $conn->prepare("SELECT verification_code FROM customers WHERE email = ?");
+    $stmt->bind_param("s", $email);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $user = $result->fetch_assoc();
+
+    if ($user && $user['verification_code'] === $entered_otp) {
+      $stmt = $conn->prepare("UPDATE customers SET is_verified = 1, verification_code = NULL WHERE email = ?");
+      $stmt->bind_param("s", $email);
+      $stmt->execute();
+      $success = "Registration complete! You can now login.";
+      unset($_SESSION['pending_email']);
+    } else {
+      $error = "Invalid verification code.";
+      $showOTPField = true;
+    }
+  }
+}
+
+if (isset($_GET['resend']) && isset($_SESSION['pending_email'])) {
+  $email = $_SESSION['pending_email'];
+  $new_otp = generateOTP();
+  $stmt = $conn->prepare("UPDATE customers SET verification_code = ? WHERE email = ?");
+  $stmt->bind_param("ss", $new_otp, $email);
+  $stmt->execute();
+
+  $mail = new PHPMailer(true);
+  try {
+    $mail->isSMTP();
+    $mail->Host = 'smtp.gmail.com';
+    $mail->SMTPAuth = true;
+    $mail->Username = 'your_email@gmail.com'; // 替换
+    $mail->Password = 'your_app_password';     // 替换
+    $mail->SMTPSecure = 'tls';
+    $mail->Port = 587;
+
+    $mail->setFrom('your_email@gmail.com', 'FastFood Express');
+    $mail->addAddress($email);
+    $mail->isHTML(true);
+    $mail->Subject = 'Resent Verification Code';
+    $mail->Body = "<p>Your new verification code is: <strong>$new_otp</strong></p>";
+
+    $mail->send();
+    $success = "A new OTP has been sent.";
+    $showOTPField = true;
+  } catch (Exception $e) {
+    $error = "Could not resend OTP. " . $mail->ErrorInfo;
+  }
 }
 ?>
 
@@ -91,6 +143,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     .btn-danger:hover { background-color: #b40000; }
     .input-group-text.toggle-pass { cursor: pointer; }
     .otp-container { max-width: 300px; margin: 0 auto; }
+    .verification-notice {
+      background-color: #fff8f8;
+      border-left: 4px solid #d6001c;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
   </style>
 </head>
 <body>
@@ -99,85 +158,71 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <div class="col-md-6 col-lg-5">
       <div class="card p-4">
         <h2 class="text-center text-danger mb-4">Register</h2>
-        
+
         <?php if ($error): ?>
           <div class="alert alert-danger"><?php echo $error; ?></div>
         <?php endif; ?>
-        
+
         <?php if ($success): ?>
           <div class="alert alert-success"><?php echo $success; ?></div>
         <?php endif; ?>
-        
+
         <?php if (!$showOTPField): ?>
-        <!-- 初始注册表单 -->
         <form method="post">
-          <div class="mb-3">
-            <label for="email" class="form-label">Email</label>
+          <div class="mb-3"><label for="email" class="form-label">Email</label>
             <input type="email" class="form-control" id="email" name="email" required 
                    value="<?php echo isset($_POST['email']) ? htmlspecialchars($_POST['email']) : ''; ?>">
           </div>
-          
-          <div class="mb-3">
-            <label for="username" class="form-label">User Name</label>
+          <div class="mb-3"><label for="username" class="form-label">User Name</label>
             <input type="text" class="form-control" id="username" name="username" required 
                    value="<?php echo isset($_POST['username']) ? htmlspecialchars($_POST['username']) : ''; ?>">
           </div>
-          
-          <div class="mb-3">
-            <label for="phone" class="form-label">Phone Number</label>
+          <div class="mb-3"><label for="phone" class="form-label">Phone Number</label>
             <input type="tel" class="form-control" id="phone" name="phone" required 
-                   value="<?php echo isset($_POST['phone']) ? htmlspecialchars($_POST['phone']) : ''; ?>" 
-                   placeholder="01XXXXXXXX">
+                   placeholder="01XXXXXXXX"
+                   value="<?php echo isset($_POST['phone']) ? htmlspecialchars($_POST['phone']) : ''; ?>">
           </div>
-          
-          <div class="mb-3">
-            <label for="password" class="form-label">Password</label>
+          <div class="mb-3"><label for="password" class="form-label">Password</label>
             <div class="input-group">
               <input type="password" class="form-control" id="password" name="password" required>
               <span class="input-group-text toggle-pass" onclick="togglePassword('password', this)">Show</span>
             </div>
             <small class="text-muted">Must contain: 8+ chars, uppercase, lowercase, number</small>
           </div>
-          
-          <div class="mb-3">
-            <label for="confirm_password" class="form-label">Confirm Password</label>
+          <div class="mb-3"><label for="confirm_password" class="form-label">Confirm Password</label>
             <div class="input-group">
               <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
               <span class="input-group-text toggle-pass" onclick="togglePassword('confirm_password', this)">Show</span>
             </div>
           </div>
-          
-          <div class="mb-3">
-            <label for="security_question" class="form-label">Security Question</label>
+          <div class="mb-3"><label for="security_question" class="form-label">Security Question</label>
             <input type="text" class="form-control" id="security_question" name="security_question" required 
-                   value="<?php echo isset($_POST['security_question']) ? htmlspecialchars($_POST['security_question']) : ''; ?>" 
-                   placeholder="e.g. What is your pet's name?">
+                   placeholder="e.g. What is your pet's name?"
+                   value="<?php echo isset($_POST['security_question']) ? htmlspecialchars($_POST['security_question']) : ''; ?>">
           </div>
-          
-          <div class="mb-3">
-            <label for="security_answer" class="form-label">Answer</label>
+          <div class="mb-3"><label for="security_answer" class="form-label">Answer</label>
             <input type="text" class="form-control" id="security_answer" name="security_answer" required 
                    value="<?php echo isset($_POST['security_answer']) ? htmlspecialchars($_POST['security_answer']) : ''; ?>">
           </div>
-          
-          <button type="submit" class="btn btn-danger w-100">Send OTP</button>
+          <button type="submit" class="btn btn-danger w-100">Register</button>
         </form>
         <?php else: ?>
-        <!-- OTP验证表单 -->
+        <div class="verification-notice">
+          <p>A verification code has been sent to your email. Please enter it below.</p>
+        </div>
         <form method="post" class="otp-container">
           <div class="mb-3">
             <label for="otp" class="form-label">Enter OTP</label>
-            <input type="text" class="form-control text-center" id="otp" name="otp" required 
-                   maxlength="6" pattern="\d{6}" title="Please enter 6-digit OTP">
+            <input type="text" class="form-control text-center" id="otp" name="otp" required maxlength="6" pattern="\d{6}" title="Please enter 6-digit OTP">
             <small class="text-muted">Check your email for the 6-digit code</small>
           </div>
           <button type="submit" name="verify_otp" class="btn btn-danger w-100">Verify OTP</button>
           <div class="text-center mt-3">
-            <a href="register.php" class="text-danger">Resend OTP</a>
+            Didn't receive code? <a href="?resend" class="text-danger">Resend OTP</a>
           </div>
         </form>
         <?php endif; ?>
-        
+
         <div class="text-center mt-3">
           Already have an account? <a href="login.php" class="text-danger fw-semibold">Login</a>
         </div>
