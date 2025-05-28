@@ -1,272 +1,494 @@
 <?php
 session_start();
-include 'connection.php';
+include 'db.php';
 
-if (!isset($_SESSION['cart'])) {
-    $_SESSION['cart'] = [];
+if (!isset($_SESSION['user_id'])) {
+    header("Location: login.php");
+    exit;
 }
 
-$alertMessage = '';
-if (isset($_GET['msg'])) {
-    $alertMessage = htmlspecialchars($_GET['msg']);
+$user_id = (int)$_SESSION['user_id'];
+
+function esc($str) {
+    return htmlspecialchars($str, ENT_QUOTES, 'UTF-8');
 }
 
-// 操作处理（增、减、删）
-if (isset($_GET['action'], $_GET['product_id'])) {
-    $product_id = intval($_GET['product_id']);
+// 处理购物车数量增减（无需修改）
+if (isset($_GET['action'], $_GET['key']) && ($_GET['type'] ?? '') === 'session') {
+    $key = $_GET['key'];
+    $cart = $_SESSION['cart'] ?? [];
 
-    if (isset($_SESSION['cart'][$product_id])) {
-        $item = $_SESSION['cart'][$product_id];
-
-        // 获取当前库存
-        $res = mysqli_query($conn, "SELECT stock FROM products WHERE id = $product_id");
-        $row = mysqli_fetch_assoc($res);
-        $stock = intval($row['stock']);
-
-        if ($_GET['action'] === 'add') {
-            if ($item['quantity'] < $stock) {
-                $_SESSION['cart'][$product_id]['quantity']++;
-            } else {
-                header("Location: order_list.php?msg=Maximum stock reached.");
-                exit();
-            }
-        } elseif ($_GET['action'] === 'subtract') {
-            if ($item['quantity'] > 1) {
-                $_SESSION['cart'][$product_id]['quantity']--;
-            } else {
-                unset($_SESSION['cart'][$product_id]);
-            }
-        } elseif ($_GET['action'] === 'remove') {
-            unset($_SESSION['cart'][$product_id]);
+    if (isset($cart[$key])) {
+        switch ($_GET['action']) {
+            case 'add':
+                $cart[$key]['quantity']++;
+                break;
+            case 'subtract':
+                if ($cart[$key]['quantity'] > 1) {
+                    $cart[$key]['quantity']--;
+                } else {
+                    unset($cart[$key]);
+                }
+                break;
         }
+        $_SESSION['cart'] = $cart;
     }
-
     header("Location: order_list.php");
-    exit();
+    exit;
 }
+
+// 处理编辑订单项（无需修改）
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'edit_item') {
+    $key = $_POST['edit_key'] ?? '';
+    $sauce = $_POST['edit_sauce'] ?? '';
+    $comment = $_POST['edit_comment'] ?? '';
+
+    $cart = $_SESSION['cart'] ?? [];
+    if (isset($cart[$key])) {
+        $cart[$key]['sauce'] = trim($sauce);
+        $cart[$key]['comment'] = trim($comment);
+        $_SESSION['cart'] = $cart;
+        header("Location: order_list.php");
+        exit;
+    }
+}
+
+// 获取购物车数据（无需修改）
+$cart = $_SESSION['cart'] ?? [];
+$cart_count = array_sum(array_column($cart, 'quantity'));
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Order List</title>
-  <style>
-    * { box-sizing: border-box; }
-    body, html {
-      margin: 0; padding: 0;
-      font-family: Arial, sans-serif;
-      background-color: #fff;
-    }
-    .topbar {
-      background-color: #222; color: white;
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 16px 32px; font-size: 18px;
-    }
-    .topbar .logo {
-      font-size: 22px; font-weight: bold;
-      display: flex; align-items: center; gap: 8px;
-    }
-    .topbar nav {
-      display: flex; align-items: center; gap: 24px;
-    }
-    .topbar a {
-      color: white; text-decoration: none; font-weight: bold;
-    }
-    .cart-icon {
-      position: relative; font-size: 20px;
-      text-decoration: none; color: white;
-    }
-    .cart-icon::after {
-      content: attr(data-count);
-      position: absolute; top: -8px; right: -10px;
-      background: red; color: white; border-radius: 50%;
-      padding: 2px 6px; font-size: 12px;
-    }
-
-    .order-list {
-      flex: 1; /* 主体自动撑开 */
-      max-width: 1000px;
-      margin: 30px auto; padding: 20px;
-    }
-    .order-list h2 {
-      color: #d6001c; margin-bottom: 25px; font-size: 26px;
-    }
-    .order-item {
-      display: flex; justify-content: space-between;
-      gap: 16px; align-items: center;
-      padding: 20px; border-bottom: 1px solid #ccc;
-      flex-wrap: wrap; background-color: #fdfdfd;
-      border-radius: 10px; margin-bottom: 16px;
-    }
-    .order-info {
-      display: flex; align-items: center; gap: 20px; flex: 1;
-    }
-    .order-info img {
-      width: 100px; height: 100px;
-      object-fit: cover; border-radius: 10px;
-      box-shadow: 0 1px 6px rgba(0,0,0,0.08);
-    }
-    .order-details {
-      display: flex; flex-direction: column; max-width: 400px;
-    }
-    .order-details strong {
-      font-size: 18px; font-weight: bold; color: #333;
-    }
-    .order-details span {
-      font-size: 16px; color: #666; margin-top: 4px;
-    }
-    .order-actions {
-      display: flex; align-items: center; gap: 12px;
-    }
-    .order-actions a {
-      text-decoration: none; color: white;
-      border-radius: 50%; font-weight: bold;
-      font-size: 18px; display: inline-flex;
-      align-items: center; justify-content: center;
-    }
-    .order-actions a.triangle {
-      width: 36px; height: 36px; background: #d6001c;
-    }
-    .order-actions a.delete {
-      font-size: 14px; background: #d6001c; padding: 6px;
-    }
-    .order-actions a.edit-btn {
-      background-color: #007bff; padding: 6px 14px;
-      font-size: 14px; border-radius: 8px;
-    }
-    .order-actions .qty {
-      font-size: 18px; font-weight: bold;
-      min-width: 24px; text-align: center; color: #222;
-    }
-    .total {
-      text-align: right; font-size: 20px;
-      font-weight: bold; margin-top: 30px;
-      padding-top: 12px; border-top: 2px solid #ccc; color: #333;
-    }
-    .checkout-btn {
-      display: block; text-align: right; margin-top: 20px;
-    }
-    .checkout-btn a {
-      background: #d6001c; color: white; padding: 12px 24px;
-      border-radius: 8px; text-decoration: none; font-weight: bold;
-    }
-    .footer {
-      background-color: #f2f2f2;
-  padding: 20px;
-  text-align: center;
-  font-size: 14px;
-  color: #333;
-    }
-
-    /* Alert box */
-    #customAlert {
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      background-color: #17a2b8;
-      color: white;
-      padding: 14px 20px;
-      border-radius: 8px;
-      font-weight: bold;
-      display: none;
-      z-index: 9999;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-    }
-
-    .wrapper {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+<meta charset="UTF-8" />
+<title>Your Order List</title>
+<style>
+body { font-family: Arial, sans-serif; background: #fff; margin: 0; }
+.topbar {
+    background-color: #222;
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 30px;
+    flex-wrap: wrap;
 }
-  </style>
+.topbar .logo {
+    font-size: 24px;
+    font-weight: bold;
+}
+.topbar .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+.topbar a {
+    color: white;
+    text-decoration: none;
+    font-weight: bold;
+    padding: 0 10px;
+    line-height: 1.5;
+}
+.topbar a:hover {
+    text-decoration: underline;
+}
+.cart-icon {
+    position: relative;
+    cursor: pointer;
+    font-size: 20px;
+    padding: 0 10px;
+    line-height: 1.5;
+    user-select: none;
+}
+.cart-icon::after {
+    content: attr(data-count);
+    position: absolute;
+    top: -6px;
+    right: -10px;
+    background: red;
+    color: white;
+    border-radius: 12px;
+    padding: 2px 8px;
+    font-size: 12px;
+    font-weight: bold;
+    min-width: 20px;
+    text-align: center;
+    box-sizing: border-box;
+    display: inline-block;
+}
+main {
+    max-width: 900px;
+    margin: 30px auto;
+    padding: 0 20px;
+}
+h2 {
+    color: #d6001c;
+    font-size: 28px;
+    margin-bottom: 30px;
+}
+.order-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+    padding: 20px;
+    border-radius: 10px;
+    background: #fefefe;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.1);
+    flex-wrap: wrap;
+}
+.order-info {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    flex: 1;
+    min-width: 250px;
+}
+.order-info img {
+    width: 100px;
+    height: 100px;
+    object-fit: cover;
+    border-radius: 8px;
+}
+.order-details strong {
+    font-size: 18px;
+    color: #333;
+    display: block;
+}
+.order-details span {
+    display: block;
+    font-size: 14px;
+    color: #555;
+    margin-top: 4px;
+}
+.order-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+    margin-top: 12px;
+}
+.order-actions a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    background: #d6001c;
+    color: white;
+    font-weight: bold;
+    font-size: 18px;
+    border-radius: 50%;
+    text-decoration: none;
+    user-select: none;
+}
+.order-actions a.edit {
+    width: auto;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 14px;
+}
+.qty {
+    font-weight: bold;
+    font-size: 16px;
+    min-width: 28px;
+    text-align: center;
+    color: #222;
+}
+.total {
+    font-size: 22px;
+    font-weight: bold;
+    text-align: right;
+    margin-top: 30px;
+    color: #333;
+    border-top: 2px solid #ccc;
+    padding-top: 15px;
+}
+.checkout-btn {
+    text-align: right;
+    margin-top: 20px;
+}
+.checkout-btn button {
+    background: #d6001c;
+    color: white;
+    font-weight: bold;
+    padding: 14px 30px;
+    border-radius: 8px;
+    font-size: 16px;
+    border: none;
+    cursor: pointer;
+}
+.checkout-btn button:disabled {
+    background: #999;
+    cursor: not-allowed;
+}
+.loading-overlay {
+    position: fixed;
+    top:0; left:0; right:0; bottom:0;
+    background: rgba(0,0,0,0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 24px;
+    font-weight: bold;
+    display: none;
+    z-index: 9999;
+}
+.footer {
+    background-color: #eee;
+    text-align: center;
+    padding: 20px;
+    font-size: 14px;
+    margin-top: 40px;
+}
+
+/* 弹窗样式 */
+#editModal {
+    display: none;
+    position: fixed;
+    top:0; left:0; right:0; bottom:0;
+    background: rgba(0,0,0,0.5);
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+}
+#editModal .modal-content {
+    background: white;
+    border-radius: 8px;
+    padding: 20px 30px;
+    width: 350px;
+    box-sizing: border-box;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+#editModal h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #d6001c;
+}
+#editModal label {
+    display: block;
+    margin-top: 12px;
+    font-weight: bold;
+    font-size: 14px;
+}
+#editModal input[type="text"],
+#editModal select,
+#editModal textarea {
+    width: 100%;
+    padding: 8px;
+    margin-top: 4px;
+    box-sizing: border-box;
+    font-size: 14px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+#editModal textarea {
+    resize: vertical;
+}
+#editModal .modal-buttons {
+    margin-top: 20px;
+    text-align: right;
+}
+#editModal button {
+    background: #d6001c;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    font-weight: bold;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-left: 10px;
+}
+#editModal button.cancel-btn {
+    background: #999;
+}
+</style>
+</head>
 <body>
-
-<div id="customAlert"></div>
-
-<div class="wrapper">
-  <div class="topbar">
+<div class="topbar">
     <div class="logo">🍔 FastFood Express</div>
-    <nav>
-      <a href="index_user.html">Home</a>
-      <a href="order_now.php">Order Now</a>
-      <a href="product_user.html">Products</a>
-      <a href="user_about.html">About</a>
-      <a href="contact_user.html">Contact</a>
-      <a href="login.php">Login</a>
-      <a href="order_list.php" class="cart-icon" data-count="<?php echo array_sum(array_column($_SESSION['cart'], 'quantity')); ?>">🛒</a>
-    </nav>
-  </div>
-
-  <main class="order-list">
-    <h2>Your Order List</h2>
-
-    <?php
-    $total = 0;
-    if (empty($_SESSION['cart'])) {
-        echo "<p>Your cart is empty.</p>";
-    } else {
-        foreach ($_SESSION['cart'] as $product_id => $item) {
-            $quantity = isset($item['quantity']) ? intval($item['quantity']) : 1;
-            $message = isset($item['message']) ? htmlspecialchars($item['message']) : '';
-            $sauces = isset($item['sauces']) 
-                      ? (is_array($item['sauces']) ? implode(', ', $item['sauces']) : htmlspecialchars($item['sauces'])) 
-                      : 'None';
-
-            // 加引号以防SQL语法错误
-            $res = mysqli_query($conn, "SELECT * FROM products WHERE id = " . intval($product_id));
-            if ($product = mysqli_fetch_assoc($res)) {
-                $subtotal = $product['price'] * $quantity;
-                $total += $subtotal;
-
-                echo '
-                <div class="order-item">
-                  <div class="order-info">
-                    <img src="' . htmlspecialchars($product['image_url']) . '" alt="' . htmlspecialchars($product['name']) . '">
-                    <div class="order-details">
-                      <strong>' . htmlspecialchars($product['name']) . '</strong>
-                      <span>RM ' . number_format($product['price'], 2) . '</span>
-                      <span>Sauce: ' . htmlspecialchars($sauces) . '</span>
-                      <span>Note: ' . $message . '</span>
-                    </div>
-                  </div>
-                  <div class="order-actions">';
-                
-                if ($quantity > 1) {
-                    echo '<a href="order_list.php?action=subtract&product_id=' . $product_id . '" class="triangle">▼</a>';
-                } else {
-                    echo '<a href="order_list.php?action=remove&product_id=' . $product_id . '" class="delete">🗑️</a>';
-                }
-
-                echo '<span class="qty">' . $quantity . '</span>
-                      <a href="order_list.php?action=add&product_id=' . $product_id . '" class="triangle">▲</a>
-                      <a href="#" class="edit-btn">Edit</a>
-                  </div>
-                </div>';
-            }
-        }
-
-        echo '<div class="total">Total: RM ' . number_format($total, 2) . '</div>';
-        echo '<div class="checkout-btn"><a href="checkout.php">Proceed to Checkout</a></div>';
-    }
-    ?>
-  </main>
-
-  <footer class="footer">
-    © 2025 FastFood Express. All rights reserved.
-  </footer>
+    <div class="nav-links">
+        <a href="index_user.php">Home</a>
+        <a href="products_user.php">Products</a>
+        <a href="profile.php">Profile</a>
+        <a href="about.php">About</a>
+        <a href="contact.php">Contact</a>
+        <a href="logout.php">Logout</a>
+        <div class="cart-icon" data-count="<?php echo $cart_count; ?>" onclick="location.href='order_list.php'">🛒</div>
+    </div>
 </div>
 
+<main>
+    <h2>Your Cart (Session)</h2>
+    <?php if (empty($cart)): ?>
+        <p>Your cart is empty.</p>
+    <?php else: 
+        $total = 0;
+        foreach ($cart as $key => $item):
+            $pid = (int)$item['product_id'];
+            $quantity = (int)$item['quantity'];
+            $sauce = $item['sauce'] ?? '';
+            $comment = $item['comment'] ?? '';
+
+            // 查询商品信息和分类判断是否饮料
+            $sql = "SELECT name, price, image_url, category FROM products WHERE id = $pid LIMIT 1";
+            $res = mysqli_query($conn, $sql);
+            $product = mysqli_fetch_assoc($res);
+            if (!$product) continue;
+
+            $subtotal = $product['price'] * $quantity;
+            $total += $subtotal;
+
+            $is_beverage = strtolower($product['category']) === 'beverages' ? true : false;
+    ?>
+    <div class="order-item" data-key="<?php echo esc($key); ?>" data-is-beverage="<?php echo $is_beverage ? '1' : '0'; ?>">
+        <div class="order-info">
+            <img src="<?php echo esc($product['image_url']); ?>" alt="<?php echo esc($product['name']); ?>" />
+            <div class="order-details">
+                <strong><?php echo esc($product['name']); ?></strong>
+                <span>RM <?php echo number_format($product['price'], 2); ?> x <?php echo $quantity; ?></span>
+                <span><strong>Sauce:</strong> <?php echo esc($sauce ?: '-'); ?></span>
+                <span><strong>Comment:</strong> <?php echo esc($comment ?: '-'); ?></span>
+            </div>
+        </div>
+        <div class="order-actions">
+            <a href="?action=subtract&type=session&key=<?php echo urlencode($key); ?>" title="Subtract Quantity">−</a>
+            <div class="qty"><?php echo $quantity; ?></div>
+            <a href="?action=add&type=session&key=<?php echo urlencode($key); ?>" title="Add Quantity">＋</a>
+            <a href="javascript:void(0)" class="edit" onclick="editItem('<?php echo esc($key); ?>', '<?php echo esc(addslashes($sauce)); ?>', '<?php echo esc(addslashes($comment)); ?>')" title="Edit Item">Edit</a>
+            <div style="min-width:80px; font-weight:bold; text-align:right;">RM <?php echo number_format($subtotal, 2); ?></div>
+        </div>
+    </div>
+    <?php endforeach; ?>
+
+    <div class="total">Total: RM <?php echo number_format($total, 2); ?></div>
+
+    <div class="checkout-btn">
+        <button id="checkoutBtn">Proceed to Checkout</button>
+    </div>
+
+    <?php endif; ?>
+</main>
+
+<footer class="footer">
+    &copy; <?php echo date('Y'); ?> FastFood Express. All rights reserved.
+</footer>
+
+<!-- 编辑弹窗 -->
+<div id="editModal">
+    <div class="modal-content">
+        <h3>Edit Order Item</h3>
+        <form method="POST">
+            <input type="hidden" name="action" value="edit_item" />
+            <input type="hidden" id="edit_key" name="edit_key" />
+            
+            <div id="sauce-container">
+                <label for="edit_sauce">Choose Sauce:</label>
+                <select id="edit_sauce" required>
+                    <option value="">-- Select Sauce --</option>
+                    <option value="BBQ">BBQ</option>
+                    <option value="Cheese">Cheese</option>
+                    <option value="Sweet and Sour">Sweet and Sour</option>
+                    <option value="Spicy Mayo">Spicy Mayo</option>
+                </select>
+            </div>
+
+            <label for="edit_comment">Comment:</label>
+            <textarea id="edit_comment" name="edit_comment" rows="3" placeholder="Add your comment (optional)"></textarea>
+
+            <div class="modal-buttons">
+                <button type="button" class="cancel-btn" onclick="closeEditModal()">Cancel</button>
+                <button type="submit">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="loading-overlay" id="loadingOverlay">Loading...</div>
+
 <script>
-function showCustomAlert(message) {
-  const alertBox = document.getElementById('customAlert');
-  alertBox.textContent = message;
-  alertBox.style.display = 'block';
-  setTimeout(() => { alertBox.style.display = 'none'; }, 3000);
+function escJS(str) {
+    return str.replace(/'/g, "\\'").replace(/"/g, '\\"');
 }
 
-<?php if (!empty($alertMessage)): ?>
-showCustomAlert("<?php echo $alertMessage; ?>");
-<?php endif; ?>
+function editItem(key, sauce, comment) {
+    const orderItem = document.querySelector(`.order-item[data-key="${key}"]`);
+    if (!orderItem) return alert('Item not found');
+
+    // Fix: Check if data-is-beverage is '1' (true) or '0' (false)
+    const isBeverage = orderItem.getAttribute('data-is-beverage') === '1';
+    const form = document.querySelector('#editModal form');
+    const sauceContainer = document.querySelector('#sauce-container');
+    const sauceSelect = document.getElementById('edit_sauce');
+    const sauceLabel = sauceContainer.querySelector('label');
+
+    document.getElementById('edit_key').value = key;
+    document.getElementById('edit_comment').value = comment;
+
+    if (isBeverage) {
+        // For beverage items, completely hide sauce selection
+        sauceContainer.style.display = 'none';
+        sauceSelect.removeAttribute('name');
+        sauceSelect.removeAttribute('required');
+        
+        // Remove any existing hidden sauce input
+        const existingHidden = form.querySelector('input[name="edit_sauce"][type="hidden"]');
+        if (existingHidden) {
+            form.removeChild(existingHidden);
+        }
+        
+        // Add new empty hidden input for sauce
+        const hiddenInput = document.createElement('input');
+        hiddenInput.type = 'hidden';
+        hiddenInput.name = 'edit_sauce';
+        hiddenInput.value = '';
+        form.appendChild(hiddenInput);
+    } else {
+        // For non-beverage items, show sauce selection
+        sauceContainer.style.display = 'block';
+        sauceSelect.setAttribute('name', 'edit_sauce');
+        sauceSelect.setAttribute('required', 'required');
+        sauceSelect.value = sauce;
+        
+        // Remove hidden sauce input if exists
+        const existingHidden = form.querySelector('input[name="edit_sauce"][type="hidden"]');
+        if (existingHidden) {
+            form.removeChild(existingHidden);
+        }
+    }
+
+    document.getElementById('editModal').style.display = 'flex';
+}
+
+function closeEditModal() {
+    document.getElementById('editModal').style.display = 'none';
+}
+
+function submitEditForm() {
+    const form = document.querySelector('#editModal form');
+    const isBeverage = document.querySelector('.order-item[data-key="' + document.getElementById('edit_key').value + '"]')
+        .getAttribute('data-is-beverage') === 'true';
+    
+    if (isBeverage) {
+        // For beverages, we need to add a hidden field with empty sauce
+        const hiddenInput = document.createElement('input');
+        hiddenInput.type = 'hidden';
+        hiddenInput.name = 'edit_sauce';
+        hiddenInput.value = '';
+        form.appendChild(hiddenInput);
+    }
+    
+    return true; // Allow form submission
+}
+
+// Checkout AJAX handler
+document.getElementById('checkoutBtn')?.addEventListener('click', function() {
+    // 直接跳转到结账页面，不发送AJAX请求
+    window.location.href = 'checkout.php';
+});
 </script>
+
 </body>
 </html>
