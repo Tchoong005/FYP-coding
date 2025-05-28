@@ -1,72 +1,84 @@
-<?php
+=<?php
 session_start();
 include 'db.php';
 
 $error = $success = '';
 $email = '';
+$mode = ''; // 'register' or 'reset'
 
-// 检查是否有 pending_email session
-if (!isset($_SESSION['pending_email'])) {
-    $error = "Session expired or invalid access. Please register again.";
-} else {
+// 确定模式 & 获取 email
+if (isset($_SESSION['pending_email'])) {
     $email = $_SESSION['pending_email'];
+    $mode = 'register';
+} elseif (isset($_SESSION['reset_email'])) {
+    $email = $_SESSION['reset_email'];
+    $mode = 'reset';
+} else {
+    $error = "Session expired or invalid access. Please restart the process.";
+}
 
-    // 处理重新发送OTP请求
-    if (isset($_GET['resend'])) {
-        $newOTP = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-        $update = "UPDATE customers SET verification_code = '$newOTP' WHERE email = '$email'";
-        if (mysqli_query($conn, $update)) {
-            require 'PHPMailer/src/PHPMailer.php';
-            require 'PHPMailer/src/SMTP.php';
-            require 'PHPMailer/src/Exception.php';
+// 处理 resend OTP
+if (isset($_GET['resend']) && $email && $mode) {
+    $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+    $codeColumn = ($mode === 'register') ? 'verification_code' : 'reset_otp';
+    $update = "UPDATE customers SET $codeColumn = '$otp' WHERE email = '$email'";
+    if (mysqli_query($conn, $update)) {
+        // 发送邮件
+        require 'PHPMailer/src/PHPMailer.php';
+        require 'PHPMailer/src/SMTP.php';
+        require 'PHPMailer/src/Exception.php';
 
-            $mail = new PHPMailer\PHPMailer\PHPMailer(true);
-            try {
-                $mail->isSMTP();
-                $mail->Host = 'smtp.gmail.com';
-                $mail->SMTPAuth = true;
-                $mail->Username = 'yewshunyaodennis@gmail.com';
-                $mail->Password = 'ydgu hfqw qgjh daqg';
-                $mail->SMTPSecure = 'tls';
-                $mail->Port = 587;
+        $mail = new PHPMailer\PHPMailer\PHPMailer(true);
+        try {
+            $mail->isSMTP();
+            $mail->Host = 'smtp.gmail.com';
+            $mail->SMTPAuth = true;
+            $mail->Username = 'yewshunyaodennis@gmail.com';
+            $mail->Password = 'ydgu hfqw qgjh daqg';
+            $mail->SMTPSecure = 'tls';
+            $mail->Port = 587;
 
-                $mail->setFrom('yewshunyaodennis@gmail.com', 'FastFood Express');
-                $mail->addAddress($email);
-                $mail->isHTML(true);
-                $mail->Subject = 'Your New OTP Code';
-                $mail->Body = "<h2>Your OTP is:</h2><h1 style='color:red;'>$newOTP</h1>";
+            $mail->setFrom('yewshunyaodennis@gmail.com', 'FastFood Express');
+            $mail->addAddress($email);
+            $mail->isHTML(true);
+            $mail->Subject = 'Your OTP Code';
+            $mail->Body = "Your OTP is: <h1 style='color:red;'>$otp</h1>";
 
-                $mail->send();
-                $success = "New OTP sent to your email.";
-            } catch (Exception $e) {
-                $error = "Failed to resend OTP.";
-            }
-        }
-    }
-
-    // 验证OTP
-    if ($_SERVER["REQUEST_METHOD"] == "POST") {
-        $userOTP = $_POST['otp'];
-        $query = "SELECT * FROM customers WHERE email = '$email' AND verification_code = '$userOTP'";
-        $result = mysqli_query($conn, $query);
-
-        if (mysqli_num_rows($result) == 1) {
-            $update = "UPDATE customers SET is_verified = 1, verification_code = NULL WHERE email = '$email'";
-            if (mysqli_query($conn, $update)) {
-                unset($_SESSION['pending_email']);
-                $_SESSION['registration_success'] = "Registration successful!";
-                header("Location: login.php");
-                exit();
-            } else {
-                $error = "Database error.";
-            }
-        } else {
-            $error = "Invalid OTP. Please try again.";
+            $mail->send();
+            $success = "New OTP sent to your email.";
+        } catch (Exception $e) {
+            $error = "Failed to resend OTP.";
         }
     }
 }
-?>
 
+// 提交 OTP 进行验证
+if ($_SERVER["REQUEST_METHOD"] == "POST" && $mode) {
+    $userOTP = $_POST['otp'];
+    $codeColumn = ($mode === 'register') ? 'verification_code' : 'reset_otp';
+
+    $query = "SELECT * FROM customers WHERE email = '$email' AND $codeColumn = '$userOTP'";
+    $result = mysqli_query($conn, $query);
+
+    if (mysqli_num_rows($result) == 1) {
+        if ($mode === 'register') {
+            $update = "UPDATE customers SET is_verified = 1, verification_code = NULL WHERE email = '$email'";
+            mysqli_query($conn, $update);
+            unset($_SESSION['pending_email']);
+            $_SESSION['registration_success'] = "Registration successful!";
+            header("Location: login.php");
+            exit();
+        } else if ($mode === 'reset') {
+            unset($_SESSION['reset_otp']);
+            $_SESSION['reset_verified'] = true;
+            header("Location: reset_password.php");
+            exit();
+        }
+    } else {
+        $error = "Invalid OTP. Please try again.";
+    }
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -176,7 +188,7 @@ if (!isset($_SESSION['pending_email'])) {
 
     <a href="?resend" class="resend-link">Resend OTP</a>
   <?php else: ?>
-    <p style="color: #d6001c;">Error: Session expired. Please go back to <a href="register.php">Register</a>.</p>
+    <p style="color: #d6001c;">Session expired. Please go back to <a href="register.php">Register</a> or <a href="forgot_password.php">Forgot Password</a>.</p>
   <?php endif; ?>
 </div>
 
