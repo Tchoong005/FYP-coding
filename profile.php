@@ -43,7 +43,7 @@ if (isset($_POST['update_profile'])) {
     }
 }
 
-// 修改密码
+// 修改密码（已改为 password_verify 检查）
 if (isset($_POST['change_password'])) {
     $old_password = mysqli_real_escape_string($conn, $_POST['old_password']);
     $new_password = mysqli_real_escape_string($conn, $_POST['new_password']);
@@ -54,11 +54,13 @@ if (isset($_POST['change_password'])) {
     } elseif (strlen($new_password) < 8 || !preg_match("/[A-Z]/", $new_password) || !preg_match("/[0-9]/", $new_password) || !preg_match("/[\W_]/", $new_password)) {
         $pass_message = "Password must be at least 8 characters long, contain an uppercase letter, a number, and a symbol.";
     } else {
-        $check_sql = "SELECT * FROM customers WHERE id='$user_id' AND password='$old_password'";
+        $check_sql = "SELECT password FROM customers WHERE id='$user_id'";
         $check_result = mysqli_query($conn, $check_sql);
+        $row = mysqli_fetch_assoc($check_result);
 
-        if (mysqli_num_rows($check_result) > 0) {
-            $update_sql = "UPDATE customers SET password='$new_password' WHERE id='$user_id'";
+        if ($row && password_verify($old_password, $row['password'])) {
+            $new_hashed = password_hash($new_password, PASSWORD_DEFAULT);
+            $update_sql = "UPDATE customers SET password='$new_hashed' WHERE id='$user_id'";
             if (mysqli_query($conn, $update_sql)) {
                 $pass_message = "<span style='color:green;'>Password updated successfully!</span>";
             } else {
@@ -70,6 +72,7 @@ if (isset($_POST['change_password'])) {
     }
 }
 ?>
+
 
 <!DOCTYPE html>
 <html lang="en">
