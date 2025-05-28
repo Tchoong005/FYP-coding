@@ -2,76 +2,72 @@
 session_start();
 include 'db.php';
 
-$error = $success = '';
+$error = $success = "";
 
 if (!isset($_SESSION['pending_email'])) {
     header("Location: register.php");
     exit();
 }
 
-// 处理重新发送OTP请求
-if (isset($_GET['resend'])) {
-    $email = $_SESSION['pending_email'];
-    $newOTP = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-    
-    // 更新数据库中的OTP
-    $update = "UPDATE customers SET verification_code = '$newOTP' WHERE email = '$email'";
-    if (mysqli_query($conn, $update)) {
-        // 发送新OTP邮件
-        require 'PHPMailer/src/PHPMailer.php';
-        require 'PHPMailer/src/SMTP.php';
-        require 'PHPMailer/src/Exception.php';
-        
-        $mail = new PHPMailer\PHPMailer\PHPMailer(true);
-        try {
-            $mail->isSMTP();
-            $mail->Host = 'smtp.gmail.com';
-            $mail->SMTPAuth = true;
-            $mail->Username = 'yewshunyaodennis@gmail.com';
-            $mail->Password = 'ydgu hfqw qgjh daqg';
-            $mail->SMTPSecure = 'tls';
-            $mail->Port = 587;
+$email = $_SESSION['pending_email'];
 
-            $mail->setFrom('yewshunyaodennis@gmail.com', 'FastFood Express');
-            $mail->addAddress($email);
-            $mail->isHTML(true);
-            $mail->Subject = 'Your New OTP Code';
-            $mail->Body    = "
-                <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>
-                    <h2 style='color: #d6001c;'>New OTP Code</h2>
-                    <p>Your new verification code is:</p>
-                    <h1 style='color: #d6001c; text-align: center;'>$newOTP</h1>
-                    <p>Please use this code to verify your email address.</p>
-                </div>
-            ";
-            
-            $mail->send();
-            $success = "New OTP has been sent to your email.";
-        } catch (Exception $e) {
-            $error = "Failed to resend OTP. Please try again.";
-        }
+// ========== RESEND OTP ==========
+if (isset($_GET['resend'])) {
+    if (isset($_SESSION['otp_sent_time']) && time() - $_SESSION['otp_sent_time'] < 60) {
+        $error = "Please wait " . (60 - (time() - $_SESSION['otp_sent_time'])) . " seconds before resending.";
     } else {
-        $error = "Database error. Please try again.";
+        $newOTP = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $update = "UPDATE customers SET verification_code = '$newOTP' WHERE email = '$email'";
+        if (mysqli_query($conn, $update)) {
+            require 'PHPMailer/src/PHPMailer.php';
+            require 'PHPMailer/src/SMTP.php';
+            require 'PHPMailer/src/Exception.php';
+
+            $mail = new PHPMailer\PHPMailer\PHPMailer(true);
+            try {
+                $mail->isSMTP();
+                $mail->Host = 'smtp.gmail.com';
+                $mail->SMTPAuth = true;
+                $mail->Username = 'yewshunyaodennis@gmail.com';
+                $mail->Password = 'ydgu hfqw qgjh daqg';
+                $mail->SMTPSecure = 'tls';
+                $mail->Port = 587;
+
+                $mail->setFrom('yewshunyaodennis@gmail.com', 'FastFood Express');
+                $mail->addAddress($email);
+                $mail->isHTML(true);
+                $mail->Subject = 'Your New OTP Code';
+                $mail->Body = "
+                    <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>
+                        <h2 style='color: #d6001c;'>New OTP Code</h2>
+                        <p>Your new verification code is:</p>
+                        <h1 style='color: #d6001c; text-align: center;'>$newOTP</h1>
+                        <p>Please use this code to verify your email address.</p>
+                    </div>
+                ";
+
+                $mail->send();
+                $_SESSION['otp_sent_time'] = time(); // ✅ 保存发送时间
+                $success = "New OTP has been sent to your email.";
+            } catch (Exception $e) {
+                $error = "Failed to resend OTP. Please try again.";
+            }
+        } else {
+            $error = "Database error. Please try again.";
+        }
     }
 }
 
-// 处理OTP验证请求
+// ========== VERIFY OTP ==========
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $userOTP = $_POST['otp'];
-    $email = $_SESSION['pending_email'];
-    
-    // 验证OTP
     $query = "SELECT * FROM customers WHERE email = '$email' AND verification_code = '$userOTP'";
     $result = mysqli_query($conn, $query);
-    
+
     if (mysqli_num_rows($result) == 1) {
-        // OTP验证成功，更新用户状态
         $update = "UPDATE customers SET is_verified = 1, verification_code = NULL WHERE email = '$email'";
         if (mysqli_query($conn, $update)) {
-            // 清除session
-            unset($_SESSION['pending_email']);
-            
-            // 设置成功消息并重定向到登录页面
+            unset($_SESSION['pending_email'], $_SESSION['otp_sent_time']);
             $_SESSION['registration_success'] = "Registration successful! You can now login.";
             header("Location: login.php");
             exit();
@@ -83,7 +79,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -153,20 +148,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             margin-bottom: 15px;
             word-break: break-all;
         }
+        .resend-section {
+            margin-top: 15px;
+            font-size: 14px;
+        }
         .resend-link {
             color: #d6001c;
             text-decoration: none;
-            font-size: 14px;
-            margin-top: 15px;
-            display: inline-block;
+            display: none;
         }
         .resend-link:hover {
             text-decoration: underline;
-        }
-        .bottom-text {
-            margin-top: 20px;
-            font-size: 14px;
-            color: #666;
         }
     </style>
 </head>
@@ -174,26 +166,48 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
 <div class="verification-box">
     <h2>Email Verification</h2>
-    <div class="email-display">OTP sent to: <?php echo htmlspecialchars($_SESSION['pending_email']); ?></div>
-    
+    <div class="email-display">OTP sent to: <?php echo htmlspecialchars($email); ?></div>
+
     <?php if ($error): ?>
         <div class="message error"><?php echo $error; ?></div>
     <?php endif; ?>
-    
     <?php if ($success): ?>
         <div class="message success"><?php echo $success; ?></div>
     <?php endif; ?>
-    
+
     <form method="post">
-        <input type="text" name="otp" class="otp-input" placeholder="Enter 6-digit OTP" required 
-               maxlength="6" pattern="\d{6}" title="Please enter 6-digit OTP">
+        <input type="text" name="otp" class="otp-input" placeholder="Enter 6-digit OTP" required maxlength="6" pattern="\d{6}">
         <button type="submit" class="verify-btn">Verify OTP</button>
     </form>
-    
-    <div class="bottom-text">
-        Didn't receive code? <a href="?resend" class="resend-link">Resend OTP</a>
+
+    <div class="resend-section">
+        <span id="resendText"></span>
+        <a href="?resend" id="resendLink" class="resend-link">Resend OTP</a>
     </div>
 </div>
+
+<script>
+let countdown = <?php echo isset($_SESSION['otp_sent_time']) ? max(0, 60 - (time() - $_SESSION['otp_sent_time'])) : 0; ?>;
+const resendText = document.getElementById('resendText');
+const resendLink = document.getElementById('resendLink');
+
+function updateCountdown() {
+    if (countdown > 0) {
+        resendText.innerText = `Wait ${countdown}s...`;
+        resendLink.style.display = 'none';
+    } else {
+        resendText.innerText = '';
+        resendLink.style.display = 'inline';
+    }
+    countdown--;
+}
+
+updateCountdown();
+let timer = setInterval(() => {
+    updateCountdown();
+    if (countdown < 0) clearInterval(timer);
+}, 1000);
+</script>
 
 </body>
 </html>
