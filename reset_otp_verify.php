@@ -1,40 +1,37 @@
-=<?php
+<?php
 session_start();
 include 'db.php';
 
-$error = $success = '';
-$email = '';
-$mode = ''; // 'register' or 'reset'
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
 
-// 确定模式 & 获取 email
-if (isset($_SESSION['pending_email'])) {
-    $email = $_SESSION['pending_email'];
-    $mode = 'register';
-} elseif (isset($_SESSION['reset_email'])) {
-    $email = $_SESSION['reset_email'];
-    $mode = 'reset';
-} else {
-    $error = "Session expired or invalid access. Please restart the process.";
+require 'PHPMailer/src/PHPMailer.php';
+require 'PHPMailer/src/SMTP.php';
+require 'PHPMailer/src/Exception.php';
+
+$error = $success = '';
+$email = $_SESSION['pending_email'] ?? $_SESSION['reset_email'] ?? null;
+
+// 如果没 email，跳回首页
+if (!$email) {
+    header("Location: login.php");
+    exit();
 }
 
-// 处理 resend OTP
-if (isset($_GET['resend']) && $email && $mode) {
-    $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-    $codeColumn = ($mode === 'register') ? 'verification_code' : 'reset_otp';
-    $update = "UPDATE customers SET $codeColumn = '$otp' WHERE email = '$email'";
-    if (mysqli_query($conn, $update)) {
-        // 发送邮件
-        require 'PHPMailer/src/PHPMailer.php';
-        require 'PHPMailer/src/SMTP.php';
-        require 'PHPMailer/src/Exception.php';
+// 处理重新发送 OTP（仅 GET）
+if (isset($_GET['resend'])) {
+    $newOTP = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+    $column = isset($_SESSION['pending_email']) ? 'verification_code' : 'reset_otp';
 
-        $mail = new PHPMailer\PHPMailer\PHPMailer(true);
+    $update = "UPDATE customers SET $column = '$newOTP' WHERE email = '$email'";
+    if (mysqli_query($conn, $update)) {
         try {
+            $mail = new PHPMailer(true);
             $mail->isSMTP();
             $mail->Host = 'smtp.gmail.com';
             $mail->SMTPAuth = true;
             $mail->Username = 'yewshunyaodennis@gmail.com';
-            $mail->Password = 'ydgu hfqw qgjh daqg';
+            $mail->Password = 'ydgu hfqw qgjh daqg'; // 应使用 App Password
             $mail->SMTPSecure = 'tls';
             $mail->Port = 587;
 
@@ -42,34 +39,40 @@ if (isset($_GET['resend']) && $email && $mode) {
             $mail->addAddress($email);
             $mail->isHTML(true);
             $mail->Subject = 'Your OTP Code';
-            $mail->Body = "Your OTP is: <h1 style='color:red;'>$otp</h1>";
+            $mail->Body = "
+                <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>
+                    <h2 style='color: #d6001c;'>Your OTP Code</h2>
+                    <p>Use the code below to proceed:</p>
+                    <h1 style='color: #d6001c; text-align: center;'>$newOTP</h1>
+                </div>";
 
             $mail->send();
-            $success = "New OTP sent to your email.";
+            $success = "OTP resent to your email.";
         } catch (Exception $e) {
-            $error = "Failed to resend OTP.";
+            $error = "Failed to send OTP.";
         }
+    } else {
+        $error = "Database error.";
     }
 }
 
-// 提交 OTP 进行验证
-if ($_SERVER["REQUEST_METHOD"] == "POST" && $mode) {
-    $userOTP = $_POST['otp'];
-    $codeColumn = ($mode === 'register') ? 'verification_code' : 'reset_otp';
+// 处理 OTP 验证（仅 POST）
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    $enteredOTP = $_POST['otp'] ?? '';
+    $column = isset($_SESSION['pending_email']) ? 'verification_code' : 'reset_otp';
 
-    $query = "SELECT * FROM customers WHERE email = '$email' AND $codeColumn = '$userOTP'";
+    $query = "SELECT * FROM customers WHERE email = '$email' AND $column = '$enteredOTP'";
     $result = mysqli_query($conn, $query);
 
-    if (mysqli_num_rows($result) == 1) {
-        if ($mode === 'register') {
-            $update = "UPDATE customers SET is_verified = 1, verification_code = NULL WHERE email = '$email'";
-            mysqli_query($conn, $update);
+    if (mysqli_num_rows($result) === 1) {
+        if ($column === 'verification_code') {
+            mysqli_query($conn, "UPDATE customers SET is_verified = 1, verification_code = NULL WHERE email = '$email'");
             unset($_SESSION['pending_email']);
-            $_SESSION['registration_success'] = "Registration successful!";
+            $_SESSION['registration_success'] = "Email verified. Please login.";
             header("Location: login.php");
             exit();
-        } else if ($mode === 'reset') {
-            unset($_SESSION['reset_otp']);
+        } else {
+            mysqli_query($conn, "UPDATE customers SET reset_otp = NULL WHERE email = '$email'");
             $_SESSION['reset_verified'] = true;
             header("Location: reset_password.php");
             exit();
@@ -79,143 +82,87 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && $mode) {
     }
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Email Verification</title>
-  <style>
-    body {
-      background-color: #ffeeee;
-      font-family: Arial, sans-serif;
-    }
-    .container {
-      max-width: 400px;
-      margin: 100px auto;
-      background: white;
-      padding: 40px;
-      border-radius: 12px;
-      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
-      text-align: center;
-    }
-    h2 {
-      color: #d6001c;
-      margin-bottom: 20px;
-    }
-    .otp-boxes {
-      display: flex;
-      justify-content: space-between;
-      margin: 20px 0;
-    }
-    .otp-input {
-      width: 45px;
-      height: 55px;
-      font-size: 24px;
-      text-align: center;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-    }
-    .verify-btn {
-      background: #d6001c;
-      color: white;
-      padding: 12px;
-      width: 100%;
-      border: none;
-      border-radius: 6px;
-      font-weight: bold;
-      font-size: 16px;
-      margin-top: 20px;
-      cursor: pointer;
-    }
-    .verify-btn:hover {
-      background: #a50013;
-    }
-    .resend-link {
-      margin-top: 15px;
-      display: inline-block;
-      font-size: 14px;
-      color: #d6001c;
-      text-decoration: none;
-    }
-    .resend-link:hover {
-      text-decoration: underline;
-    }
-    .message {
-      margin-bottom: 15px;
-      padding: 10px;
-      border-radius: 5px;
-    }
-    .error {
-      background-color: #fff0f0;
-      color: #d6001c;
-    }
-    .success {
-      background-color: #e0ffe8;
-      color: green;
-    }
-    .email-info {
-      font-size: 14px;
-      color: #555;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <title>Verify OTP</title>
+    <style>
+        body {
+            background: #fff0f0;
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .box {
+            background: white;
+            padding: 30px 40px;
+            border-radius: 12px;
+            width: 350px;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        h2 {
+            color: #d6001c;
+            margin-bottom: 10px;
+        }
+        .message {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 6px;
+        }
+        .error { color: #d6001c; background: #ffeeee; }
+        .success { color: green; background: #eaffea; }
+        input[name="otp"] {
+            width: 100%;
+            padding: 12px;
+            font-size: 18px;
+            letter-spacing: 5px;
+            margin: 20px 0;
+            text-align: center;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+        }
+        button {
+            background: #d6001c;
+            color: white;
+            padding: 12px;
+            width: 100%;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #a00015;
+        }
+        .resend-link {
+            display: block;
+            margin-top: 15px;
+            font-size: 14px;
+            color: #d6001c;
+            text-decoration: none;
+        }
+    </style>
 </head>
 <body>
+    <div class="box">
+        <h2>Verify OTP</h2>
+        <p>OTP sent to: <strong><?php echo htmlspecialchars($email); ?></strong></p>
 
-<div class="container">
-  <h2>Enter OTP Code</h2>
+        <?php if ($error) echo "<div class='message error'>$error</div>"; ?>
+        <?php if ($success) echo "<div class='message success'>$success</div>"; ?>
 
-  <?php if (!empty($email)): ?>
-    <p class="email-info">OTP sent to: <strong><?= htmlspecialchars($email) ?></strong></p>
-  <?php endif; ?>
+        <form method="POST" action="">
+            <input type="text" name="otp" maxlength="6" pattern="\d{6}" required placeholder="Enter 6-digit OTP">
+            <button type="submit">Verify OTP</button>
+        </form>
 
-  <?php if ($error): ?>
-    <div class="message error"><?= $error ?></div>
-  <?php endif; ?>
-  <?php if ($success): ?>
-    <div class="message success"><?= $success ?></div>
-  <?php endif; ?>
-
-  <?php if (!empty($email)): ?>
-    <form method="POST" onsubmit="combineOTP();">
-      <div class="otp-boxes">
-        <?php for ($i = 1; $i <= 6; $i++): ?>
-          <input type="text" id="otp<?= $i ?>" maxlength="1" class="otp-input" required>
-        <?php endfor; ?>
-      </div>
-      <input type="hidden" name="otp" id="otpFull">
-      <button type="submit" class="verify-btn">Verify OTP</button>
-    </form>
-
-    <a href="?resend" class="resend-link">Resend OTP</a>
-  <?php else: ?>
-    <p style="color: #d6001c;">Session expired. Please go back to <a href="register.php">Register</a> or <a href="forgot_password.php">Forgot Password</a>.</p>
-  <?php endif; ?>
-</div>
-
-<script>
-  const inputs = document.querySelectorAll('.otp-input');
-  inputs[0]?.focus();
-
-  inputs.forEach((input, index) => {
-    input.addEventListener('input', () => {
-      if (input.value.length > 0 && index < inputs.length - 1) {
-        inputs[index + 1].focus();
-      }
-    });
-
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Backspace' && !input.value && index > 0) {
-        inputs[index - 1].focus();
-      }
-    });
-  });
-
-  function combineOTP() {
-    let otp = '';
-    inputs.forEach(input => otp += input.value);
-    document.getElementById('otpFull').value = otp;
-  }
-</script>
-
+        <a href="?resend=1" class="resend-link">Didn't receive? Resend OTP</a>
+    </div>
 </body>
 </html>
