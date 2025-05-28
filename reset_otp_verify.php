@@ -3,44 +3,78 @@ session_start();
 include 'db.php';
 
 $error = $success = '';
+$email = '';
 
+// 检查是否有 pending_email session
 if (!isset($_SESSION['pending_email'])) {
-    header("Location: register.php");
-    exit();
-}
+    $error = "Session expired or invalid access. Please register again.";
+} else {
+    $email = $_SESSION['pending_email'];
 
-$email = $_SESSION['pending_email'];
-
-// 处理表单提交
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $userOTP = $_POST['otp_full'];
-
-    $query = "SELECT * FROM customers WHERE email = '$email' AND verification_code = '$userOTP'";
-    $result = mysqli_query($conn, $query);
-
-    if (mysqli_num_rows($result) == 1) {
-        $update = "UPDATE customers SET is_verified = 1, verification_code = NULL WHERE email = '$email'";
+    // 处理重新发送OTP请求
+    if (isset($_GET['resend'])) {
+        $newOTP = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $update = "UPDATE customers SET verification_code = '$newOTP' WHERE email = '$email'";
         if (mysqli_query($conn, $update)) {
-            unset($_SESSION['pending_email']);
-            $_SESSION['registration_success'] = "Registration successful! You can now login.";
-            header("Location: login.php");
-            exit();
-        } else {
-            $error = "Database error. Please try again.";
+            require 'PHPMailer/src/PHPMailer.php';
+            require 'PHPMailer/src/SMTP.php';
+            require 'PHPMailer/src/Exception.php';
+
+            $mail = new PHPMailer\PHPMailer\PHPMailer(true);
+            try {
+                $mail->isSMTP();
+                $mail->Host = 'smtp.gmail.com';
+                $mail->SMTPAuth = true;
+                $mail->Username = 'yewshunyaodennis@gmail.com';
+                $mail->Password = 'ydgu hfqw qgjh daqg';
+                $mail->SMTPSecure = 'tls';
+                $mail->Port = 587;
+
+                $mail->setFrom('yewshunyaodennis@gmail.com', 'FastFood Express');
+                $mail->addAddress($email);
+                $mail->isHTML(true);
+                $mail->Subject = 'Your New OTP Code';
+                $mail->Body = "<h2>Your OTP is:</h2><h1 style='color:red;'>$newOTP</h1>";
+
+                $mail->send();
+                $success = "New OTP sent to your email.";
+            } catch (Exception $e) {
+                $error = "Failed to resend OTP.";
+            }
         }
-    } else {
-        $error = "Invalid OTP. Please try again.";
+    }
+
+    // 验证OTP
+    if ($_SERVER["REQUEST_METHOD"] == "POST") {
+        $userOTP = $_POST['otp'];
+        $query = "SELECT * FROM customers WHERE email = '$email' AND verification_code = '$userOTP'";
+        $result = mysqli_query($conn, $query);
+
+        if (mysqli_num_rows($result) == 1) {
+            $update = "UPDATE customers SET is_verified = 1, verification_code = NULL WHERE email = '$email'";
+            if (mysqli_query($conn, $update)) {
+                unset($_SESSION['pending_email']);
+                $_SESSION['registration_success'] = "Registration successful!";
+                header("Location: login.php");
+                exit();
+            } else {
+                $error = "Database error.";
+            }
+        } else {
+            $error = "Invalid OTP. Please try again.";
+        }
     }
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Verify OTP</title>
+  <title>Email Verification</title>
   <style>
     body {
-      background: #ffeeee;
+      background-color: #ffeeee;
       font-family: Arial, sans-serif;
     }
     .container {
@@ -54,61 +88,73 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
     h2 {
       color: #d6001c;
+      margin-bottom: 20px;
     }
-    .otp-box {
+    .otp-boxes {
       display: flex;
       justify-content: space-between;
       margin: 20px 0;
     }
     .otp-input {
-      width: 50px;
-      height: 50px;
-      font-size: 22px;
+      width: 45px;
+      height: 55px;
+      font-size: 24px;
       text-align: center;
       border: 1px solid #ccc;
       border-radius: 8px;
     }
-    .btn {
+    .verify-btn {
       background: #d6001c;
       color: white;
-      border: none;
       padding: 12px;
       width: 100%;
+      border: none;
       border-radius: 6px;
       font-weight: bold;
       font-size: 16px;
+      margin-top: 20px;
       cursor: pointer;
     }
-    .btn:hover {
-      background: #b00015;
-    }
-    .message {
-      padding: 10px;
-      border-radius: 5px;
-      margin-bottom: 15px;
-    }
-    .error {
-      background-color: #ffe6e6;
-      color: #d6001c;
-    }
-    .success {
-      background-color: #e7ffe7;
-      color: green;
+    .verify-btn:hover {
+      background: #a50013;
     }
     .resend-link {
       margin-top: 15px;
-      display: block;
-      color: #d6001c;
+      display: inline-block;
       font-size: 14px;
+      color: #d6001c;
       text-decoration: none;
+    }
+    .resend-link:hover {
+      text-decoration: underline;
+    }
+    .message {
+      margin-bottom: 15px;
+      padding: 10px;
+      border-radius: 5px;
+    }
+    .error {
+      background-color: #fff0f0;
+      color: #d6001c;
+    }
+    .success {
+      background-color: #e0ffe8;
+      color: green;
+    }
+    .email-info {
+      font-size: 14px;
+      color: #555;
     }
   </style>
 </head>
 <body>
 
 <div class="container">
-  <h2>Email Verification</h2>
-  <p>OTP sent to: <strong><?php echo htmlspecialchars($email); ?></strong></p>
+  <h2>Enter OTP Code</h2>
+
+  <?php if (!empty($email)): ?>
+    <p class="email-info">OTP sent to: <strong><?= htmlspecialchars($email) ?></strong></p>
+  <?php endif; ?>
 
   <?php if ($error): ?>
     <div class="message error"><?= $error ?></div>
@@ -117,49 +163,46 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <div class="message success"><?= $success ?></div>
   <?php endif; ?>
 
-  <form method="POST" id="otpForm">
-    <div class="otp-box">
-      <?php for ($i = 1; $i <= 6; $i++): ?>
-        <input type="text" maxlength="1" class="otp-input" id="otp<?= $i ?>" oninput="moveNext(this, <?= $i ?>)" required>
-      <?php endfor; ?>
-    </div>
-    <input type="hidden" name="otp_full" id="otp_full">
-    <button type="submit" class="btn">Verify OTP</button>
-  </form>
+  <?php if (!empty($email)): ?>
+    <form method="POST" onsubmit="combineOTP();">
+      <div class="otp-boxes">
+        <?php for ($i = 1; $i <= 6; $i++): ?>
+          <input type="text" id="otp<?= $i ?>" maxlength="1" class="otp-input" required>
+        <?php endfor; ?>
+      </div>
+      <input type="hidden" name="otp" id="otpFull">
+      <button type="submit" class="verify-btn">Verify OTP</button>
+    </form>
 
-  <a class="resend-link" href="?resend">Didn’t receive? Resend OTP</a>
+    <a href="?resend" class="resend-link">Resend OTP</a>
+  <?php else: ?>
+    <p style="color: #d6001c;">Error: Session expired. Please go back to <a href="register.php">Register</a>.</p>
+  <?php endif; ?>
 </div>
 
 <script>
   const inputs = document.querySelectorAll('.otp-input');
+  inputs[0]?.focus();
 
-  function moveNext(elem, index) {
-    let value = elem.value;
-    if (!/^\d$/.test(value)) {
-      elem.value = '';
-      return;
-    }
-    if (index < 6) {
-      document.getElementById('otp' + (index + 1)).focus();
-    }
-
-    let otp = '';
-    inputs.forEach(input => otp += input.value);
-    document.getElementById('otp_full').value = otp;
-  }
-
-  // Prevent non-digit input
-  inputs.forEach(input => {
-    input.addEventListener('keydown', (e) => {
-      if (e.key === "Backspace" && input.value === '') {
-        const prev = input.previousElementSibling;
-        if (prev) prev.focus();
+  inputs.forEach((input, index) => {
+    input.addEventListener('input', () => {
+      if (input.value.length > 0 && index < inputs.length - 1) {
+        inputs[index + 1].focus();
       }
-      if (!e.key.match(/[0-9]|Backspace|Arrow/)) {
-        e.preventDefault();
+    });
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Backspace' && !input.value && index > 0) {
+        inputs[index - 1].focus();
       }
     });
   });
+
+  function combineOTP() {
+    let otp = '';
+    inputs.forEach(input => otp += input.value);
+    document.getElementById('otpFull').value = otp;
+  }
 </script>
 
 </body>
