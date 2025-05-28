@@ -35,16 +35,21 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                <?php
 // ...existing code...
 if (mysqli_query($conn, $insert)) {
+   <?php
+// ...existing code...
+if (mysqli_query($conn, $insert)) {
     // 发送欢迎邮件
     $to = $email;
-    $subject = "Welcome to register account in FastFood Express!";
-    $message = "Hi $username,\n\nThanks for your registration in FastFood Express。\n\nEnjoy your meal！";
+    $subject = "欢迎注册 FastFood Express!";
+    $message = "Hi $username,\n\n感谢您注册 FastFood Express。\n\n祝您用餐愉快！";
     $headers = "From: no-reply@fastfoodexpress.com\r\n";
     mail($to, $subject, $message, $headers);
 
     $success = "Registration successful! You can now login.";
 } else {
     $error = "Something went wrong. Please try again.";
+}
+// ...existing code...
 }
 // ...existing code... 
               $success = "Registration successful! You can now login.";
