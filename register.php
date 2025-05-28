@@ -1,4 +1,5 @@
 <?php
+<?php
 session_start();
 include 'db.php';
 
@@ -32,22 +33,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $insert = "INSERT INTO customers (email, username, phone, password, security_question, security_answer, is_verified)
                        VALUES ('$email', '$username', '$phone', '$hashed_password', '$question', '$answer', 0)";
             if (mysqli_query($conn, $insert)) {
-               
-<?php
-// ...existing code...
-if (mysqli_query($conn, $insert)) {
-    // Send welcome email (English version)
-    $to = $email;
-    $subject = "Welcome to FastFood Express!";
-    $message = "Hi $username,\n\nThank you for registering at FastFood Express.\n\nEnjoy your meal!";
-    $headers = "From: no-reply@fastfoodexpress.com\r\n";
-    mail($to, $subject, $message, $headers);
+                // Send welcome email (English version)
+                $to = $email;
+                $subject = "Welcome to FastFood Express!";
+                $message = "Hi $username,\n\nThank you for registering at FastFood Express.\n\nEnjoy your meal!";
+                $headers = "From: no-reply@fastfoodexpress.com\r\n";
+                mail($to, $subject, $message, $headers);
 
-    $success = "Registration successful! You can now login.";
-} else {
-    $error = "Something went wrong. Please try again.";
-}
-// ...existing code...
+                $success = "Registration successful! You can now login.";
+            } else {
+                $error = "Something went wrong. Please try again.";
+            }
         }
     }
 }
