@@ -46,57 +46,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->execute();
         $stmt->close();
     }
-    
-    // Add new category
-    if (isset($_POST['add_category'])) {
-        $category_name = $_POST['category_name'];
-        $category_slug = $_POST['category_slug'];
-        
-        $stmt = $conn->prepare("INSERT INTO categories (name, slug) VALUES (?, ?)");
-        $stmt->bind_param("ss", $category_name, $category_slug);
-        $stmt->execute();
-        $stmt->close();
-    }
-    
-    // Update category
-    if (isset($_POST['update_category'])) {
-        $id = $_POST['category_id'];
-        $name = $_POST['category_name'];
-        $slug = $_POST['category_slug'];
-        
-        $stmt = $conn->prepare("UPDATE categories SET name=?, slug=? WHERE id=?");
-        $stmt->bind_param("ssi", $name, $slug, $id);
-        $stmt->execute();
-        $stmt->close();
-    }
-    
-    // Delete category
-    if (isset($_POST['delete_category'])) {
-        $id = $_POST['category_id'];
-        // First check if any products use this category
-        $check = $conn->prepare("SELECT COUNT(*) FROM products WHERE category = (SELECT slug FROM categories WHERE id = ?)");
-        $check->bind_param("i", $id);
-        $check->execute();
-        $check->bind_result($count);
-        $check->fetch();
-        $check->close();
-        
-        if ($count > 0) {
-            echo "<script>alert('Cannot delete category - it is being used by products.');</script>";
-        } else {
-            $stmt = $conn->prepare("DELETE FROM categories WHERE id=?");
-            $stmt->bind_param("i", $id);
-            $stmt->execute();
-            $stmt->close();
-        }
-    }
 }
 
 // Fetch all active products (not deleted)
 $products = $conn->query("SELECT * FROM products WHERE deleted_at IS NULL ORDER BY category, name");
-
-// Fetch all categories
-$categories = $conn->query("SELECT * FROM categories ORDER BY name");
 ?>
 
 <!DOCTYPE html>
@@ -107,11 +60,13 @@ $categories = $conn->query("SELECT * FROM categories ORDER BY name");
     <title>Product Management - KFG FOOD</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
     <style>
-        * {
+         * {
             padding: 0;
             margin: 0;
             box-sizing: border-box;
             font-family: 'poppins', sans-serif;
+
+
         }
 
         .user {
@@ -170,6 +125,7 @@ $categories = $conn->query("SELECT * FROM categories ORDER BY name");
             cursor: pointer;
         }
 
+
         .list {
             position: fixed;
             top: 60px;
@@ -177,15 +133,18 @@ $categories = $conn->query("SELECT * FROM categories ORDER BY name");
             height: 100%;
             background: rgba(220, 73, 73, 0.897);
             overflow-x: hidden;
+
         }
 
         .list ul {
             margin-top: 20px;
+
         }
 
         .list ul li {
             width: 100%;
             list-style: none;
+
         }
 
         .list ul li a {
@@ -195,16 +154,76 @@ $categories = $conn->query("SELECT * FROM categories ORDER BY name");
             height: 60px;
             display: flex;
             align-items: center;
+
+
         }
 
         .list ul li a i {
+
             min-width: 60px;
             font-size: 24px;
             text-align: center;
+
         }
 
         .list ul li:hover {
             background: rgb(227, 125, 125);
+        }
+
+
+
+        .main {
+            position: absolute;
+            top: 60px;
+            width: calc(100%-260px);
+            left: 260px;
+            min-height: calc(100%-60px);
+
+        }
+
+
+        .user-dropdown {
+            position: relative;
+            display: inline-block;
+        }
+
+        .user-dropdown img {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            background-color: white;
+            min-width: 120px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            z-index: 1;
+            border-radius: 6px;
+        }
+
+        .dropdown-content a {
+            color: black;
+            padding: 10px 16px;
+            text-decoration: none;
+            display: block;
+        }
+
+        .dropdown-content a:hover {
+            background-color: #f1f1f1;
+        }
+
+        .user-dropdown.show .dropdown-content {
+            display: block;
+        }
+        * {
+            padding: 0;
+            margin: 0;
+            box-sizing: border-box;
+            font-family: 'poppins', sans-serif;
         }
 
         .main {
@@ -377,466 +396,301 @@ $categories = $conn->query("SELECT * FROM categories ORDER BY name");
         .deleted-row:hover {
             opacity: 1;
         }
-
-        .user-dropdown {
-            position: relative;
-            display: inline-block;
-        }
-
-        .user-dropdown img {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            cursor: pointer;
-        }
-
-        .dropdown-content {
-            display: none;
-            position: absolute;
-            right: 0;
-            background-color: white;
-            min-width: 120px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            z-index: 1;
-            border-radius: 6px;
-        }
-
-        .dropdown-content a {
-            color: black;
-            padding: 10px 16px;
-            text-decoration: none;
-            display: block;
-        }
-
-        .dropdown-content a:hover {
-            background-color: #f1f1f1;
-        }
-
-        .user-dropdown.show .dropdown-content {
-            display: block;
-        }
     </style>
 </head>
 <body>
 <div class="top">
-    <div class="topbar">
-        <div class="logo">
-            <h2>FastFood Express</h2>
-        </div>
-        <div class="search">
-            <input type="text" id="search" placeholder="search here">
-            <label for="search"><i class="fas fa-search"></i></label>
-        </div>
-        <div class="user-dropdown" id="userDropdown">
-            <img src="img/72-729716_user-avatar-png-graphic-free-download-icon.png" alt="User Avatar">
-            <div class="dropdown-content">
-                <a href="profile.php">Edit profile</a>
-                <a href="adminlogout.php">Logout</a>
+        <div class="topbar">
+            <div class="logo">
+                <h2>FastFood Express</h2>
             </div>
-        </div>
-    </div>
-</div>
+            <div class="search">
+                <input type="text" id="search" placeholder="search here">
+                <label for="search"><i class="fas fa-search"></i></label>
 
-<div class="list">
-    <ul>
+            </div>
+            <div class="user-dropdown" id="userDropdown">
+                <img src="img/72-729716_user-avatar-png-graphic-free-download-icon.png" alt="User Avatar">
+                <div class="dropdown-content">
+                    <a href="profile.php">Edit profile</a>
+                    <a href="adminlogout.php">Logout</a>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="list">
+        <ul>
+            <li>
+                <a href="adminhome.html">
+                    <i class="fas fa-home"></i>
+                    <h4>DASHBOARD</h4>
+                </a>
+            </li>
+        </ul>
+        <ul>
+            <li>
+                <a href="adminorder.php">
+                    <i class="fas fa-receipt"></i>
+                    <h4>ORDERS</h4>
+                </a>
+            </li>
+        </ul>
+        <ul>
+            <li>
+                <a href="adminProduct.php">
+                    <i class="fas fa-box-open"></i>
+                    <h4>PRODUCTS</h4>
+                </a>
+            </li>
+        </ul>
+        <ul>
         <li>
-            <a href="adminhome.html">
-                <i class="fas fa-home"></i>
-                <h4>DASHBOARD</h4>
+            <a href="adminCategories.php">
+                <i class="fas fa-tags"></i>
+                <h4>CATEGORIES</h4>
             </a>
         </li>
     </ul>
-    <ul>
-        <li>
-            <a href="adminorder.html">
-                <i class="fas fa-receipt"></i>
-                <h4>ORDERS</h4>
-            </a>
-        </li>
-    </ul>
-    <ul>
-        <li>
-            <a href="adminProduct.php">
-                <i class="fas fa-box-open"></i>
-                <h4>PRODUCTS</h4>
-            </a>
-        </li>
-    </ul>
-    <ul>
-        <li>
-            <a href="adminStaff.php">
-                <i class="fas fa-user-tie"></i>
-                <h4>STAFFS</h4>
-            </a>
-        </li>
-    </ul>
-    <ul>
-        <li>
-            <a href="adminCustomer.php">
-                <i class="fas fa-users"></i>
-                <h4>CUSTOMER</h4>
-            </a>
-        </li>
-    </ul>
-    <ul>
-        <li>
-            <a href="adminReport.html">
-                <i class="fas fa-chart-line"></i>
-                <h4>REPORT</h4>
-            </a>
-        </li>
-    </ul>
-    <ul>
-        <li>
-            <a href="adminAboutUs.html">
-                <i class="fas fa-info-circle"></i>
-                <h4>ABOURT US</h4>
-            </a>
-        </li>
-    </ul>
-</div>
+        <ul>
+            <li>
+                <a href="adminStaff.php">
+                    <i class="fas fa-user-tie"></i>
+                    <h4>STAFFS</h4>
+                </a>
+            </li>
+        </ul>
+        <ul>
+            <li>
+                <a href="adminCustomer.php">
+                    <i class="fas fa-users"></i>
+                    <h4>CUSTOMER</h4>
+                </a>
+            </li>
+        </ul>
+        <ul>
+            <li>
+                <a href="adminReport.html">
+                    <i class="fas fa-chart-line"></i>
+                    <h4>REPORT</h4>
+                </a>
+            </li>
+        </ul>
+        <ul>
+            <li>
+                <a href="adminAboutUs.html">
+                    <i class="fas fa-info-circle"></i>
+                    <h4>ABOURT US</h4>
+                </a>
+            </li>
+        </ul>
+
+    </div>
  
-<div class="main">
-    <div class="card">
-        <h3>Product Management</h3>
-        
-        <button class="btn btn-add" onclick="openAddModal()">
-            <i class="fas fa-plus"></i> Add New Product
-        </button>
-        
-        <a href="adminDeletedProducts.php" class="btn btn-restore">
-            <i class="fas fa-trash-restore"></i> View Deleted Products
-        </a>
-        
-        <table>
-            <thead>
-                <tr>
-                    <th>Image</th>
-                    <th>Name</th>
-                    <th>Description</th>
-                    <th>Price (RM)</th>
-                    <th>Category</th>
-                    <th>Stock</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php while($product = $products->fetch_assoc()): ?>
-                <tr>
-                    <td>
-                        <?php if($product['image_url']): ?>
-                            <img src="<?php echo htmlspecialchars($product['image_url']); ?>" alt="<?php echo htmlspecialchars($product['name']); ?>" class="product-image">
-                        <?php else: ?>
-                            <i class="fas fa-image" style="font-size: 24px;"></i>
-                        <?php endif; ?>
-                    </td>
-                    <td><?php echo htmlspecialchars($product['name']); ?></td>
-                    <td><?php echo htmlspecialchars($product['description']); ?></td>
-                    <td><?php echo number_format($product['price'], 2); ?></td>
-                    <td>
-                        <span class="category-badge <?php echo $product['category']; ?>">
-                            <?php 
-                                $cat_result = $conn->query("SELECT name FROM categories WHERE slug = '{$product['category']}' LIMIT 1");
-                                if ($cat_result && $cat_row = $cat_result->fetch_assoc()) {
-                                    echo htmlspecialchars($cat_row['name']);
-                                } else {
-                                    echo htmlspecialchars($product['category']);
-                                }
-                            ?>
-                        </span>
-                    </td>
-                    <td><?php echo $product['stock_quantity']; ?></td>
-                    <td>
-                        <button class="btn btn-edit" onclick="openEditModal(
-                            <?php echo $product['id']; ?>,
-                            '<?php echo addslashes($product['name']); ?>',
-                            '<?php echo addslashes($product['description']); ?>',
-                            <?php echo $product['price']; ?>,
-                            '<?php echo $product['category']; ?>',
-                            <?php echo $product['stock_quantity']; ?>,
-                            '<?php echo addslashes($product['image_url']); ?>'
-                        )">
-                            <i class="fas fa-edit"></i> Edit
-                        </button>
-                        <form method="POST" style="display: inline;">
-                            <input type="hidden" name="id" value="<?php echo $product['id']; ?>">
-                            <button type="submit" name="hide_product" class="btn btn-hide" onclick="return confirm('Are you sure you want to delete this product?');">
-                                <i class="fas fa-trash"></i> Delete
+    <div class="main">
+        <div class="card">
+            <h3>Product Management</h3>
+            
+            <button class="btn btn-add" onclick="openAddModal()">
+                <i class="fas fa-plus"></i> Add New Product
+            </button>
+            
+            <a href="adminDeletedProducts.php" class="btn btn-restore">
+                <i class="fas fa-trash-restore"></i> View Deleted Products
+            </a>
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th>Image</th>
+                        <th>Name</th>
+                        <th>Description</th>
+                        <th>Price (RM)</th>
+                        <th>Category</th>
+                        <th>Stock</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php while($product = $products->fetch_assoc()): ?>
+                    <tr>
+                        <td>
+                            <?php if($product['image_url']): ?>
+                                <img src="<?php echo htmlspecialchars($product['image_url']); ?>" alt="<?php echo htmlspecialchars($product['name']); ?>" class="product-image">
+                            <?php else: ?>
+                                <i class="fas fa-image" style="font-size: 24px;"></i>
+                            <?php endif; ?>
+                        </td>
+                        <td><?php echo htmlspecialchars($product['name']); ?></td>
+                        <td><?php echo htmlspecialchars($product['description']); ?></td>
+                        <td><?php echo number_format($product['price'], 2); ?></td>
+                        <td>
+                            <span class="category-badge <?php echo $product['category']; ?>">
+                                <?php 
+                                    $categoryMap = [
+                                        'beverages' => 'Beverages',
+                                        'chicken' => 'Chicken',
+                                        'burger' => 'Burger',
+                                        'desserts_sides' => 'Desserts & Sides'
+                                    ];
+                                    echo $categoryMap[$product['category']];
+                                ?>
+                            </span>
+                        </td>
+                        <td><?php echo $product['stock_quantity']; ?></td>
+                        <td>
+                            <button class="btn btn-edit" onclick="openEditModal(
+                                <?php echo $product['id']; ?>,
+                                '<?php echo addslashes($product['name']); ?>',
+                                '<?php echo addslashes($product['description']); ?>',
+                                <?php echo $product['price']; ?>,
+                                '<?php echo $product['category']; ?>',
+                                <?php echo $product['stock_quantity']; ?>,
+                                '<?php echo addslashes($product['image_url']); ?>'
+                            )">
+                                <i class="fas fa-edit"></i> Edit
                             </button>
-                        </form>
-                    </td>
-                </tr>
-                <?php endwhile; ?>
-            </tbody>
-        </table>
-    </div>
-
-    <!-- Category Management Section -->
-    <div class="card" style="margin-top: 30px;">
-        <h3>Category Management</h3>
-        
-        <button class="btn btn-add" onclick="openAddCategoryModal()">
-            <i class="fas fa-plus"></i> Add New Category
-        </button>
-        
-        <table>
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Name</th>
-                    <th>Slug</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php 
-                $categories = $conn->query("SELECT * FROM categories ORDER BY name");
-                while($category = $categories->fetch_assoc()): 
-                ?>
-                <tr>
-                    <td><?php echo $category['id']; ?></td>
-                    <td><?php echo htmlspecialchars($category['name']); ?></td>
-                    <td><?php echo htmlspecialchars($category['slug']); ?></td>
-                    <td>
-                        <button class="btn btn-edit" onclick="openEditCategoryModal(
-                            <?php echo $category['id']; ?>,
-                            '<?php echo addslashes($category['name']); ?>',
-                            '<?php echo addslashes($category['slug']); ?>'
-                        )">
-                            <i class="fas fa-edit"></i> Edit
-                        </button>
-                        <form method="POST" style="display: inline;">
-                            <input type="hidden" name="category_id" value="<?php echo $category['id']; ?>">
-                            <button type="submit" name="delete_category" class="btn btn-hide" onclick="return confirm('Are you sure you want to delete this category?');">
-                                <i class="fas fa-trash"></i> Delete
-                            </button>
-                        </form>
-                    </td>
-                </tr>
-                <?php endwhile; ?>
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<!-- Add Product Modal -->
-<div id="addModal" class="modal">
-    <div class="modal-content">
-        <span class="close" onclick="closeAddModal()">&times;</span>
-        <h3>Add New Product</h3>
-        <form method="POST">
-            <div class="form-group">
-                <label for="name">Product Name</label>
-                <input type="text" id="name" name="name" required>
-            </div>
-            <div class="form-group">
-                <label for="description">Description</label>
-                <textarea id="description" name="description" rows="3"></textarea>
-            </div>
-            <div class="form-group">
-                <label for="price">Price (RM)</label>
-                <input type="number" id="price" name="price" step="0.01" min="0" required>
-            </div>
-            <div class="form-group">
-                <label for="category">Category</label>
-                <select id="category" name="category" required>
-                    <?php 
-                    $categories = $conn->query("SELECT * FROM categories ORDER BY name");
-                    while($cat = $categories->fetch_assoc()): 
-                    ?>
-                        <option value="<?php echo $cat['slug']; ?>"><?php echo htmlspecialchars($cat['name']); ?></option>
+                            <form method="POST" style="display: inline;">
+                                <input type="hidden" name="id" value="<?php echo $product['id']; ?>">
+                                <button type="submit" name="hide_product" class="btn btn-hide" onclick="return confirm('Are you sure you want to delete this product?');">
+                                    <i class=""></i> Delete
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
                     <?php endwhile; ?>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="stock_quantity">Stock Quantity</label>
-                <input type="number" id="stock_quantity" name="stock_quantity" min="0" required>
-            </div>
-            <div class="form-group">
-                <label for="image_url">Image URL</label>
-                <input type="text" id="image_url" name="image_url" placeholder="https://example.com/image.jpg">
-            </div>
-            <button type="submit" name="add_product" class="btn btn-add">Add Product</button>
-        </form>
+                </tbody>
+            </table>
+        </div>
     </div>
-</div>
 
-<!-- Edit Product Modal -->
-<div id="editModal" class="modal">
-    <div class="modal-content">
-        <span class="close" onclick="closeEditModal()">&times;</span>
-        <h3>Edit Product</h3>
-        <form method="POST">
-            <input type="hidden" id="edit_id" name="id">
-            <div class="form-group">
-                <label for="edit_name">Product Name</label>
-                <input type="text" id="edit_name" name="name" required>
-            </div>
-            <div class="form-group">
-                <label for="edit_description">Description</label>
-                <textarea id="edit_description" name="description" rows="3"></textarea>
-            </div>
-            <div class="form-group">
-                <label for="edit_price">Price (RM)</label>
-                <input type="number" id="edit_price" name="price" step="0.01" min="0" required>
-            </div>
-            <div class="form-group">
-                <label for="edit_category">Category</label>
-                <select id="edit_category" name="category" required>
-                    <?php 
-                    $categories = $conn->query("SELECT * FROM categories ORDER BY name");
-                    while($cat = $categories->fetch_assoc()): 
-                    ?>
-                        <option value="<?php echo $cat['slug']; ?>"><?php echo htmlspecialchars($cat['name']); ?></option>
-                    <?php endwhile; ?>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="edit_stock_quantity">Stock Quantity</label>
-                <input type="number" id="edit_stock_quantity" name="stock_quantity" min="0" required>
-            </div>
-            <div class="form-group">
-                <label for="edit_image_url">Image URL</label>
-                <input type="text" id="edit_image_url" name="image_url" placeholder="https://example.com/image.jpg">
-            </div>
-            <button type="submit" name="update_product" class="btn btn-edit">Update Product</button>
-        </form>
+    <!-- Add Product Modal -->
+    <div id="addModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeAddModal()">&times;</span>
+            <h3>Add New Product</h3>
+            <form method="POST">
+                <div class="form-group">
+                    <label for="name">Product Name</label>
+                    <input type="text" id="name" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label for="description">Description</label>
+                    <textarea id="description" name="description" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="price">Price (RM)</label>
+                    <input type="number" id="price" name="price" step="0.01" min="0" required>
+                </div>
+                <div class="form-group">
+                    <label for="category">Category</label>
+                    <select id="category" name="category" required>
+                        <option value="beverages">Beverages</option>
+                        <option value="chicken">Chicken</option>
+                        <option value="burger">Burger</option>
+                        <option value="desserts_sides">Desserts & Sides</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="stock_quantity">Stock Quantity</label>
+                    <input type="number" id="stock_quantity" name="stock_quantity" min="0" required>
+                </div>
+                <div class="form-group">
+                    <label for="image_url">Image URL</label>
+                    <input type="text" id="image_url" name="image_url" placeholder="https://example.com/image.jpg">
+                </div>
+                <button type="submit" name="add_product" class="btn btn-add">Add Product</button>
+            </form>
+        </div>
     </div>
-</div>
 
-<!-- Add Category Modal -->
-<div id="addCategoryModal" class="modal">
-    <div class="modal-content">
-        <span class="close" onclick="closeAddCategoryModal()">&times;</span>
-        <h3>Add New Category</h3>
-        <form method="POST">
-            <div class="form-group">
-                <label for="category_name">Category Name</label>
-                <input type="text" id="category_name" name="category_name" required>
-            </div>
-            <div class="form-group">
-                <label for="category_slug">Slug (URL-friendly name)</label>
-                <input type="text" id="category_slug" name="category_slug" required>
-                <small>Use lowercase letters, numbers and underscores only (e.g., "burgers", "chicken_items")</small>
-            </div>
-            <button type="submit" name="add_category" class="btn btn-add">Add Category</button>
-        </form>
+    <!-- Edit Product Modal -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeEditModal()">&times;</span>
+            <h3>Edit Product</h3>
+            <form method="POST">
+                <input type="hidden" id="edit_id" name="id">
+                <div class="form-group">
+                    <label for="edit_name">Product Name</label>
+                    <input type="text" id="edit_name" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit_description">Description</label>
+                    <textarea id="edit_description" name="description" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="edit_price">Price (RM)</label>
+                    <input type="number" id="edit_price" name="price" step="0.01" min="0" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit_category">Category</label>
+                    <select id="edit_category" name="category" required>
+                        <option value="beverages">Beverages</option>
+                        <option value="chicken">Chicken</option>
+                        <option value="burger">Burger</option>
+                        <option value="desserts_sides">Desserts & Sides</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="edit_stock_quantity">Stock Quantity</label>
+                    <input type="number" id="edit_stock_quantity" name="stock_quantity" min="0" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit_image_url">Image URL</label>
+                    <input type="text" id="edit_image_url" name="image_url" placeholder="https://example.com/image.jpg">
+                </div>
+                <button type="submit" name="update_product" class="btn btn-edit">Update Product</button>
+            </form>
+        </div>
     </div>
-</div>
 
-<!-- Edit Category Modal -->
-<div id="editCategoryModal" class="modal">
-    <div class="modal-content">
-        <span class="close" onclick="closeEditCategoryModal()">&times;</span>
-        <h3>Edit Category</h3>
-        <form method="POST">
-            <input type="hidden" id="edit_category_id" name="category_id">
-            <div class="form-group">
-                <label for="edit_category_name">Category Name</label>
-                <input type="text" id="edit_category_name" name="category_name" required>
-            </div>
-            <div class="form-group">
-                <label for="edit_category_slug">Slug (URL-friendly name)</label>
-                <input type="text" id="edit_category_slug" name="category_slug" required>
-                <small>Use lowercase letters, numbers and underscores only</small>
-            </div>
-            <button type="submit" name="update_category" class="btn btn-edit">Update Category</button>
-        </form>
-    </div>
-</div>
-
-<script>
-    // Modal functions
-    function openAddModal() {
-        document.getElementById('addModal').style.display = 'block';
-    }
-
-    function closeAddModal() {
-        document.getElementById('addModal').style.display = 'none';
-    }
-
-    function openEditModal(id, name, description, price, category, stock, image_url) {
-        document.getElementById('edit_id').value = id;
-        document.getElementById('edit_name').value = name;
-        document.getElementById('edit_description').value = description;
-        document.getElementById('edit_price').value = price;
-        document.getElementById('edit_category').value = category;
-        document.getElementById('edit_stock_quantity').value = stock;
-        document.getElementById('edit_image_url').value = image_url;
-        
-        document.getElementById('editModal').style.display = 'block';
-    }
-
-    function closeEditModal() {
-        document.getElementById('editModal').style.display = 'none';
-    }
-
-    // Category Modal functions
-    function openAddCategoryModal() {
-        document.getElementById('addCategoryModal').style.display = 'block';
-    }
-
-    function closeAddCategoryModal() {
-        document.getElementById('addCategoryModal').style.display = 'none';
-    }
-
-    function openEditCategoryModal(id, name, slug) {
-        document.getElementById('edit_category_id').value = id;
-        document.getElementById('edit_category_name').value = name;
-        document.getElementById('edit_category_slug').value = slug;
-        
-        document.getElementById('editCategoryModal').style.display = 'block';
-    }
-
-    function closeEditCategoryModal() {
-        document.getElementById('editCategoryModal').style.display = 'none';
-    }
-
-    // Close modals when clicking outside
-    window.onclick = function(event) {
-        if (event.target.className === 'modal') {
-            event.target.style.display = 'none';
+    <script>
+        // Modal functions
+        function openAddModal() {
+            document.getElementById('addModal').style.display = 'block';
         }
-    }
 
-    // User dropdown functionality
-    const dropdown = document.getElementById('userDropdown');
+        function closeAddModal() {
+            document.getElementById('addModal').style.display = 'none';
+        }
+
+        function openEditModal(id, name, description, price, category, stock, image_url) {
+            document.getElementById('edit_id').value = id;
+            document.getElementById('edit_name').value = name;
+            document.getElementById('edit_description').value = description;
+            document.getElementById('edit_price').value = price;
+            document.getElementById('edit_category').value = category;
+            document.getElementById('edit_stock_quantity').value = stock;
+            document.getElementById('edit_image_url').value = image_url;
+            
+            document.getElementById('editModal').style.display = 'block';
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').style.display = 'none';
+        }
+
+        // Close modals when clicking outside
+        window.onclick = function(event) {
+            if (event.target.className === 'modal') {
+                event.target.style.display = 'none';
+            }
+        }
+
+        const dropdown = document.getElementById('userDropdown');
     dropdown.addEventListener('click', function (event) {
-        event.stopPropagation();
-        this.classList.toggle('show');
+      event.stopPropagation();
+      this.classList.toggle('show');
     });
   
     // Close dropdown if clicked outside
     window.addEventListener('click', function () {
-        dropdown.classList.remove('show');
+      dropdown.classList.remove('show');
     });
-
-    // Auto-generate slug from category name
-    document.getElementById('category_name').addEventListener('input', function() {
-        const slugInput = document.getElementById('category_slug');
-        if (!slugInput.value) {
-            const slug = this.value.toLowerCase()
-                .replace(/\s+/g, '_')      // Replace spaces with _
-                .replace(/[^\w_]+/g, '')   // Remove all non-word chars
-                .replace(/_+/g, '_')        // Replace multiple _ with single _
-                .replace(/^_+|_+$/g, '');   // Trim _ from start and end
-            slugInput.value = slug;
-        }
-    });
-
-    // Same for edit modal
-    document.getElementById('edit_category_name').addEventListener('input', function() {
-        const slugInput = document.getElementById('edit_category_slug');
-        if (!slugInput.value || slugInput.value === document.getElementById('edit_category_slug').defaultValue) {
-            const slug = this.value.toLowerCase()
-                .replace(/\s+/g, '_')
-                .replace(/[^\w_]+/g, '')
-                .replace(/_+/g, '_')
-                .replace(/^_+|_+$/g, '');
-            slugInput.value = slug;
-        }
-    });
-</script>
+    </script>
 </body>
 </html>
 <?php $conn->close(); ?>

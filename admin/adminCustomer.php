@@ -279,9 +279,10 @@
                 <h2>FastFood Express</h2>
             </div>
             <div class="search">
-                <input type="text" id="search" placeholder="Search here...">
-                <i class="fas fa-search"></i>
+               
+
             </div>
+            
             <div class="user-dropdown" id="userDropdown">
                 <img src="img/72-729716_user-avatar-png-graphic-free-download-icon.png" alt="User Avatar">
                 <div class="dropdown-content">
@@ -295,7 +296,7 @@
     <div class="list">
         <ul>
             <li>
-                <a href="adminhome.html">
+                <a href="adminhome.php">
                     <i class="fas fa-home"></i>
                     <h4>DASHBOARD</h4>
                 </a>
@@ -318,6 +319,17 @@
             </li>
         </ul>
         <ul>
+        <li>
+            <a href="adminCategories.php">
+                <i class="fas fa-tags"></i>
+                <h4>CATEGORIES</h4>
+            </a>
+        </li>
+        </ul>
+    
+
+    
+        <ul>
             <li>
                 <a href="adminStaff.php">
                     <i class="fas fa-user-tie"></i>
@@ -335,20 +347,13 @@
         </ul>
         <ul>
             <li>
-                <a href="adminReport.html">
+                <a href="adminReport.php">
                     <i class="fas fa-chart-line"></i>
                     <h4>REPORT</h4>
                 </a>
             </li>
         </ul>
-        <ul>
-            <li>
-                <a href="adminAboutUs.html">
-                    <i class="fas fa-info-circle"></i>
-                    <h4>ABOURT US</h4>
-                </a>
-            </li>
-        </ul>
+       
     </div>
 
     <div class="main">

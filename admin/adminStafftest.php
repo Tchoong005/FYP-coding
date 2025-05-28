@@ -1,32 +1,15 @@
 <?php
-session_start();
-
 // Connect to database
 $conn = new mysqli("localhost", "root", "", "fyp_fastfood");
 if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
 
-// Check if user is logged in and is super admin
-if (!isset($_SESSION['staff_id']) {
-    header("Location: newadminlogin.php");
-    exit();
-}
 
-// Get current user's role
-$current_user_id = $_SESSION['staff_id'];
-$stmt = $conn->prepare("SELECT role FROM staff WHERE id = ? AND deleted = 0");
-$stmt->bind_param("i", $current_user_id);
-$stmt->execute();
-$stmt->bind_result($current_user_role);
-$stmt->fetch();
-$stmt->close();
 
-// Only allow super admin (ID 1) to access this page
-if ($current_user_id != 1 || $current_user_role != 'superadmin') {
-    header("Location: adminhome.html");
-    exit();
-}
+
+
+
 
 // Handle search
 $search_email = '';
@@ -147,7 +130,7 @@ $staffList = $stmt->get_result();
     <title>Staff Management</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
     <style>
-                 * {
+               * {
             padding: 0;
             margin: 0;
             box-sizing: border-box;
@@ -547,12 +530,6 @@ $staffList = $stmt->get_result();
         .clear-search:hover {
             background-color: #5a6268;
         }
-        .access-denied {
-            text-align: center;
-            padding: 50px;
-            color: #dc3545;
-            font-size: 24px;
-        }
     </style>
 </head>
 
@@ -560,7 +537,7 @@ $staffList = $stmt->get_result();
     <div class="top">
         <div class="topbar">
             <div class="logo">
-                <h2>KFG FOOD</h2>
+                <h2>FastFood Express</h2>
             </div>
             <div class="search">
                 <input type="text" id="search" placeholder="search here">
@@ -587,7 +564,7 @@ $staffList = $stmt->get_result();
         </ul>
         <ul>
             <li>
-                <a href="adminorder.html">
+                <a href="adminorder.php">
                     <i class="fas fa-receipt"></i>
                     <h4>ORDERS</h4>
                 </a>
@@ -736,7 +713,6 @@ $staffList = $stmt->get_result();
                             <option value="IT Technician">IT Technician</option>
                             <option value="IT Support">IT Support</option>
                             <option value="admin">Admin</option>
-                            <option value="superadmin">Super Admin</option>
                         </select>
                     </div>
                     <div class="form-group">

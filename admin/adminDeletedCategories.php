@@ -1,64 +1,41 @@
 <?php
-session_start();
-include('db_connection.php');
-
-// Check if user is logged in
-if (!isset($_SESSION['email'])) {
-    header("Location: newadminlogin.php");
-    exit();
+// Database connection
+$conn = new mysqli('127.0.0.1', 'root', '', 'fyp_fastfood');
+if ($conn->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
 }
 
-// Get current user data
-$email = $_SESSION['email'];
-$query = "SELECT * FROM staff WHERE email = '$email'";
-$result = mysqli_query($conn, $query);
-$user = mysqli_fetch_assoc($result);
-
-// Handle form submission
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $old_password = $_POST['old_password'];
-    $new_password = $_POST['new_password'];
-    $confirm_password = $_POST['confirm_password'];
-    
-    // Verify old password against hashed password in database
-    if (!password_verify($old_password, $user['password'])) {
-        $error = "Current password is incorrect";
-    } elseif ($new_password != $confirm_password) {
-        $error = "New passwords do not match";
-    } elseif (empty($new_password)) {
-        $error = "New password cannot be empty";
-    } else {
-        // Hash the new password before storing
-        $hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
-        
-        // Update password
-        $update_query = "UPDATE staff SET password = '$hashed_password' WHERE email = '$email'";
-        
-        if (mysqli_query($conn, $update_query)) {
-            $success = "Password changed successfully!";
-        } else {
-            $error = "Error changing password: " . mysqli_error($conn);
-        }
+// Handle form submissions
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Restore category
+    if (isset($_POST['restore_category'])) {
+        $id = $_POST['id'];
+        $stmt = $conn->prepare("UPDATE categories SET deleted_at=NULL WHERE id=?");
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+        $stmt->close();
     }
 }
+
+// Fetch all deleted categories
+$categories = $conn->query("SELECT * FROM categories WHERE deleted_at IS NOT NULL ORDER BY name");
 ?>
 
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
-        integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg=="
-        crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <title>Change Password</title>
+    <title>Deleted Categories - KFG FOOD</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
     <style>
-        * {
+                * {
             padding: 0;
             margin: 0;
             box-sizing: border-box;
             font-family: 'poppins', sans-serif;
+
+
         }
 
         .user {
@@ -117,6 +94,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             cursor: pointer;
         }
 
+
         .list {
             position: fixed;
             top: 60px;
@@ -124,15 +102,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             height: 100%;
             background: rgba(220, 73, 73, 0.897);
             overflow-x: hidden;
+
         }
 
         .list ul {
             margin-top: 20px;
+
         }
 
         .list ul li {
             width: 100%;
             list-style: none;
+
         }
 
         .list ul li a {
@@ -142,27 +123,33 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             height: 60px;
             display: flex;
             align-items: center;
+
+
         }
 
         .list ul li a i {
+
             min-width: 60px;
             font-size: 24px;
             text-align: center;
+
         }
 
         .list ul li:hover {
             background: rgb(227, 125, 125);
         }
 
+
+
         .main {
             position: absolute;
             top: 60px;
-            width: calc(100% - 260px);
+            width: calc(100%-260px);
             left: 260px;
-            min-height: calc(100vh - 60px);
-            padding: 20px;
-            background-color: #f4f4f4;
+            min-height: calc(100%-60px);
+
         }
+
 
         .user-dropdown {
             position: relative;
@@ -201,84 +188,162 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         .user-dropdown.show .dropdown-content {
             display: block;
         }
-
-        /* Password Change Styles */
-        .container {
-            max-width: 600px;
-            margin: 20px auto;
-            background: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        
+        * {
+            padding: 0;
+            margin: 0;
+            box-sizing: border-box;
+            font-family: 'poppins', sans-serif;
         }
 
-        .h2 {
-            text-align: center;
-            color: #333;
+        .main {
+            position: absolute;
+            top: 60px;
+            width: calc(100% - 260px);
+            left: 260px;
+            min-height: calc(100vh - 60px);
+            padding: 20px;
+            background: #f5f5f5;
+        }
+
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
             margin-bottom: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .card h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #dc4949;
+            color: white;
+        }
+
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+
+        .btn {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+
+        .btn-edit {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .btn-hide {
+            background-color: #f44336;
+            color: white;
+        }
+
+        .btn-add {
+            background-color: #2196F3;
+            color: white;
+            margin-bottom: 20px;
+        }
+
+        .btn-restore {
+            background-color: #ff9800;
+            color: white;
+        }
+
+        .btn:hover {
+            opacity: 0.8;
         }
 
         .form-group {
             margin-bottom: 15px;
         }
 
-        label {
+        .form-group label {
             display: block;
             margin-bottom: 5px;
             font-weight: bold;
         }
 
-        input[type="password"] {
+        .form-group input, .form-group select, .form-group textarea {
             width: 100%;
             padding: 10px;
             border: 1px solid #ddd;
             border-radius: 4px;
-            box-sizing: border-box;
         }
 
-        button, .button {
-            background-color: #4CAF50;
-            color: white;
-            padding: 10px 15px;
-            border: none;
-            border-radius: 4px;
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 10% auto;
+            padding: 20px;
+            border-radius: 10px;
+            width: 50%;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
             cursor: pointer;
-            font-size: 16px;
-            text-decoration: none;
-            display: inline-block;
-            margin-right: 10px;
         }
 
-        button:hover, .button:hover {
-            background-color: #45a049;
+        .close:hover {
+            color: black;
         }
 
-        .message {
-            padding: 10px;
-            margin-bottom: 15px;
-            border-radius: 4px;
+        .category-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
         }
 
-        .success {
-            background-color: #dff0d8;
-            color: #3c763d;
+        .deleted-row {
+            opacity: 0.7;
+            background-color: #ffeeee;
         }
 
-        .error {
-            background-color: #f2dede;
-            color: #a94442;
-        }
-
-        .button-group {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 20px;
+        .deleted-row:hover {
+            opacity: 1;
         }
     </style>
 </head>
-
 <body>
-    <div class="top">
+<div class="top">
         <div class="topbar">
             <div class="logo">
                 <h2>FastFood Express</h2>
@@ -360,53 +425,58 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     </div>
 
 
-    <div class="main">
-        <div class="container">
-            <h2>Change Password</h2>
-            
-            <?php if (isset($success)): ?>
-                <div class="message success"><?php echo $success; ?></div>
-            <?php endif; ?>
-            
-            <?php if (isset($error)): ?>
-                <div class="message error"><?php echo $error; ?></div>
-            <?php endif; ?>
-            
-            <form action="changepassword.php" method="POST">
-                <div class="form-group">
-                    <label for="old_password">Current Password:</label>
-                    <input type="password" id="old_password" name="old_password" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="new_password">New Password:</label>
-                    <input type="password" id="new_password" name="new_password" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="confirm_password">Confirm New Password:</label>
-                    <input type="password" id="confirm_password" name="confirm_password" required>
-                </div>
-                
-                <div class="button-group">
-                    <a href="profile.php" class="button">Back to Profile</a>
-                    <button type="submit">Change Password</button>
-                </div>
-            </form>
-        </div>
+<div class="main">
+    <div class="card">
+        <h3>Deleted Categories</h3>
+        
+        <a href="adminCategories.php" class="btn btn-add">
+            <i class="fas fa-arrow-left"></i> Back to Active Categories
+        </a>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Display Name</th>
+                    <th>Description</th>
+                    <th>Deleted At</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php while($category = $categories->fetch_assoc()): ?>
+                <tr class="deleted-row">
+                    <td><?php echo htmlspecialchars($category['name']); ?></td>
+                    <td><?php echo htmlspecialchars($category['display_name']); ?></td>
+                    <td><?php echo htmlspecialchars($category['description']); ?></td>
+                    <td><?php echo date('Y-m-d H:i', strtotime($category['deleted_at'])); ?></td>
+                    <td>
+                        <form method="POST" style="display: inline;">
+                            <input type="hidden" name="id" value="<?php echo $category['id']; ?>">
+                            <button type="submit" name="restore_category" class="btn btn-restore">
+                                <i class="fas fa-trash-restore"></i> Restore
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                <?php endwhile; ?>
+            </tbody>
+        </table>
     </div>
-
-    <script>
-        const dropdown = document.getElementById('userDropdown');
-        dropdown.addEventListener('click', function (event) {
-          event.stopPropagation();
-          this.classList.toggle('show');
-        });
-      
-        // Close dropdown if clicked outside
-        window.addEventListener('click', function () {
-          dropdown.classList.remove('show');
-        });
-    </script>
+</div>
 </body>
 </html>
+<?php $conn->close(); ?>
+
+<script>
+    const dropdown = document.getElementById('userDropdown');
+    dropdown.addEventListener('click', function (event) {
+      event.stopPropagation();
+      this.classList.toggle('show');
+    });
+  
+    // Close dropdown if clicked outside
+    window.addEventListener('click', function () {
+      dropdown.classList.remove('show');
+    });
+  </script>

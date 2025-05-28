@@ -18,60 +18,36 @@ try {
     throw new \PDOException($e->getMessage(), (int)$e->getCode());
 }
 
-// Get sales data for the last 7 days
-$salesData = [];
-$dates = [];
-for ($i = 6; $i >= 0; $i--) {
-    $date = date('Y-m-d', strtotime("-$i days"));
-    $dates[] = date('M j', strtotime($date));
-    
-    $stmt = $pdo->prepare("SELECT COALESCE(SUM(final_total), 0) as total FROM orders WHERE DATE(created_at) = ?");
-    $stmt->execute([$date]);
-    $result = $stmt->fetch();
-    $salesData[] = $result['total'];
-}
+// Get today's orders count and revenue
+$today = date('Y-m-d');
+$stmt = $pdo->prepare("SELECT COUNT(*) as count, SUM(final_total) as revenue FROM orders WHERE DATE(created_at) = ?");
+$stmt->execute([$today]);
+$todayData = $stmt->fetch();
 
-// Get sales by category
-$categoryData = [];
-$categoryLabels = [];
-$stmt = $pdo->query("
-    SELECT c.display_name, SUM(oi.price * oi.quantity) as total 
-    FROM order_items oi
-    JOIN products p ON oi.product_id = p.id
-    JOIN categories c ON p.category = c.name
-    GROUP BY c.display_name
-");
-while ($row = $stmt->fetch()) {
-    $categoryLabels[] = $row['display_name'];
-    $categoryData[] = $row['total'];
-}
+// Get total products count
+$stmt = $pdo->query("SELECT COUNT(*) as count FROM products WHERE deleted_at IS NULL");
+$productsData = $stmt->fetch();
 
-// Get recent orders for the table
-$stmt = $pdo->query("
-    SELECT o.id, o.recipient_name, o.final_total, o.order_status, o.created_at 
-    FROM orders o 
-    ORDER BY o.created_at DESC 
-    LIMIT 10
-");
+// Get active customers count
+$stmt = $pdo->query("SELECT COUNT(*) as count FROM customers WHERE is_banned = 0");
+$customersData = $stmt->fetch();
+
+// Get recent orders
+$stmt = $pdo->query("SELECT o.id, o.recipient_name, o.final_total, o.order_status, o.created_at 
+                     FROM orders o 
+                     ORDER BY o.created_at DESC 
+                     LIMIT 5");
 $recentOrders = $stmt->fetchAll();
-
-// Get total metrics
-$stmt = $pdo->query("SELECT COUNT(*) as order_count, SUM(final_total) as total_revenue FROM orders");
-$totals = $stmt->fetch();
-
-$stmt = $pdo->query("SELECT COUNT(DISTINCT user_id) as customer_count FROM orders");
-$customerCount = $stmt->fetch();
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sales Report - FastFood Express</title>
+    <title>Admin Dashboard - FastFood Express</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-                * {
+        * {
             padding: 0;
             margin: 0;
             box-sizing: border-box;
@@ -243,26 +219,25 @@ $customerCount = $stmt->fetch();
             left: 260px;
             width: calc(100% - 260px);
             min-height: calc(100vh - 60px);
-            padding: 20px;
+            padding: 30px;
             background: #f5f5f5;
         }
 
-        .report-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        .report-header h1 {
-            color: #dc4949;
-        }
-
-        .report-period {
+        .welcome {
             background: white;
-            padding: 10px 15px;
-            border-radius: 5px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+
+        .welcome h1 {
+            color: #dc4949;
+            margin-bottom: 10px;
+        }
+
+        .welcome p {
+            color: #666;
         }
 
         .cards {
@@ -277,77 +252,77 @@ $customerCount = $stmt->fetch();
             padding: 20px;
             border-radius: 10px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            text-align: center;
+            display: flex;
+            align-items: center;
+            transition: transform 0.3s;
         }
 
-        .card h3 {
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .card-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: rgba(220, 73, 73, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+        }
+
+        .card-icon i {
+            font-size: 24px;
+            color: #dc4949;
+        }
+
+        .card-info h3 {
             color: #555;
-            font-size: 16px;
-            margin-bottom: 10px;
+            font-size: 14px;
+            margin-bottom: 5px;
         }
 
-        .card h2 {
-            color: #dc4949;
-            font-size: 28px;
+        .card-info h2 {
+            color: #333;
+            font-size: 24px;
         }
 
-        .card i {
-            font-size: 40px;
-            color: #dc4949;
-            margin-bottom: 15px;
-        }
-
-        .charts {
+        .panels {
             display: grid;
             grid-template-columns: 2fr 1fr;
             gap: 20px;
-            margin-bottom: 30px;
         }
 
-        .chart-container {
+        .panel {
             background: white;
             padding: 20px;
             border-radius: 10px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         }
 
-        .chart-container h2 {
+        .panel h2 {
             color: #555;
             margin-bottom: 20px;
             font-size: 18px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
         }
 
-        .recent-orders {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        }
-
-        .recent-orders h2 {
-            color: #555;
-            margin-bottom: 20px;
-            font-size: 18px;
-        }
-
-        table {
+        .recent-orders table {
             width: 100%;
             border-collapse: collapse;
         }
 
-        th, td {
+        .recent-orders th, .recent-orders td {
             padding: 12px 15px;
             text-align: left;
-            border-bottom: 1px solid #ddd;
+            border-bottom: 1px solid #eee;
         }
 
-        th {
-            background-color: #f8f8f8;
+        .recent-orders th {
             color: #555;
-        }
-
-        tr:hover {
-            background-color: #f5f5f5;
+            font-weight: 600;
         }
 
         .status {
@@ -365,6 +340,37 @@ $customerCount = $stmt->fetch();
         .status.pending {
             background-color: #fff3cd;
             color: #856404;
+        }
+
+        .quick-links {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .quick-link {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            transition: all 0.3s;
+            text-decoration: none;
+        }
+
+        .quick-link:hover {
+            background: rgba(220, 73, 73, 0.1);
+            transform: translateY(-3px);
+        }
+
+        .quick-link i {
+            font-size: 24px;
+            color: #dc4949;
+            margin-bottom: 10px;
+        }
+
+        .quick-link h3 {
+            color: #333;
+            font-size: 14px;
         }
     </style>
 </head>
@@ -451,141 +457,111 @@ $customerCount = $stmt->fetch();
         
 
     </div>
-    
     <div class="main">
-        <div class="report-header">
-            <h1>Sales Report</h1>
-            <div class="report-period">
-                <?= date('F Y') ?>
-            </div>
+        <div class="welcome">
+            <h1>Welcome back, Admin!</h1>
+            <p>Here's what's happening with your restaurant today.</p>
         </div>
         
         <div class="cards">
             <div class="card">
-                <i class="fas fa-shopping-cart"></i>
-                <h3>Total Orders</h3>
-                <h2><?= $totals['order_count'] ?? 0 ?></h2>
+                <div class="card-icon">
+                    <i class="fas fa-shopping-cart"></i>
+                </div>
+                <div class="card-info">
+                    <h3>TODAY'S ORDERS</h3>
+                    <h2><?= $todayData['count'] ?? 0 ?></h2>
+                </div>
             </div>
             <div class="card">
-                <i class="fas fa-money-bill-wave"></i>
-                <h3>Total Revenue</h3>
-                <h2>RM <?= number_format($totals['total_revenue'] ?? 0, 2) ?></h2>
+                <div class="card-icon">
+                    <i class="fas fa-money-bill-wave"></i>
+                </div>
+                <div class="card-info">
+                    <h3>TODAY'S REVENUE</h3>
+                    <h2>RM <?= number_format($todayData['revenue'] ?? 0, 2) ?></h2>
+                </div>
             </div>
             <div class="card">
-                <i class="fas fa-utensils"></i>
-                <h3>Products Sold</h3>
-                <h2><?= array_sum($categoryData) ?></h2>
+                <div class="card-icon">
+                    <i class="fas fa-utensils"></i>
+                </div>
+                <div class="card-info">
+                    <h3>TOTAL PRODUCTS</h3>
+                    <h2><?= $productsData['count'] ?? 0 ?></h2>
+                </div>
             </div>
             <div class="card">
-                <i class="fas fa-users"></i>
-                <h3>Active Customers</h3>
-                <h2><?= $customerCount['customer_count'] ?? 0 ?></h2>
+                <div class="card-icon">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="card-info">
+                    <h3>ACTIVE CUSTOMERS</h3>
+                    <h2><?= $customersData['count'] ?? 0 ?></h2>
+                </div>
             </div>
         </div>
         
-        <div class="charts">
-            <div class="chart-container">
-                <h2>Sales Overview (Last 7 Days)</h2>
-                <canvas id="salesChart"></canvas>
+        <div class="panels">
+            <div class="panel recent-orders">
+                <h2>Recent Orders</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Order ID</th>
+                            <th>Customer</th>
+                            <th>Date</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($recentOrders as $order): ?>
+                        <tr>
+                            <td>#<?= $order['id'] ?></td>
+                            <td><?= htmlspecialchars($order['recipient_name']) ?></td>
+                            <td><?= date('Y-m-d', strtotime($order['created_at'])) ?></td>
+                            <td>RM <?= number_format($order['final_total'], 2) ?></td>
+                            <td>
+                                <span class="status <?= $order['order_status'] ?>">
+                                    <?= ucfirst($order['order_status']) ?>
+                                </span>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
             </div>
-            <div class="chart-container">
-                <h2>Sales by Category</h2>
-                <canvas id="categoryChart"></canvas>
+            
+            <div class="panel quick-actions">
+                <h2>Quick Actions</h2>
+                <div class="quick-links">
+                    <a href="adminProduct.php" class="quick-link">
+                        <i class="fas fa-plus-circle"></i>
+                        <h3>Add New Product</h3>
+                    </a>
+                    <a href="adminStaff.php" class="quick-link">
+                        <i class="fas fa-user-plus"></i>
+                        <h3>Add Staff Member</h3>
+                    </a>
+                    <a href="adminCategories.php" class="quick-link">
+                        <i class="fas fa-tag"></i>
+                        <h3>Manage Categories</h3>
+                    </a>
+                    <a href="adminReport.php" class="quick-link">
+                        <i class="fas fa-chart-pie"></i>
+                        <h3>View Reports</h3>
+                    </a>
+                </div>
             </div>
-        </div>
-        
-        <div class="recent-orders">
-            <h2>Recent Orders</h2>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Order ID</th>
-                        <th>Customer</th>
-                        <th>Date</th>
-                        <th>Amount</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($recentOrders as $order): ?>
-                    <tr>
-                        <td>#<?= $order['id'] ?></td>
-                        <td><?= htmlspecialchars($order['recipient_name']) ?></td>
-                        <td><?= date('Y-m-d', strtotime($order['created_at'])) ?></td>
-                        <td>RM <?= number_format($order['final_total'], 2) ?></td>
-                        <td>
-                            <span class="status <?= $order['order_status'] ?>">
-                                <?= ucfirst($order['order_status']) ?>
-                            </span>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
         </div>
     </div>
+</body>
+</html>
 
-    <script>
-        // Sales Chart
-        const salesCtx = document.getElementById('salesChart').getContext('2d');
-        const salesChart = new Chart(salesCtx, {
-            type: 'line',
-            data: {
-                labels: <?= json_encode($dates) ?>,
-                datasets: [{
-                    label: 'Daily Sales (RM)',
-                    data: <?= json_encode($salesData) ?>,
-                    backgroundColor: 'rgba(220, 73, 73, 0.2)',
-                    borderColor: 'rgba(220, 73, 73, 1)',
-                    borderWidth: 2,
-                    tension: 0.4,
-                    fill: true
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        position: 'top',
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true
-                    }
-                }
-            }
-        });
 
-        // Category Chart
-        const categoryCtx = document.getElementById('categoryChart').getContext('2d');
-        const categoryChart = new Chart(categoryCtx, {
-            type: 'doughnut',
-            data: {
-                labels: <?= json_encode($categoryLabels) ?>,
-                datasets: [{
-                    data: <?= json_encode($categoryData) ?>,
-                    backgroundColor: [
-                        'rgba(220, 73, 73, 0.7)',
-                        'rgba(54, 162, 235, 0.7)',
-                        'rgba(255, 206, 86, 0.7)',
-                        'rgba(75, 192, 192, 0.7)',
-                        'rgba(153, 102, 255, 0.7)'
-                    ],
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        position: 'right',
-                    }
-                }
-            }
-        });
-
-            const dropdown = document.getElementById('userDropdown');
+<script>
+    const dropdown = document.getElementById('userDropdown');
     dropdown.addEventListener('click', function (event) {
       event.stopPropagation();
       this.classList.toggle('show');
@@ -595,6 +571,4 @@ $customerCount = $stmt->fetch();
     window.addEventListener('click', function () {
       dropdown.classList.remove('show');
     });
-    </script>
-</body>
-</html>
+  </script>

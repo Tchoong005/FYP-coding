@@ -1,34 +1,23 @@
 <?php
-session_start();
-require_once 'db_connection.php';
-
-// Check if user is logged in
-if (!isset($_SESSION['email'])) {
-    header("Location: newadminlogin.php");
-    exit();
+// Database connection
+$conn = new mysqli('127.0.0.1', 'root', '', 'fyp_fastfood');
+if ($conn->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
 }
-// Handle status update
+
+// Update order status if form is submitted
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_status'])) {
     $order_id = $_POST['order_id'];
     $new_status = $_POST['status'];
     
-    $stmt = $conn->prepare("UPDATE orders SET status = ? WHERE id = ?");
+    $stmt = $conn->prepare("UPDATE orders SET order_status = ? WHERE id = ?");
     $stmt->bind_param("si", $new_status, $order_id);
     $stmt->execute();
+    $stmt->close();
     
-    if ($stmt->affected_rows > 0) {
-        $success_message = "Order status updated successfully!";
-    } else {
-        $error_message = "Failed to update order status.";
-    }
+    header("Location: adminorder.php");
+    exit();
 }
-
-// Fetch all orders
-$orders_query = "SELECT o.*, c.username 
-                 FROM orders o 
-                 LEFT JOIN customers c ON o.user_id = c.id 
-                 ORDER BY o.created_at DESC";
-$orders_result = $conn->query($orders_query);
 ?>
 
 <!DOCTYPE html>
@@ -188,7 +177,6 @@ $orders_result = $conn->query($orders_query);
             display: block;
         }
 
-        /* Order table styles */
         .orders-container {
             background: white;
             border-radius: 10px;
@@ -209,7 +197,7 @@ $orders_result = $conn->query($orders_query);
         }
 
         th {
-            background-color: #f8f9fa;
+            background-color: #f8f8f8;
             font-weight: 600;
         }
 
@@ -219,22 +207,22 @@ $orders_result = $conn->query($orders_query);
 
         .status-pending {
             color: #ff9800;
-            font-weight: bold;
+            font-weight: 600;
+        }
+
+        .status-preparing {
+            color: #2196f3;
+            font-weight: 600;
         }
 
         .status-delivery {
-            color: #2196f3;
-            font-weight: bold;
-        }
-
-        .status-complete {
             color: #4caf50;
-            font-weight: bold;
+            font-weight: 600;
         }
 
-        .status-cancelled {
-            color: #f44336;
-            font-weight: bold;
+        .status-completed {
+            color: #9e9e9e;
+            font-weight: 600;
         }
 
         .action-btn {
@@ -242,58 +230,37 @@ $orders_result = $conn->query($orders_query);
             border: none;
             border-radius: 4px;
             cursor: pointer;
-            font-size: 14px;
-            transition: background-color 0.3s;
-            text-decoration: none;
-            display: inline-block;
+            background-color: #dc4949;
+            color: white;
+            font-weight: 500;
+        }
+
+        .action-btn:hover {
+            background-color: #c14141;
         }
 
         .view-btn {
-            background-color: #2196f3;
-            color: white;
+            background-color: #4CAF50;
         }
 
         .view-btn:hover {
-            background-color: #0b7dda;
-        }
-
-        .update-btn {
-            background-color: #4caf50;
-            color: white;
-        }
-
-        .update-btn:hover {
-            background-color: #45a049;
-        }
-
-        .alert {
-            padding: 15px;
-            margin-bottom: 20px;
-            border-radius: 4px;
-        }
-
-        .alert-success {
-            background-color: #dff0d8;
-            color: #3c763d;
-            border: 1px solid #d6e9c6;
-        }
-
-        .alert-error {
-            background-color: #f2dede;
-            color: #a94442;
-            border: 1px solid #ebccd1;
+            background-color: #3e8e41;
         }
 
         .status-form {
             display: flex;
             gap: 10px;
-            align-items: center;
         }
 
         .status-select {
             padding: 6px;
             border-radius: 4px;
             border: 1px solid #ddd;
+        }
+
+        .h2 {
+            margin-bottom: 20px;
+            color: #333;
         }
     </style>
 </head>
@@ -305,9 +272,9 @@ $orders_result = $conn->query($orders_query);
                 <h2>FastFood Express</h2>
             </div>
             <div class="search">
-                <input type="text" id="search" placeholder="search here">
-                <label for="search"><i class="fas fa-search"></i></label>
+                
             </div>
+            
             <div class="user-dropdown" id="userDropdown">
                 <img src="img/72-729716_user-avatar-png-graphic-free-download-icon.png" alt="User Avatar">
                 <div class="dropdown-content">
@@ -321,7 +288,7 @@ $orders_result = $conn->query($orders_query);
     <div class="list">
         <ul>
             <li>
-                <a href="adminhome.html">
+                <a href="adminhome.php">
                     <i class="fas fa-home"></i>
                     <h4>DASHBOARD</h4>
                 </a>
@@ -344,6 +311,14 @@ $orders_result = $conn->query($orders_query);
             </li>
         </ul>
         <ul>
+        <li>
+            <a href="adminCategories.php">
+                <i class="fas fa-tags"></i>
+                <h4>CATEGORIES</h4>
+            </a>
+        </li>
+        </ul>
+        <ul>
             <li>
                 <a href="adminStaff.php">
                     <i class="fas fa-user-tie"></i>
@@ -361,17 +336,9 @@ $orders_result = $conn->query($orders_query);
         </ul>
         <ul>
             <li>
-                <a href="adminReport.html">
+                <a href="adminReport.php">
                     <i class="fas fa-chart-line"></i>
                     <h4>REPORT</h4>
-                </a>
-            </li>
-        </ul>
-        <ul>
-            <li>
-                <a href="adminAboutUs.html">
-                    <i class="fas fa-info-circle"></i>
-                    <h4>ABOUT US</h4>
                 </a>
             </li>
         </ul>
@@ -379,64 +346,60 @@ $orders_result = $conn->query($orders_query);
 
     <div class="main">
         <div class="orders-container">
-            <h2><i class="fas fa-receipt"></i> Order Management</h2>
-            
-            <?php if (isset($success_message)): ?>
-                <div class="alert alert-success"><?php echo $success_message; ?></div>
-            <?php endif; ?>
-            
-            <?php if (isset($error_message)): ?>
-                <div class="alert alert-error"><?php echo $error_message; ?></div>
-            <?php endif; ?>
+            <h2>Order Management</h2>
             
             <table>
                 <thead>
                     <tr>
                         <th>Order ID</th>
                         <th>Customer</th>
-                        <th>Date</th>
-                        <th>Total</th>
+                        <th>Phone</th>
+                        <th>Delivery Method</th>
+                        <th>Total Price</th>
                         <th>Status</th>
+                        <th>Payment Status</th>
+                        <th>Date</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <?php if ($orders_result->num_rows > 0): ?>
-                        <?php while ($order = $orders_result->fetch_assoc()): ?>
-                            <tr>
-                                <td>#<?php echo $order['id']; ?></td>
-                                <td><?php echo $order['username'] ?? 'Guest'; ?></td>
-                                <td><?php echo date('M d, Y H:i', strtotime($order['created_at'])); ?></td>
-                                <td>RM <?php echo number_format($order['total_price'], 2); ?></td>
-                                <td>
-                                    <span class="status-<?php echo strtolower($order['status']); ?>">
-                                        <?php echo ucfirst($order['status']); ?>
-                                    </span>
-                                </td>
-                                <td>
-                                    <a href="order_details.php?order_id=<?php echo $order['id']; ?>" class="action-btn view-btn">
-                                        <i class="fas fa-eye"></i> View
-                                    </a>
-                                    <form class="status-form" method="POST" style="display: inline;">
-                                        <input type="hidden" name="order_id" value="<?php echo $order['id']; ?>">
-                                        <select name="status" class="status-select">
-                                            <option value="pending" <?php echo $order['status'] == 'pending' ? 'selected' : ''; ?>>Pending</option>
-                                            <option value="delivery" <?php echo $order['status'] == 'delivery' ? 'selected' : ''; ?>>Delivery</option>
-                                            <option value="complete" <?php echo $order['status'] == 'complete' ? 'selected' : ''; ?>>Complete</option>
-                                            <option value="cancelled" <?php echo $order['status'] == 'cancelled' ? 'selected' : ''; ?>>Cancelled</option>
-                                        </select>
-                                        <button type="submit" name="update_status" class="action-btn update-btn">
-                                            <i class="fas fa-sync-alt"></i> Update
-                                        </button>
-                                    </form>
-                                </td>
-                            </tr>
-                        <?php endwhile; ?>
-                    <?php else: ?>
-                        <tr>
-                            <td colspan="6" style="text-align: center;">No orders found</td>
-                        </tr>
-                    <?php endif; ?>
+                    <?php
+                    $sql = "SELECT * FROM orders ORDER BY created_at DESC";
+                    $result = $conn->query($sql);
+                    
+                    if ($result->num_rows > 0) {
+                        while($row = $result->fetch_assoc()) {
+                            $status_class = 'status-' . strtolower(str_replace(' ', '-', $row['order_status']));
+                            echo "<tr>";
+                            echo "<td>#" . $row['id'] . "</td>";
+                            echo "<td>" . htmlspecialchars($row['recipient_name']) . "</td>";
+                            echo "<td>" . htmlspecialchars($row['recipient_phone']) . "</td>";
+                            echo "<td>" . ucfirst(str_replace('_', ' ', $row['delivery_method'])) . "</td>";
+                            echo "<td>RM" . number_format($row['final_total'], 2) . "</td>";
+                            echo "<td><span class='$status_class'>" . ucfirst($row['order_status']) . "</span></td>";
+                            echo "<td>" . ucfirst(str_replace('_', ' ', $row['payment_status'])) . "</td>";
+                            echo "<td>" . date('d M Y H:i', strtotime($row['created_at'])) . "</td>";
+                            echo "<td class='action-btns'>";
+                            echo "<div class='status-form'>";
+                            echo "<form method='post' action='adminorder.php'>";
+                            echo "<input type='hidden' name='order_id' value='" . $row['id'] . "'>";
+                            echo "<select name='status' class='status-select' onchange='this.form.submit()'>";
+                            echo "<option value='pending'" . ($row['order_status'] == 'pending' ? ' selected' : '') . ">Pending</option>";
+                            echo "<option value='preparing'" . ($row['order_status'] == 'preparing' ? ' selected' : '') . ">Preparing</option>";
+                            echo "<option value='delivery'" . ($row['order_status'] == 'delivery' ? ' selected' : '') . ">Delivery</option>";
+                            echo "<option value='completed'" . ($row['order_status'] == 'completed' ? ' selected' : '') . ">Completed</option>";
+                            echo "</select>";
+                            echo "<input type='hidden' name='update_status' value='1'>";
+                            echo "</form>";
+                            echo "<a href='order_details.php?order_id=" . $row['id'] . "' class='action-btn view-btn'>View</a>";
+                            echo "</div>";
+                            echo "</td>";
+                            echo "</tr>";
+                        }
+                    } else {
+                        echo "<tr><td colspan='9'>No orders found</td></tr>";
+                    }
+                    ?>
                 </tbody>
             </table>
         </div>
@@ -445,14 +408,15 @@ $orders_result = $conn->query($orders_query);
     <script>
         const dropdown = document.getElementById('userDropdown');
         dropdown.addEventListener('click', function (event) {
-            event.stopPropagation();
-            this.classList.toggle('show');
+          event.stopPropagation();
+          this.classList.toggle('show');
         });
-
+      
         // Close dropdown if clicked outside
         window.addEventListener('click', function () {
-            dropdown.classList.remove('show');
+          dropdown.classList.remove('show');
         });
     </script>
 </body>
 </html>
+<?php $conn->close(); ?>

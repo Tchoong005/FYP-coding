@@ -1,48 +1,24 @@
 <?php
-session_start();
-require_once 'db_connection.php';
-
-
-// Check if user is logged in
-if (!isset($_SESSION['email'])) {
-    header("Location: newadminlogin.php");
-    exit();
+// Database connection
+$conn = new mysqli('127.0.0.1', 'root', '', 'fyp_fastfood');
+if ($conn->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
 }
 
+// Get order ID from URL
+$order_id = isset($_GET['order_id']) ? intval($_GET['order_id']) : 0;
 
-if (!isset($_GET['order_id'])) {
-    header("Location: adminorder.php");
-    exit();
-}
-
-
-$order_id = intval($_GET['order_id']);
-
-// Get order details
-$order_query = "SELECT o.*, c.username, c.email, c.phone 
-               FROM orders o 
-               LEFT JOIN customers c ON o.user_id = c.id 
-               WHERE o.id = ?";
-$stmt = $conn->prepare($order_query);
-$stmt->bind_param("i", $order_id);
-$stmt->execute();
-$order_result = $stmt->get_result();
+// Fetch order details
+$order_sql = "SELECT * FROM orders WHERE id = $order_id";
+$order_result = $conn->query($order_sql);
 $order = $order_result->fetch_assoc();
 
-if (!$order) {
-    header("Location: adminorder.php");
-    exit();
-}
-
-// Get order items
-$items_query = "SELECT oi.*, p.name, p.image_url 
-               FROM order_items oi 
-               LEFT JOIN products p ON oi.product_id = p.id 
-               WHERE oi.order_id = ?";
-$stmt = $conn->prepare($items_query);
-$stmt->bind_param("i", $order_id);
-$stmt->execute();
-$items_result = $stmt->get_result();
+// Fetch order items
+$items_sql = "SELECT oi.*, p.name as product_name 
+              FROM order_items oi 
+              LEFT JOIN products p ON oi.product_id = p.id 
+              WHERE oi.order_id = $order_id";
+$items_result = $conn->query($items_sql);
 ?>
 
 <!DOCTYPE html>
@@ -202,7 +178,6 @@ $items_result = $stmt->get_result();
             display: block;
         }
 
-        /* Order details styles */
         .order-details-container {
             background: white;
             border-radius: 10px;
@@ -213,93 +188,131 @@ $items_result = $stmt->get_result();
         .order-header {
             display: flex;
             justify-content: space-between;
-            align-items: center;
             margin-bottom: 20px;
             padding-bottom: 20px;
             border-bottom: 1px solid #eee;
         }
 
-        .order-info {
-            display: flex;
-            gap: 30px;
-            margin-bottom: 20px;
-        }
-
-        .info-section {
+        .order-info, .customer-info {
             flex: 1;
         }
 
-        .info-section h3 {
+        .order-info h3, .customer-info h3 {
             margin-bottom: 10px;
             color: #333;
         }
 
-        .info-section p {
+        .order-info p, .customer-info p {
             margin: 5px 0;
-            color: #555;
+            color: #666;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-weight: 500;
+            margin-top: 10px;
         }
 
         .status-pending {
+            background-color: #fff3e0;
             color: #ff9800;
-            font-weight: bold;
+        }
+
+        .status-preparing {
+            background-color: #e3f2fd;
+            color: #2196f3;
         }
 
         .status-delivery {
-            color: #2196f3;
-            font-weight: bold;
-        }
-
-        .status-complete {
+            background-color: #e8f5e9;
             color: #4caf50;
-            font-weight: bold;
         }
 
-        .status-cancelled {
-            color: #f44336;
-            font-weight: bold;
+        .status-completed {
+            background-color: #f5f5f5;
+            color: #9e9e9e;
         }
 
-        .items-table {
-            width: 100%;
-            border-collapse: collapse;
+        .order-items {
             margin-top: 20px;
         }
 
-        .items-table th, .items-table td {
+        .order-items table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .order-items th, .order-items td {
             padding: 12px 15px;
             text-align: left;
             border-bottom: 1px solid #ddd;
         }
 
-        .items-table th {
-            background-color: #f8f9fa;
+        .order-items th {
+            background-color: #f8f8f8;
             font-weight: 600;
         }
 
-        .item-img {
-            width: 50px;
-            height: 50px;
-            object-fit: cover;
-            margin-right: 10px;
-            vertical-align: middle;
+        .order-summary {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+        }
+
+        .summary-label {
+            font-weight: 500;
+        }
+
+        .summary-value {
+            font-weight: 600;
+        }
+
+        .total-row {
+            font-size: 18px;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
         }
 
         .back-btn {
             display: inline-block;
-            padding: 8px 16px;
-            background-color: #2196f3;
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: #dc4949;
             color: white;
             text-decoration: none;
             border-radius: 4px;
-            margin-top: 20px;
+            font-weight: 500;
         }
 
         .back-btn:hover {
-            background-color: #0b7dda;
+            background-color: #c14141;
         }
 
-        .special-requests {
-            font-style: italic;
+        .special-instructions {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+            border-left: 4px solid #dc4949;
+        }
+
+        .special-instructions h4 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .no-items {
+            text-align: center;
+            padding: 20px;
             color: #666;
         }
     </style>
@@ -312,9 +325,9 @@ $items_result = $stmt->get_result();
                 <h2>FastFood Express</h2>
             </div>
             <div class="search">
-                <input type="text" id="search" placeholder="search here">
-                <label for="search"><i class="fas fa-search"></i></label>
+                
             </div>
+            
             <div class="user-dropdown" id="userDropdown">
                 <img src="img/72-729716_user-avatar-png-graphic-free-download-icon.png" alt="User Avatar">
                 <div class="dropdown-content">
@@ -328,7 +341,7 @@ $items_result = $stmt->get_result();
     <div class="list">
         <ul>
             <li>
-                <a href="adminhome.html">
+                <a href="adminhome.php">
                     <i class="fas fa-home"></i>
                     <h4>DASHBOARD</h4>
                 </a>
@@ -351,6 +364,14 @@ $items_result = $stmt->get_result();
             </li>
         </ul>
         <ul>
+        <li>
+            <a href="adminCategories.php">
+                <i class="fas fa-tags"></i>
+                <h4>CATEGORIES</h4>
+            </a>
+        </li>
+        </ul>
+        <ul>
             <li>
                 <a href="adminStaff.php">
                     <i class="fas fa-user-tie"></i>
@@ -368,17 +389,9 @@ $items_result = $stmt->get_result();
         </ul>
         <ul>
             <li>
-                <a href="adminReport.html">
+                <a href="adminReport.php">
                     <i class="fas fa-chart-line"></i>
                     <h4>REPORT</h4>
-                </a>
-            </li>
-        </ul>
-        <ul>
-            <li>
-                <a href="adminAboutUs.html">
-                    <i class="fas fa-info-circle"></i>
-                    <h4>ABOUT US</h4>
                 </a>
             </li>
         </ul>
@@ -386,96 +399,103 @@ $items_result = $stmt->get_result();
 
     <div class="main">
         <div class="order-details-container">
-            <div class="order-header">
-                <h2>Order #<?php echo $order['id']; ?></h2>
-                <span class="status-<?php echo strtolower($order['status']); ?>">
-                    <?php echo ucfirst($order['status']); ?>
-                </span>
-            </div>
-
-            <div class="order-info">
-                <div class="info-section">
-                    <h3>Customer Information</h3>
-                    <p><strong>Name:</strong> <?php echo $order['username'] ?? 'Guest'; ?></p>
-                    <p><strong>Email:</strong> <?php echo $order['email'] ?? 'N/A'; ?></p>
-                    <p><strong>Phone:</strong> <?php echo $order['phone'] ?? 'N/A'; ?></p>
+            <?php if ($order): ?>
+                <div class="order-header">
+                    <div class="order-info">
+                        <h3>Order #<?php echo $order['id']; ?></h3>
+                        <p>Date: <?php echo date('d M Y H:i', strtotime($order['created_at'])); ?></p>
+                        <span class="status-badge status-<?php echo strtolower($order['order_status']); ?>">
+                            <?php echo ucfirst($order['order_status']); ?>
+                        </span>
+                    </div>
+                    <div class="customer-info">
+                        <h3>Customer Information</h3>
+                        <p>Name: <?php echo htmlspecialchars($order['recipient_name']); ?></p>
+                        <p>Phone: <?php echo htmlspecialchars($order['recipient_phone']); ?></p>
+                        <p>Address: <?php echo htmlspecialchars($order['recipient_address']); ?></p>
+                        <p>Delivery Method: <?php echo ucfirst(str_replace('_', ' ', $order['delivery_method'])); ?></p>
+                        <p>Payment Method: <?php echo ucfirst(str_replace('_', ' ', $order['payment_method'])); ?></p>
+                        <p>Payment Status: <?php echo ucfirst(str_replace('_', ' ', $order['payment_status'])); ?></p>
+                    </div>
                 </div>
 
-                <div class="info-section">
-                    <h3>Order Information</h3>
-                    <p><strong>Order Date:</strong> <?php echo date('M d, Y H:i', strtotime($order['created_at'])); ?></p>
-                    <p><strong>Total Amount:</strong> RM <?php echo number_format($order['total_price'], 2); ?></p>
+                <div class="order-items">
+                    <h3>Order Items</h3>
+                    <?php if ($items_result->num_rows > 0): ?>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Product</th>
+                                    <th>Quantity</th>
+                                    <th>Sauce</th>
+                                    <th>Comment</th>
+                                    <th>Price</th>
+                                    <th>Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php 
+                                $subtotal = 0;
+                                while($item = $items_result->fetch_assoc()): 
+                                    $item_total = $item['price'] * $item['quantity'];
+                                    $subtotal += $item_total;
+                                ?>
+                                    <tr>
+                                        <td><?php echo htmlspecialchars($item['product_name']); ?></td>
+                                        <td><?php echo $item['quantity']; ?></td>
+                                        <td><?php echo htmlspecialchars($item['sauce'] ?: '-'); ?></td>
+                                        <td><?php echo htmlspecialchars($item['comment'] ?: '-'); ?></td>
+                                        <td>RM<?php echo number_format($item['price'], 2); ?></td>
+                                        <td>RM<?php echo number_format($item_total, 2); ?></td>
+                                    </tr>
+                                <?php endwhile; ?>
+                            </tbody>
+                        </table>
+                    <?php else: ?>
+                        <div class="no-items">No items found for this order</div>
+                    <?php endif; ?>
                 </div>
-            </div>
 
-            <?php if ($order['recipient_name'] || $order['address']): ?>
-                <div class="info-section" style="margin-bottom: 20px;">
-                    <h3>Delivery Information</h3>
-                    <p><strong>Recipient:</strong> <?php echo $order['recipient_name'] ?? 'N/A'; ?></p>
-                    <p><strong>Phone:</strong> <?php echo $order['phone'] ?? 'N/A'; ?></p>
-                    <p><strong>Address:</strong> <?php echo $order['address'] ?? 'N/A'; ?></p>
+                <div class="order-summary">
+                    <h3>Order Summary</h3>
+                    
+                    <div class="summary-row">
+                        <span class="summary-label">Delivery Fee:</span>
+                        <span class="summary-value">RM<?php echo number_format($order['delivery_fee'], 2); ?></span>
+                    </div>
+                    <div class="summary-row total-row">
+                        <span class="summary-label">Total:</span>
+                        <span class="summary-value">RM<?php echo number_format($order['final_total'], 2); ?></span>
+                    </div>
+                </div>
+
+                <a href="adminorder.php" class="back-btn">
+                    <i class="fas fa-arrow-left"></i> Back to Orders
+                </a>
+            <?php else: ?>
+                <div class="no-order">
+                    <h3>Order not found</h3>
+                    <p>The requested order could not be found.</p>
+                    <a href="adminorder.php" class="back-btn">
+                        <i class="fas fa-arrow-left"></i> Back to Orders
+                    </a>
                 </div>
             <?php endif; ?>
-
-            <h3>Order Items</h3>
-            <table class="items-table">
-                <thead>
-                    <tr>
-                        <th>Item</th>
-                        <th>Price</th>
-                        <th>Quantity</th>
-                        <th>Subtotal</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php 
-                    $total = 0;
-                    while ($item = $items_result->fetch_assoc()): 
-                        $subtotal = $item['price'] * $item['quantity'];
-                        $total += $subtotal;
-                    ?>
-                        <tr>
-                            <td>
-                                <?php if ($item['image_url']): ?>
-                                    <img src="<?php echo $item['image_url']; ?>" alt="<?php echo $item['name']; ?>" class="item-img">
-                                <?php endif; ?>
-                                <?php echo $item['name']; ?>
-                                <?php if ($item['sauce']): ?>
-                                    <div class="special-requests">Sauce: <?php echo $item['sauce']; ?></div>
-                                <?php endif; ?>
-                                <?php if ($item['comment']): ?>
-                                    <div class="special-requests">Note: <?php echo $item['comment']; ?></div>
-                                <?php endif; ?>
-                            </td>
-                            <td>RM <?php echo number_format($item['price'], 2); ?></td>
-                            <td><?php echo $item['quantity']; ?></td>
-                            <td>RM <?php echo number_format($subtotal, 2); ?></td>
-                        </tr>
-                    <?php endwhile; ?>
-                    <tr>
-                        <td colspan="3" style="text-align: right; font-weight: bold;">Total:</td>
-                        <td style="font-weight: bold;">RM <?php echo number_format($total, 2); ?></td>
-                    </tr>
-                </tbody>
-            </table>
-
-            <a href="adminorder.php" class="back-btn">
-                <i class="fas fa-arrow-left"></i> Back to Orders
-            </a>
         </div>
     </div>
 
     <script>
         const dropdown = document.getElementById('userDropdown');
         dropdown.addEventListener('click', function (event) {
-            event.stopPropagation();
-            this.classList.toggle('show');
+          event.stopPropagation();
+          this.classList.toggle('show');
         });
-
+      
         // Close dropdown if clicked outside
         window.addEventListener('click', function () {
-            dropdown.classList.remove('show');
+          dropdown.classList.remove('show');
         });
     </script>
 </body>
 </html>
+<?php $conn->close(); ?>

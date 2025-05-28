@@ -1,5 +1,18 @@
 <?php
 // Connect to database
+
+session_start();
+
+// 强制只有 superadmin 可以访问
+if (!isset($_SESSION['usertype']) || $_SESSION['usertype'] !== 'superadmin') {
+    // 记录访问尝试日志
+    error_log("Unauthorized access attempt to adminStaff.php by user ID: ".($_SESSION['user_id'] ?? 'unknown'));
+    
+    // 重定向到无权限页面
+    header("Location: no_access.php");
+    exit(); // 确保重定向后停止执行后续代码
+}
+
 $conn = new mysqli("localhost", "root", "", "fyp_fastfood");
 if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
@@ -540,23 +553,24 @@ $staffList = $stmt->get_result();
                 <h2>FastFood Express</h2>
             </div>
             <div class="search">
-                <input type="text" id="search" placeholder="search here">
-                <label for="search"><i class="fas fa-search"></i></label>
+                
             </div>
+            
             <div class="user-dropdown" id="userDropdown">
                 <img src="img/72-729716_user-avatar-png-graphic-free-download-icon.png" alt="User Avatar">
                 <div class="dropdown-content">
-                    <a href="profile.php">Edit profile</a>
-                    <a href="adminlogout.php">Logout</a>
+                    
                 </div>
             </div>
+
         </div>
+
     </div>
 
     <div class="list">
         <ul>
             <li>
-                <a href="adminhome.html">
+                <a href="adminhome.php">
                     <i class="fas fa-home"></i>
                     <h4>DASHBOARD</h4>
                 </a>
@@ -579,6 +593,14 @@ $staffList = $stmt->get_result();
             </li>
         </ul>
         <ul>
+        <li>
+            <a href="adminCategories.php">
+                <i class="fas fa-tags"></i>
+                <h4>CATEGORIES</h4>
+            </a>
+        </li>
+        </ul>
+        <ul>
             <li>
                 <a href="adminStaff.php">
                     <i class="fas fa-user-tie"></i>
@@ -596,21 +618,16 @@ $staffList = $stmt->get_result();
         </ul>
         <ul>
             <li>
-                <a href="adminReport.html">
+                <a href="adminReport.php">
                     <i class="fas fa-chart-line"></i>
                     <h4>REPORT</h4>
                 </a>
             </li>
         </ul>
-        <ul>
-            <li>
-                <a href="adminAboutUs.html">
-                    <i class="fas fa-info-circle"></i>
-                    <h4>ABOURT US</h4>
-                </a>
-            </li>
-        </ul>
+        
+
     </div>
+
 
     <div class="main">
         <h1 class="page-title">Staff Management</h1>

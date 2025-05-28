@@ -1,55 +1,105 @@
 <?php
-// Database connection
-$conn = new mysqli('127.0.0.1', 'root', '', 'fyp_fastfood');
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
-}
+session_start();
+require_once 'db_connection.php';
 
 // Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Add new product
     if (isset($_POST['add_product'])) {
-        $name = $_POST['name'];
-        $description = $_POST['description'];
-        $price = $_POST['price'];
+        $name = trim($_POST['name']);
+        $description = trim($_POST['description']);
+        $price = (float)$_POST['price'];
         $category = $_POST['category'];
-        $stock = $_POST['stock_quantity'];
-        $image_url = $_POST['image_url'];
+        $stock = (int)$_POST['stock_quantity'];
+        $image_url = trim($_POST['image_url']);
+        
+        // Validate product name uniqueness
+        if (!isProductNameUnique($conn, $name)) {
+            $_SESSION['error'] = "A product named '$name' already exists.";
+            header("Location: adminProduct.php");
+            exit;
+        }
         
         $stmt = $conn->prepare("INSERT INTO products (name, description, price, category, stock_quantity, image_url) VALUES (?, ?, ?, ?, ?, ?)");
         $stmt->bind_param("ssdsis", $name, $description, $price, $category, $stock, $image_url);
-        $stmt->execute();
+        
+        if ($stmt->execute()) {
+            $_SESSION['success'] = "Product added successfully!";
+        } else {
+            $_SESSION['error'] = "Error adding product: " . $conn->error;
+        }
         $stmt->close();
     }
     
     // Update product
     if (isset($_POST['update_product'])) {
-        $id = $_POST['id'];
-        $name = $_POST['name'];
-        $description = $_POST['description'];
-        $price = $_POST['price'];
+        $id = (int)$_POST['id'];
+        $name = trim($_POST['name']);
+        $description = trim($_POST['description']);
+        $price = (float)$_POST['price'];
         $category = $_POST['category'];
-        $stock = $_POST['stock_quantity'];
-        $image_url = $_POST['image_url'];
+        $stock = (int)$_POST['stock_quantity'];
+        $image_url = trim($_POST['image_url']);
+        
+        // Validate product name uniqueness (excluding current product)
+        if (!isProductNameUnique($conn, $name, $id)) {
+            $_SESSION['error'] = "Another product named '$name' already exists.";
+            header("Location: adminProduct.php?action=edit&id=$id");
+            exit;
+        }
         
         $stmt = $conn->prepare("UPDATE products SET name=?, description=?, price=?, category=?, stock_quantity=?, image_url=? WHERE id=?");
         $stmt->bind_param("ssdsisi", $name, $description, $price, $category, $stock, $image_url, $id);
-        $stmt->execute();
+        
+        if ($stmt->execute()) {
+            $_SESSION['success'] = "Product updated successfully!";
+        } else {
+            $_SESSION['error'] = "Error updating product: " . $conn->error;
+        }
         $stmt->close();
     }
     
     // Soft delete product
     if (isset($_POST['hide_product'])) {
-        $id = $_POST['id'];
+        $id = (int)$_POST['id'];
         $stmt = $conn->prepare("UPDATE products SET deleted_at=NOW() WHERE id=?");
         $stmt->bind_param("i", $id);
-        $stmt->execute();
+        
+        if ($stmt->execute()) {
+            $_SESSION['success'] = "Product deleted successfully!";
+        } else {
+            $_SESSION['error'] = "Error deleting product: " . $conn->error;
+        }
         $stmt->close();
     }
+    
+    header("Location: adminProduct.php");
+    exit;
 }
 
-// Fetch all active products (not deleted)
-$products = $conn->query("SELECT * FROM products WHERE deleted_at IS NULL ORDER BY category, name");
+// Fetch all active products with category display names
+$products = $conn->query("
+    SELECT p.*, c.display_name as category_display 
+    FROM products p
+    JOIN categories c ON p.category = c.name
+    WHERE p.deleted_at IS NULL
+    ORDER BY c.display_name, p.name
+");
+
+// Helper function to check product name uniqueness
+function isProductNameUnique($conn, $name, $currentId = null) {
+    $stmt = $conn->prepare("SELECT id FROM products WHERE name = ? AND deleted_at IS NULL");
+    $stmt->bind_param("s", $name);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    if ($result->num_rows > 0) {
+        $row = $result->fetch_assoc();
+        // Allow the same product to keep its name during update
+        return ($currentId && $row['id'] == $currentId);
+    }
+    return true;
+}
 ?>
 
 <!DOCTYPE html>
@@ -60,7 +110,7 @@ $products = $conn->query("SELECT * FROM products WHERE deleted_at IS NULL ORDER 
     <title>Product Management - KFG FOOD</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
     <style>
-         * {
+        * {
             padding: 0;
             margin: 0;
             box-sizing: border-box;
@@ -399,21 +449,19 @@ $products = $conn->query("SELECT * FROM products WHERE deleted_at IS NULL ORDER 
     </style>
 </head>
 <body>
-<div class="top">
+    <div class="top">
         <div class="topbar">
             <div class="logo">
                 <h2>FastFood Express</h2>
             </div>
             <div class="search">
-                <input type="text" id="search" placeholder="search here">
-                <label for="search"><i class="fas fa-search"></i></label>
-
+                
             </div>
+            
             <div class="user-dropdown" id="userDropdown">
                 <img src="img/72-729716_user-avatar-png-graphic-free-download-icon.png" alt="User Avatar">
                 <div class="dropdown-content">
-                    <a href="profile.php">Edit profile</a>
-                    <a href="adminlogout.php">Logout</a>
+                    
                 </div>
             </div>
 
@@ -424,7 +472,7 @@ $products = $conn->query("SELECT * FROM products WHERE deleted_at IS NULL ORDER 
     <div class="list">
         <ul>
             <li>
-                <a href="adminhome.html">
+                <a href="adminhome.php">
                     <i class="fas fa-home"></i>
                     <h4>DASHBOARD</h4>
                 </a>
@@ -447,6 +495,14 @@ $products = $conn->query("SELECT * FROM products WHERE deleted_at IS NULL ORDER 
             </li>
         </ul>
         <ul>
+        <li>
+            <a href="adminCategories.php">
+                <i class="fas fa-tags"></i>
+                <h4>CATEGORIES</h4>
+            </a>
+        </li>
+        </ul>
+        <ul>
             <li>
                 <a href="adminStaff.php">
                     <i class="fas fa-user-tie"></i>
@@ -464,26 +520,30 @@ $products = $conn->query("SELECT * FROM products WHERE deleted_at IS NULL ORDER 
         </ul>
         <ul>
             <li>
-                <a href="adminReport.html">
+                <a href="adminReport.php">
                     <i class="fas fa-chart-line"></i>
                     <h4>REPORT</h4>
                 </a>
             </li>
         </ul>
-        <ul>
-            <li>
-                <a href="adminAboutUs.html">
-                    <i class="fas fa-info-circle"></i>
-                    <h4>ABOURT US</h4>
-                </a>
-            </li>
-        </ul>
+        
 
     </div>
- 
+
+
     <div class="main">
         <div class="card">
             <h3>Product Management</h3>
+            
+            <?php if (isset($_SESSION['success'])): ?>
+                <div class="alert alert-success"><?= htmlspecialchars($_SESSION['success']) ?></div>
+                <?php unset($_SESSION['success']); ?>
+            <?php endif; ?>
+            
+            <?php if (isset($_SESSION['error'])): ?>
+                <div class="alert alert-danger"><?= htmlspecialchars($_SESSION['error']) ?></div>
+                <?php unset($_SESSION['error']); ?>
+            <?php endif; ?>
             
             <button class="btn btn-add" onclick="openAddModal()">
                 <i class="fas fa-plus"></i> Add New Product
@@ -510,44 +570,36 @@ $products = $conn->query("SELECT * FROM products WHERE deleted_at IS NULL ORDER 
                     <tr>
                         <td>
                             <?php if($product['image_url']): ?>
-                                <img src="<?php echo htmlspecialchars($product['image_url']); ?>" alt="<?php echo htmlspecialchars($product['name']); ?>" class="product-image">
+                                <img src="<?= htmlspecialchars($product['image_url']) ?>" alt="<?= htmlspecialchars($product['name']) ?>" class="product-image">
                             <?php else: ?>
                                 <i class="fas fa-image" style="font-size: 24px;"></i>
                             <?php endif; ?>
                         </td>
-                        <td><?php echo htmlspecialchars($product['name']); ?></td>
-                        <td><?php echo htmlspecialchars($product['description']); ?></td>
-                        <td><?php echo number_format($product['price'], 2); ?></td>
+                        <td><?= htmlspecialchars($product['name']) ?></td>
+                        <td><?= htmlspecialchars($product['description']) ?></td>
+                        <td><?= number_format($product['price'], 2) ?></td>
                         <td>
-                            <span class="category-badge <?php echo $product['category']; ?>">
-                                <?php 
-                                    $categoryMap = [
-                                        'beverages' => 'Beverages',
-                                        'chicken' => 'Chicken',
-                                        'burger' => 'Burger',
-                                        'desserts_sides' => 'Desserts & Sides'
-                                    ];
-                                    echo $categoryMap[$product['category']];
-                                ?>
+                            <span class="category-badge <?= htmlspecialchars($product['category']) ?>">
+                                <?= htmlspecialchars($product['category_display']) ?>
                             </span>
                         </td>
-                        <td><?php echo $product['stock_quantity']; ?></td>
+                        <td><?= $product['stock_quantity'] ?></td>
                         <td>
                             <button class="btn btn-edit" onclick="openEditModal(
-                                <?php echo $product['id']; ?>,
-                                '<?php echo addslashes($product['name']); ?>',
-                                '<?php echo addslashes($product['description']); ?>',
-                                <?php echo $product['price']; ?>,
-                                '<?php echo $product['category']; ?>',
-                                <?php echo $product['stock_quantity']; ?>,
-                                '<?php echo addslashes($product['image_url']); ?>'
+                                <?= $product['id'] ?>,
+                                '<?= addslashes($product['name']) ?>',
+                                '<?= addslashes($product['description']) ?>',
+                                <?= $product['price'] ?>,
+                                '<?= $product['category'] ?>',
+                                <?= $product['stock_quantity'] ?>,
+                                '<?= addslashes($product['image_url']) ?>'
                             )">
                                 <i class="fas fa-edit"></i> Edit
                             </button>
                             <form method="POST" style="display: inline;">
-                                <input type="hidden" name="id" value="<?php echo $product['id']; ?>">
+                                <input type="hidden" name="id" value="<?= $product['id'] ?>">
                                 <button type="submit" name="hide_product" class="btn btn-hide" onclick="return confirm('Are you sure you want to delete this product?');">
-                                    <i class=""></i> Delete
+                                    <i class="fas fa-trash"></i> Delete
                                 </button>
                             </form>
                         </td>
@@ -563,10 +615,11 @@ $products = $conn->query("SELECT * FROM products WHERE deleted_at IS NULL ORDER 
         <div class="modal-content">
             <span class="close" onclick="closeAddModal()">&times;</span>
             <h3>Add New Product</h3>
-            <form method="POST">
+            <form method="POST" id="addProductForm">
                 <div class="form-group">
                     <label for="name">Product Name</label>
                     <input type="text" id="name" name="name" required>
+                    <small id="name-error" class="error-message" style="color: red; display: none;"></small>
                 </div>
                 <div class="form-group">
                     <label for="description">Description</label>
@@ -579,10 +632,11 @@ $products = $conn->query("SELECT * FROM products WHERE deleted_at IS NULL ORDER 
                 <div class="form-group">
                     <label for="category">Category</label>
                     <select id="category" name="category" required>
-                        <option value="beverages">Beverages</option>
-                        <option value="chicken">Chicken</option>
-                        <option value="burger">Burger</option>
-                        <option value="desserts_sides">Desserts & Sides</option>
+                        <?php 
+                        $categories = $conn->query("SELECT name, display_name FROM categories ORDER BY display_name");
+                        while($cat = $categories->fetch_assoc()): ?>
+                            <option value="<?= htmlspecialchars($cat['name']) ?>"><?= htmlspecialchars($cat['display_name']) ?></option>
+                        <?php endwhile; ?>
                     </select>
                 </div>
                 <div class="form-group">
@@ -603,11 +657,12 @@ $products = $conn->query("SELECT * FROM products WHERE deleted_at IS NULL ORDER 
         <div class="modal-content">
             <span class="close" onclick="closeEditModal()">&times;</span>
             <h3>Edit Product</h3>
-            <form method="POST">
+            <form method="POST" id="editProductForm">
                 <input type="hidden" id="edit_id" name="id">
                 <div class="form-group">
                     <label for="edit_name">Product Name</label>
                     <input type="text" id="edit_name" name="name" required>
+                    <small id="edit-name-error" class="error-message" style="color: red; display: none;"></small>
                 </div>
                 <div class="form-group">
                     <label for="edit_description">Description</label>
@@ -620,10 +675,11 @@ $products = $conn->query("SELECT * FROM products WHERE deleted_at IS NULL ORDER 
                 <div class="form-group">
                     <label for="edit_category">Category</label>
                     <select id="edit_category" name="category" required>
-                        <option value="beverages">Beverages</option>
-                        <option value="chicken">Chicken</option>
-                        <option value="burger">Burger</option>
-                        <option value="desserts_sides">Desserts & Sides</option>
+                        <?php 
+                        $categories = $conn->query("SELECT name, display_name FROM categories ORDER BY display_name");
+                        while($cat = $categories->fetch_assoc()): ?>
+                            <option value="<?= htmlspecialchars($cat['name']) ?>"><?= htmlspecialchars($cat['display_name']) ?></option>
+                        <?php endwhile; ?>
                     </select>
                 </div>
                 <div class="form-group">
@@ -665,14 +721,64 @@ $products = $conn->query("SELECT * FROM products WHERE deleted_at IS NULL ORDER 
             document.getElementById('editModal').style.display = 'none';
         }
 
+        // Name validation
+        function checkProductName(name, currentId = null) {
+            return fetch('check_product_name.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, currentId })
+            })
+            .then(response => response.json());
+        }
+
+        // Add product name validation
+        document.getElementById('name').addEventListener('blur', function() {
+            const name = this.value.trim();
+            const errorElement = document.getElementById('name-error');
+            
+            if (name) {
+                checkProductName(name)
+                    .then(data => {
+                        if (!data.available) {
+                            errorElement.textContent = 'This product name already exists! ' + 
+                                (data.suggestions.length ? 'Suggestions: ' + data.suggestions.join(', ') : '');
+                            errorElement.style.display = 'block';
+                        } else {
+                            errorElement.style.display = 'none';
+                        }
+                    });
+            }
+        });
+
+        // Edit product name validation
+        document.getElementById('edit_name').addEventListener('blur', function() {
+            const name = this.value.trim();
+            const productId = document.getElementById('edit_id').value;
+            const errorElement = document.getElementById('edit-name-error');
+            
+            if (name && productId) {
+                checkProductName(name, productId)
+                    .then(data => {
+                        if (!data.available) {
+                            errorElement.textContent = 'This product name already exists! ' + 
+                                (data.suggestions.length ? 'Suggestions: ' + data.suggestions.join(', ') : '');
+                            errorElement.style.display = 'block';
+                        } else {
+                            errorElement.style.display = 'none';
+                        }
+                    });
+            }
+        });
+
         // Close modals when clicking outside
         window.onclick = function(event) {
             if (event.target.className === 'modal') {
                 event.target.style.display = 'none';
             }
-        }
+        };
 
-        const dropdown = document.getElementById('userDropdown');
+
+           const dropdown = document.getElementById('userDropdown');
     dropdown.addEventListener('click', function (event) {
       event.stopPropagation();
       this.classList.toggle('show');

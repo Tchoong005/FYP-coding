@@ -1,33 +1,44 @@
 <?php
-session_start();
-require_once 'db_connection.php';
+// Database connection
+$conn = new mysqli('127.0.0.1', 'root', '', 'fyp_fastfood');
+if ($conn->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
+}
 
 // Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Restore product
     if (isset($_POST['restore_product'])) {
-        $id = (int)$_POST['id'];
+        $id = $_POST['id'];
         $stmt = $conn->prepare("UPDATE products SET deleted_at=NULL WHERE id=?");
         $stmt->bind_param("i", $id);
-        
-        if ($stmt->execute()) {
-            $_SESSION['success'] = "Product restored successfully!";
-        } else {
-            $_SESSION['error'] = "Error restoring product: " . $conn->error;
-        }
+        $stmt->execute();
         $stmt->close();
         header("Location: adminDeletedProducts.php");
-        exit;
+        exit();
+    }
+    
+    // Permanent delete
+    if (isset($_POST['permanent_delete'])) {
+        $id = $_POST['id'];
+        $stmt = $conn->prepare("DELETE FROM products WHERE id=?");
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+        $stmt->close();
+        header("Location: adminDeletedProducts.php");
+        exit();
     }
 }
 
-// Fetch all deleted products with category display names
+// Fetch all deleted products
+$deletedProducts = $conn->query("SELECT * FROM products WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC");
+// Replace your current products query with:
 $products = $conn->query("
     SELECT p.*, c.display_name as category_display 
     FROM products p
     JOIN categories c ON p.category = c.name
-    WHERE p.deleted_at IS NOT NULL
-    ORDER BY p.deleted_at DESC
+    WHERE p.deleted_at IS NULL
+    ORDER BY c.display_name, p.name
 ");
 ?>
 
@@ -39,7 +50,7 @@ $products = $conn->query("
     <title>Deleted Products - KFG FOOD</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
     <style>
-                 * {
+         * {
             padding: 0;
             margin: 0;
             box-sizing: border-box;
@@ -330,29 +341,24 @@ $products = $conn->query("
         .deleted-row:hover {
             opacity: 1;
         }
-        .deleted-row {
-            opacity: 0.7;
-            background-color: #ffeeee;
-        }
-        .deleted-row:hover {
-            opacity: 1;
-        }
     </style>
 </head>
 <body>
-    <div class="top">
+<div class="top">
         <div class="topbar">
             <div class="logo">
-                <h2>FastFood Express</h2>
+                <h2>KFG FOOD</h2>
             </div>
             <div class="search">
-                
+                <input type="text" id="search" placeholder="search here">
+                <label for="search"><i class="fas fa-search"></i></label>
+
             </div>
-            
             <div class="user-dropdown" id="userDropdown">
                 <img src="img/72-729716_user-avatar-png-graphic-free-download-icon.png" alt="User Avatar">
                 <div class="dropdown-content">
-                    
+                    <a href="profile.php">Edit profile</a>
+                    <a href="adminlogout.php">Logout</a>
                 </div>
             </div>
 
@@ -363,7 +369,7 @@ $products = $conn->query("
     <div class="list">
         <ul>
             <li>
-                <a href="adminhome.php">
+                <a href="adminhome.html">
                     <i class="fas fa-home"></i>
                     <h4>DASHBOARD</h4>
                 </a>
@@ -386,14 +392,6 @@ $products = $conn->query("
             </li>
         </ul>
         <ul>
-        <li>
-            <a href="adminCategories.php">
-                <i class="fas fa-tags"></i>
-                <h4>CATEGORIES</h4>
-            </a>
-        </li>
-        </ul>
-        <ul>
             <li>
                 <a href="adminStaff.php">
                     <i class="fas fa-user-tie"></i>
@@ -411,30 +409,26 @@ $products = $conn->query("
         </ul>
         <ul>
             <li>
-                <a href="adminReport.php">
+                <a href="adminReport.html">
                     <i class="fas fa-chart-line"></i>
                     <h4>REPORT</h4>
                 </a>
             </li>
         </ul>
-        
+        <ul>
+            <li>
+                <a href="adminAboutUs.html">
+                    <i class="fas fa-info-circle"></i>
+                    <h4>ABOURT US</h4>
+                </a>
+            </li>
+        </ul>
 
     </div>
-
 
     <div class="main">
         <div class="card">
             <h3>Deleted Products</h3>
-            
-            <?php if (isset($_SESSION['success'])): ?>
-                <div class="alert alert-success"><?= htmlspecialchars($_SESSION['success']) ?></div>
-                <?php unset($_SESSION['success']); ?>
-            <?php endif; ?>
-            
-            <?php if (isset($_SESSION['error'])): ?>
-                <div class="alert alert-danger"><?= htmlspecialchars($_SESSION['error']) ?></div>
-                <?php unset($_SESSION['error']); ?>
-            <?php endif; ?>
             
             <a href="adminProduct.php" class="btn btn-add">
                 <i class="fas fa-arrow-left"></i> Back to Active Products
@@ -448,34 +442,38 @@ $products = $conn->query("
                         <th>Description</th>
                         <th>Price (RM)</th>
                         <th>Category</th>
-                        <th>Deleted At</th>
+                        <th>Deleted On</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <?php while($product = $products->fetch_assoc()): ?>
+                    <?php while($product = $deletedProducts->fetch_assoc()): ?>
                     <tr class="deleted-row">
                         <td>
                             <?php if($product['image_url']): ?>
-                                <img src="<?= htmlspecialchars($product['image_url']) ?>" alt="<?= htmlspecialchars($product['name']) ?>" class="product-image">
-                            <?php else: ?>
-                                <i class="fas fa-image" style="font-size: 24px;"></i>
+                                <img src="<?php echo htmlspecialchars($product['image_url']); ?>" class="product-image">
                             <?php endif; ?>
                         </td>
-                        <td><?= htmlspecialchars($product['name']) ?></td>
-                        <td><?= htmlspecialchars($product['description']) ?></td>
-                        <td><?= number_format($product['price'], 2) ?></td>
-                        <td>
-                            <span class="category-badge <?= htmlspecialchars($product['category']) ?>">
-                                <?= htmlspecialchars($product['category_display']) ?>
-                            </span>
-                        </td>
-                        <td><?= date('Y-m-d H:i', strtotime($product['deleted_at'])) ?></td>
+                        <td><?php echo htmlspecialchars($product['name']); ?></td>
+                        <td><?php echo htmlspecialchars($product['description']); ?></td>
+                        <td><?php echo number_format($product['price'], 2); ?></td>
+                       <td>
+    <span class="category-badge <?php echo htmlspecialchars($product['category'] ?? ''); ?>">
+        <?php echo htmlspecialchars($product['category_display'] ?? 'Uncategorized'); ?>
+    </span>
+</td>
+                        <td><?php echo date('Y-m-d H:i', strtotime($product['deleted_at'])); ?></td>
                         <td>
                             <form method="POST" style="display: inline;">
-                                <input type="hidden" name="id" value="<?= $product['id'] ?>">
+                                <input type="hidden" name="id" value="<?php echo $product['id']; ?>">
                                 <button type="submit" name="restore_product" class="btn btn-restore">
-                                    <i class="fas fa-trash-restore"></i> Restore
+                                    <i class="fas fa-undo"></i> Restore
+                                </button>
+                            </form>
+                            <form method="POST" style="display: inline;">
+                                <input type="hidden" name="id" value="<?php echo $product['id']; ?>">
+                                <button type="submit" name="permanent_delete" class="btn btn-hide" onclick="return confirm('WARNING: This will permanently delete the product. Continue?');">
+                                    <i class="fas fa-trash"></i> Delete Permanently
                                 </button>
                             </form>
                         </td>
