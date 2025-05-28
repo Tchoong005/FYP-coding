@@ -2,6 +2,10 @@
 session_start();
 include 'db.php';
 
+require 'PHPMailer/src/PHPMailer.php';
+require 'PHPMailer/src/SMTP.php';
+require 'PHPMailer/src/Exception.php';
+
 $error = $success = "";
 
 if (!isset($_SESSION['pending_email'])) {
@@ -19,10 +23,6 @@ if (isset($_GET['resend'])) {
         $newOTP = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
         $update = "UPDATE customers SET verification_code = '$newOTP' WHERE email = '$email'";
         if (mysqli_query($conn, $update)) {
-            require 'PHPMailer/src/PHPMailer.php';
-            require 'PHPMailer/src/SMTP.php';
-            require 'PHPMailer/src/Exception.php';
-
             $mail = new PHPMailer\PHPMailer\PHPMailer(true);
             try {
                 $mail->isSMTP();
@@ -45,9 +45,8 @@ if (isset($_GET['resend'])) {
                         <p>Please use this code to verify your email address.</p>
                     </div>
                 ";
-
                 $mail->send();
-                $_SESSION['otp_sent_time'] = time(); // ✅ 保存发送时间
+                $_SESSION['otp_sent_time'] = time();
                 $success = "New OTP has been sent to your email.";
             } catch (Exception $e) {
                 $error = "Failed to resend OTP. Please try again.";
@@ -67,6 +66,37 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if (mysqli_num_rows($result) == 1) {
         $update = "UPDATE customers SET is_verified = 1, verification_code = NULL WHERE email = '$email'";
         if (mysqli_query($conn, $update)) {
+            // ✅ Send welcome email now
+            $user = mysqli_fetch_assoc($result); // fetch the user info for email
+            $mail = new PHPMailer\PHPMailer\PHPMailer(true);
+            try {
+                $mail->isSMTP();
+                $mail->Host = 'smtp.gmail.com';
+                $mail->SMTPAuth = true;
+                $mail->Username = 'yewshunyaodennis@gmail.com';
+                $mail->Password = 'ydgu hfqw qgjh daqg';
+                $mail->SMTPSecure = 'tls';
+                $mail->Port = 587;
+
+                $mail->setFrom('yewshunyaodennis@gmail.com', 'FastFood Express');
+                $mail->addAddress($email);
+                $mail->isHTML(true);
+                $mail->Subject = '🎉 Welcome to FastFood Express!';
+                $mail->Body = "
+                    <div style='font-family: Arial, sans-serif; max-width: 600px; margin: auto;'>
+                        <h2 style='color: #d6001c;'>You’re now verified!</h2>
+                        <p>Hi there 👋,</p>
+                        <p>Thank you for registering and verifying your email address.</p>
+                        <p>You can now login and enjoy the full features of FastFood Express 🍟🍔</p>
+                        <br>
+                        <p style='color: #888;'>— FastFood Express Team</p>
+                    </div>
+                ";
+                $mail->send();
+            } catch (Exception $e) {
+                // optional: log error
+            }
+
             unset($_SESSION['pending_email'], $_SESSION['otp_sent_time']);
             $_SESSION['registration_success'] = "Registration successful! You can now login.";
             header("Location: login.php");
@@ -79,6 +109,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>

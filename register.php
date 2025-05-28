@@ -58,33 +58,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     $mail->Body    = "Hi $username,<br><br>Your OTP code is: <strong>$otp</strong>";
 
                     $mail->send();
-
-                    // ✅ 发送欢迎邮件
-                    $welcome = new PHPMailer(true);
-                    $welcome->isSMTP();
-                    $welcome->Host = 'smtp.gmail.com';
-                    $welcome->SMTPAuth = true;
-                    $welcome->Username = 'yewshunyaodennis@gmail.com';
-                    $welcome->Password = 'ydgu hfqw qgjh daqg';
-                    $welcome->SMTPSecure = 'tls';
-                    $welcome->Port = 587;
-
-                    $welcome->setFrom('yewshunyaodennis@gmail.com', 'FastFood Express');
-                    $welcome->addAddress($email);
-                    $welcome->isHTML(true);
-                    $welcome->Subject = 'Welcome to FastFood Express!';
-                    $welcome->Body = "
-                        <div style='font-family: Arial; max-width:600px;'>
-                          <h2 style='color:#d6001c;'>🎉 Registration Successful!</h2>
-                          <p>Hi <strong>$username</strong>,</p>
-                          <p>Thank you for joining FastFood Express!</p>
-                          <p>You’ve successfully registered your account. Please verify your email to activate it.</p>
-                          <br>
-                          <p style='color:gray;'>— FastFood Express Team</p>
-                        </div>
-                    ";
-                    $welcome->send();
-
                     $_SESSION['pending_email'] = $email;
                     $_SESSION['otp_sent_time'] = time();
                     header("Location: verify_code.php");
@@ -99,6 +72,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
 }
 ?>
+
 
 <!DOCTYPE html>
 <html lang="en">
