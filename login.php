@@ -3,14 +3,15 @@ session_start();
 include 'db.php';
 
 $error = "";
-$success = ""; // 添加成功消息变量
+$success = "";
 
-// 检查是否有注册成功的session标记
+// ✅ 注册成功后的 alert 弹窗
 if (isset($_SESSION['registration_success'])) {
-    $success = "Registration successful! Please login with your credentials.";
-    unset($_SESSION['registration_success']); // 清除标记避免重复显示
+    echo "<script>alert('Registration successful! Please login with your credentials.');</script>";
+    unset($_SESSION['registration_success']);
 }
 
+// ✅ 处理登录表单提交
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $email = mysqli_real_escape_string($conn, $_POST['email']);
     $password = mysqli_real_escape_string($conn, $_POST['password']);
