@@ -1,81 +1,153 @@
 <?php
 session_start();
 include 'db.php';
+
+// 加载PHPMailer
+require 'PHPMailer/src/Exception.php';
 require 'PHPMailer/src/PHPMailer.php';
 require 'PHPMailer/src/SMTP.php';
-require 'PHPMailer/src/Exception.php';
 
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
 $error = $success = "";
+$showOTPField = false; // 控制是否显示OTP输入字段
 
-function generateOTP($length = 6) {
-    return str_pad(random_int(0, pow(10, $length)-1), $length, '0', STR_PAD_LEFT);
+// 生成6位随机OTP
+function generateOTP() {
+    return rand(100000, 999999);
 }
 
+// 发送OTP邮件
+function sendOTP($email, $otp) {
+    $mail = new PHPMailer(true);
+    
+    try {
+        // Gmail SMTP配置
+        $mail->isSMTP();
+        $mail->Host       = 'smtp.gmail.com';
+        $mail->SMTPAuth   = true;
+        $mail->Username   = 'your@gmail.com'; // 替换为您的Gmail
+        $mail->Password   = 'your_app_password'; // Gmail的16位App Password
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->Port       = 587;
+        
+        // 收件人
+        $mail->setFrom('no-reply@fastfoodexpress.com', 'FastFood Express');
+        $mail->addAddress($email);
+        
+        // 邮件内容
+        $mail->isHTML(true);
+        $mail->Subject = 'Your FastFood Express Verification Code';
+        $mail->Body    = "
+            <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>
+                <h2 style='color: #d6001c;'>FastFood Express Verification Code</h2>
+                <p>Your OTP code is: <strong style='font-size: 24px;'>$otp</strong></p>
+                <p>This code will expire in 10 minutes.</p>
+                <p>If you didn't request this, please ignore this email.</p>
+            </div>
+        ";
+        
+        $mail->send();
+        return true;
+    } catch (Exception $e) {
+        error_log("Mailer Error: " . $mail->ErrorInfo);
+        return false;
+    }
+}
+
+// 处理表单提交
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $email    = mysqli_real_escape_string($conn, $_POST['email']);
-    $username = mysqli_real_escape_string($conn, $_POST['username']);
-    $phone    = mysqli_real_escape_string($conn, $_POST['phone']);
-    $password = mysqli_real_escape_string($conn, $_POST['password']);
-    $confirm  = mysqli_real_escape_string($conn, $_POST['confirm_password']);
-    $question = mysqli_real_escape_string($conn, $_POST['security_question']);
-    $answer   = mysqli_real_escape_string($conn, $_POST['security_answer']);
-
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $error = "Invalid email format.";
-    } elseif (!preg_match('/^01[0-9]{8,9}$/', $phone)) {
-        $error = "Phone number must start with 01 and be 10–11 digits.";
-    } elseif (!preg_match('/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/', $password)) {
-        $error = "Password must be at least 8 characters with uppercase, lowercase, and number.";
-    } elseif ($password !== $confirm) {
-        $error = "Passwords do not match.";
-    } elseif (empty($question) || empty($answer)) {
-        $error = "Security question and answer are required.";
-    } else {
-        $check = mysqli_query($conn, "SELECT * FROM customers WHERE email='$email' OR phone='$phone'");
-        if (mysqli_num_rows($check) > 0) {
-            $error = "Email or phone already exists.";
-        } else {
+    // 如果是验证OTP的请求
+    if (isset($_POST['verify_otp'])) {
+        $userOTP = $_POST['otp'];
+        $storedOTP = $_SESSION['register_otp'];
+        $storedEmail = $_SESSION['register_email'];
+        
+        if ($userOTP == $storedOTP && time() < $_SESSION['otp_expiry']) {
+            // OTP验证成功，完成注册
+            $email = $_SESSION['register_email'];
+            $username = $_SESSION['register_username'];
+            $phone = $_SESSION['register_phone'];
+            $password = $_SESSION['register_password'];
+            $question = $_SESSION['register_question'];
+            $answer = $_SESSION['register_answer'];
+            
+            // 插入数据库
             $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-            $otp = generateOTP();
-
-            $insert = "INSERT INTO customers (email, username, phone, password, security_question, security_answer, verification_code, is_verified)
-                       VALUES ('$email', '$username', '$phone', '$hashed_password', '$question', '$answer', '$otp', 0)";
+            $insert = "INSERT INTO customers (email, username, phone, password, security_question, security_answer, is_verified)
+                       VALUES ('$email', '$username', '$phone', '$hashed_password', '$question', '$answer', 1)";
+            
             if (mysqli_query($conn, $insert)) {
-                // Send OTP via email
-                $mail = new PHPMailer(true);
-                try {
-                    $mail->isSMTP();
-                    $mail->Host = 'smtp.gmail.com';
-                    $mail->SMTPAuth = true;
-                    $mail->Username = 'yewshunyaodennis@gmail.com';
-                    $mail->Password = 'ydgu hfqw qgjh daqg';
-                    $mail->SMTPSecure = 'tls';
-                    $mail->Port = 587;
-
-                    $mail->setFrom('yewshunyaodennis@gmail.com', 'FastFood Express');
-                    $mail->addAddress($email);
-                    $mail->isHTML(true);
-                    $mail->Subject = 'Your FastFood Express OTP Code';
-                    $mail->Body    = "Hi $username,<br><br>Your OTP code is: <strong>$otp</strong><br>Please enter this code to verify your email.";
-
-                    $mail->send();
-                    $_SESSION['pending_email'] = $email;
-                    header("Location: verify_code.php");
-                    exit();
-                } catch (Exception $e) {
-                    $error = "Email sending failed. Please try again.";
-                }
+                // 清除session中的注册数据
+                unset($_SESSION['register_email']);
+                unset($_SESSION['register_otp']);
+                unset($_SESSION['otp_expiry']);
+                unset($_SESSION['register_username']);
+                unset($_SESSION['register_phone']);
+                unset($_SESSION['register_password']);
+                unset($_SESSION['register_question']);
+                unset($_SESSION['register_answer']);
+                
+                $success = "Registration successful! You can now login.";
             } else {
-                $error = "Registration failed. Please try again.";
+                $error = "Database error. Please try again.";
+            }
+        } else {
+            $error = "Invalid OTP or OTP has expired. Please try again.";
+            $showOTPField = true;
+        }
+    } 
+    // 如果是初始注册表单提交
+    else {
+        $email = mysqli_real_escape_string($conn, $_POST['email']);
+        $username = mysqli_real_escape_string($conn, $_POST['username']);
+        $phone = mysqli_real_escape_string($conn, $_POST['phone']);
+        $password = mysqli_real_escape_string($conn, $_POST['password']);
+        $confirm = mysqli_real_escape_string($conn, $_POST['confirm_password']);
+        $question = mysqli_real_escape_string($conn, $_POST['security_question']);
+        $answer = mysqli_real_escape_string($conn, $_POST['security_answer']);
+
+        // 验证输入
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $error = "Invalid email format.";
+        } elseif (!preg_match('/^01[0-9]{8,9}$/', $phone)) {
+            $error = "Phone number must start with 01 and be 10-11 digits.";
+        } elseif (!preg_match('/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/', $password)) {
+            $error = "Password must be at least 8 characters with uppercase, lowercase, and number.";
+        } elseif ($password !== $confirm) {
+            $error = "Passwords do not match.";
+        } elseif (empty($question) || empty($answer)) {
+            $error = "Security question and answer are required.";
+        } else {
+            // 检查邮箱和手机号是否已存在
+            $check = mysqli_query($conn, "SELECT * FROM customers WHERE email='$email' OR phone='$phone'");
+            if (mysqli_num_rows($check) > 0) {
+                $error = "Email or phone number already used.";
+            } else {
+                // 生成并发送OTP
+                $otp = generateOTP();
+                if (sendOTP($email, $otp)) {
+                    // 存储OTP和注册数据到session
+                    $_SESSION['register_otp'] = $otp;
+                    $_SESSION['otp_expiry'] = time() + 600; // 10分钟过期
+                    $_SESSION['register_email'] = $email;
+                    $_SESSION['register_username'] = $username;
+                    $_SESSION['register_phone'] = $phone;
+                    $_SESSION['register_password'] = $password;
+                    $_SESSION['register_question'] = $question;
+                    $_SESSION['register_answer'] = $answer;
+                    
+                    $success = "OTP has been sent to your email. Please check and enter it below.";
+                    $showOTPField = true;
+                } else {
+                    $error = "Failed to send OTP. Please try again.";
+                }
             }
         }
     }
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
