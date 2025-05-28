@@ -28,8 +28,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         if (mysqli_num_rows($check) > 0) {
             $error = "Email or phone number already used.";
         } else {
-            $insert = "INSERT INTO customers (email, username, phone, password, security_question, security_answer)
-                       VALUES ('$email', '$username', '$phone', '$password', '$question', '$answer')";
+            $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+            $insert = "INSERT INTO customers (email, username, phone, password, security_question, security_answer, is_verified)
+                       VALUES ('$email', '$username', '$phone', '$hashed_password', '$question', '$answer', 0)";
             if (mysqli_query($conn, $insert)) {
                 $success = "Registration successful! You can now login.";
             } else {
@@ -93,8 +94,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
       text-align: center;
       margin-top: 15px;
     }
-    .error { color: red; text-align: center; margin-bottom: 10px; }
-    .success { color: green; text-align: center; margin-bottom: 10px; }
+    .error, .success {
+      text-align: center;
+      padding: 10px;
+      margin-bottom: 15px;
+      border-radius: 5px;
+    }
+    .error { background: #ffe0e0; color: #d6001c; }
+    .success { background: #e0ffe0; color: green; }
     .toggle-password {
       float: right;
       margin-top: -25px;
@@ -115,13 +122,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
   <?php if ($success) echo "<div class='success'>$success</div>"; ?>
   <form method="post">
     <label>Email</label>
-    <input type="email" name="email" required>
+    <input type="email" name="email" required value="<?php echo isset($_POST['email']) ? htmlspecialchars($_POST['email']) : ''; ?>">
 
     <label>User Name</label>
-    <input type="text" name="username" required>
+    <input type="text" name="username" required value="<?php echo isset($_POST['username']) ? htmlspecialchars($_POST['username']) : ''; ?>">
 
     <label>Phone Number</label>
-    <input type="text" name="phone" required>
+    <input type="text" name="phone" required value="<?php echo isset($_POST['phone']) ? htmlspecialchars($_POST['phone']) : ''; ?>">
 
     <label>Password</label>
     <input type="password" name="password" id="password" required>
@@ -132,14 +139,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <span class="toggle-password" onclick="togglePassword('confirm_password')">Show</span>
 
     <label>Security Question</label>
-    <input type="text" name="security_question" placeholder="e.g. What is your pet's name?" required>
+    <input type="text" name="security_question" required placeholder="e.g. What is your favorite food?" value="<?php echo isset($_POST['security_question']) ? htmlspecialchars($_POST['security_question']) : ''; ?>">
 
     <label>Answer</label>
-    <input type="text" name="security_answer" required>
+    <input type="text" name="security_answer" required value="<?php echo isset($_POST['security_answer']) ? htmlspecialchars($_POST['security_answer']) : ''; ?>">
 
     <button type="submit">Register</button>
     <div class="bottom-link">
-      Already have an account? <a href="login.php">Login</a>
+      Already have an account? <a href="login.php" style="color: #d6001c;">Login</a>
     </div>
   </form>
 </div>
