@@ -488,7 +488,7 @@ if ($result) {
 
 <!-- Guest Notice -->
 <div class="guest-notice">
-  <p>You're browsing as a guest. <a href="login.php">Sign in</a> for a personalized experience!</p>
+  <p>You're browsing as a guest. <a href="choose_login_register.html">Sign in</a> for a personalized experience!</p>
 </div>
 
 <!-- Top Navigation Bar - 与首页一致 -->
@@ -509,7 +509,7 @@ if ($result) {
     
     <a href="about_guest.html">About</a>
     <a href="contact_guest.html">Contact</a>
-    <a href="login.php">Login</a>
+    <a href="choose_login_register.html">Login</a>
     <div class="cart-icon" data-count="0" id="guest-cart">
       <i class="fas fa-shopping-cart"></i>
     </div>
@@ -593,7 +593,7 @@ if ($result) {
         confirmButtonColor: '#d6001c'
       }).then((result) => {
         if (result.isConfirmed) {
-          window.location.href = 'login.php';
+          window.location.href = 'choose_login_register.html';
         }
       });
     });
@@ -613,7 +613,7 @@ if ($result) {
       confirmButtonColor: '#d6001c'
     }).then((result) => {
       if (result.isConfirmed) {
-        window.location.href = 'login.php';
+        window.location.href = 'choose_login_register.html';
       }
     });
   });
