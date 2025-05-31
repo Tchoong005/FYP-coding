@@ -112,7 +112,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // 订单状态始终为pending
                 $order_status = 'pending';
                 
-                // 修改SQL语句：将status改为payment_status，添加order_status字段
+                // 修复SQL语句：字段数量和绑定参数一致
                 $sql_order = "INSERT INTO orders (user_id, recipient_name, recipient_phone, recipient_address, 
                               delivery_method, total_price, delivery_fee, final_total, payment_method, 
                               payment_status, order_status, created_at)
@@ -123,10 +123,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     throw new Exception("Prepare failed: " . $conn->error);
                 }
                 
-                // 修改绑定参数：增加order_status参数，类型字符串增加一个"s"
-                $stmt->bind_param("issssdddssss", $user_id, $recipient_name, $recipient_phone,
-                    $recipient_address, $delivery_method, $total_price, $delivery_fee, $final_total, 
-                    $payment_method, $payment_status, $order_status, $now);
+                // 修复绑定参数：确保12个参数对应12个字段
+                $stmt->bind_param("issssdddssss", 
+                    $user_id, 
+                    $recipient_name, 
+                    $recipient_phone,
+                    $recipient_address, 
+                    $delivery_method, 
+                    $total_price, 
+                    $delivery_fee, 
+                    $final_total, 
+                    $payment_method, 
+                    $payment_status, 
+                    $order_status, 
+                    $now
+                );
                 
                 if (!$stmt->execute()) {
                     throw new Exception("Execute failed: " . $stmt->error);
@@ -135,7 +146,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $order_id = $conn->insert_id;
                 $stmt->close();
 
-                // 添加订单项（保持不变）
+                // 添加订单项
                 foreach ($cart as $item) {
                     $pid = (int)$item['product_id'];
                     // 确保产品信息存在
