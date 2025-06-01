@@ -26,14 +26,8 @@ if (isset($_SESSION['cart'])) {
     :root {
       --primary: #d6001c;
       --primary-dark: #b50018;
-      --secondary: #f9fafb;
       --text: #1f2937;
-      --text-light: #6b7280;
       --border: #e5e7eb;
-      --success: #10b981;
-      --error: #ef4444;
-      --warning: #f59e0b;
-      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     }
 
     * {
@@ -59,7 +53,6 @@ if (isset($_SESSION['cart'])) {
       align-items: center;
       padding: 15px 30px;
       flex-wrap: wrap;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
       position: sticky;
       top: 0;
       z-index: 100;
@@ -119,23 +112,17 @@ if (isset($_SESSION['cart'])) {
 
     .dropdown {
       position: relative;
-      display: inline-block;
     }
 
     .dropbtn {
-      background-color: transparent;
+      background: none;
       color: white;
       font-weight: bold;
-      padding: 0 10px;
       border: none;
       cursor: pointer;
       display: flex;
       align-items: center;
       gap: 5px;
-    }
-
-    .dropbtn:hover {
-      color: var(--primary);
     }
 
     .dropdown-content {
@@ -144,9 +131,7 @@ if (isset($_SESSION['cart'])) {
       background-color: #333;
       min-width: 180px;
       box-shadow: 0px 8px 16px rgba(0,0,0,0.2);
-      z-index: 1;
       border-radius: 4px;
-      overflow: hidden;
       top: 100%;
       left: 0;
     }
@@ -168,15 +153,6 @@ if (isset($_SESSION['cart'])) {
       display: block;
     }
 
-    .dropdown-icon {
-      font-size: 14px;
-      transition: transform 0.3s;
-    }
-
-    .dropdown:hover .dropdown-icon {
-      transform: rotate(180deg);
-    }
-
     .active-link::after {
       content: '';
       position: absolute;
@@ -192,8 +168,6 @@ if (isset($_SESSION['cart'])) {
       padding: 100px 20px;
       background: linear-gradient(135deg, #ffecec 0%, #ffffff 100%);
       text-align: center;
-      position: relative;
-      overflow: hidden;
     }
 
     .contact-hero h1 {
@@ -212,7 +186,8 @@ if (isset($_SESSION['cart'])) {
     .contact-grid {
       display: flex;
       justify-content: center;
-      padding: 40px 20px;
+      padding: 80px 20px;
+      min-height: 60vh;
     }
 
     .info-box {
@@ -252,10 +227,6 @@ if (isset($_SESSION['cart'])) {
         padding: 12px 15px;
       }
 
-      .contact-hero {
-        padding: 80px 15px;
-      }
-
       .contact-hero h1 {
         font-size: 32px;
       }
@@ -289,13 +260,13 @@ if (isset($_SESSION['cart'])) {
   </div>
 </div>
 
-<!-- Hero Section -->
-<div class="contact-hero" data-aos="fade-up">
+<!-- Hero -->
+<div class="contact-hero">
   <h1>Contact Us</h1>
   <p>We'd love to hear from you! Here's how to reach us. 🍟</p>
 </div>
 
-<!-- Contact Info Only -->
+<!-- Info Section -->
 <div class="contact-grid">
   <div class="info-box" data-aos="fade-up">
     <h3><i class="fas fa-phone-alt"></i> Phone</h3>
@@ -315,13 +286,10 @@ if (isset($_SESSION['cart'])) {
   &copy; <?php echo date('Y'); ?> FastFood Express. All rights reserved.
 </footer>
 
-<!-- AOS Script -->
+<!-- AOS -->
 <script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
 <script>
-  AOS.init({
-    duration: 800,
-    once: true
-  });
+  AOS.init({ duration: 800, once: true });
 </script>
 
 </body>
