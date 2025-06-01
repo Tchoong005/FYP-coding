@@ -5,7 +5,6 @@ if (!isset($_SESSION['user_id'])) {
   exit();
 }
 
-// 计算购物车数量
 $cart_count = 0;
 if (isset($_SESSION['cart'])) {
     foreach ($_SESSION['cart'] as $item) {
@@ -81,7 +80,6 @@ if (isset($_SESSION['cart'])) {
       text-decoration: none;
       font-weight: bold;
       padding: 0 10px;
-      line-height: 1.5;
       transition: color 0.3s;
     }
 
@@ -195,12 +193,12 @@ if (isset($_SESSION['cart'])) {
       padding: 30px;
       border-radius: 16px;
       box-shadow: 0 10px 30px rgba(0,0,0,0.08);
-      max-width: 500px;
+      max-width: 700px;
     }
 
     .info-box h3 {
       color: var(--primary);
-      margin-bottom: 15px;
+      margin-bottom: 10px;
       display: flex;
       align-items: center;
       gap: 10px;
@@ -212,6 +210,17 @@ if (isset($_SESSION['cart'])) {
       line-height: 1.8;
       margin-bottom: 15px;
       font-size: 17px;
+    }
+
+    .info-box a {
+      color: inherit;
+      text-decoration: none;
+      font-weight: bold;
+    }
+
+    .info-box a:hover {
+      text-decoration: underline;
+      color: var(--primary-dark);
     }
 
     .footer {
@@ -278,6 +287,9 @@ if (isset($_SESSION['cart'])) {
     <h3><i class="fas fa-clock"></i> Opening Hours</h3>
     <p>Monday–Friday: 9:00 AM – 10:00 PM</p>
     <p>Weekend: 10:00 AM – 11:00 PM</p>
+
+    <h3><i class="fab fa-facebook-f"></i> Facebook</h3>
+    <p><a href="https://www.facebook.com/FastFoodExpress" target="_blank">Fast FoodExpress</a></p>
   </div>
 </div>
 
