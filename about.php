@@ -447,7 +447,7 @@ if (isset($_SESSION['cart'])) {
 <!-- 关于我们主区域 -->
 <div class="about-hero" data-aos="fade-up">
   <h1>About FastFood Express</h1>
-  <p>Serving smiles since 2020! We are passionate about crafting delicious, fresh fast food with a heart. 🍟❤️</p>
+  <p>Serving smiles since 2025! We are passionate about crafting delicious, fresh fast food with a heart. 🍟❤️</p>
 </div>
 
 <!-- 公司介绍 -->
