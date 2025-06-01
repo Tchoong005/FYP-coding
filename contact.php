@@ -212,15 +212,25 @@ if (isset($_SESSION['cart'])) {
       font-size: 17px;
     }
 
-    .info-box a {
-      color: inherit;
+    .fb-block {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 20px;
+      padding: 14px 20px;
+      background: white;
+      border: 2px solid var(--primary);
+      border-radius: 12px;
       text-decoration: none;
+      font-size: 18px;
+      color: var(--primary);
       font-weight: bold;
+      transition: all 0.3s ease;
     }
 
-    .info-box a:hover {
-      text-decoration: underline;
-      color: var(--primary-dark);
+    .fb-block:hover {
+      background: var(--primary);
+      color: white;
     }
 
     .footer {
@@ -288,8 +298,10 @@ if (isset($_SESSION['cart'])) {
     <p>Monday–Friday: 9:00 AM – 10:00 PM</p>
     <p>Weekend: 10:00 AM – 11:00 PM</p>
 
-    <h3><i class="fab fa-facebook-f"></i> Facebook</h3>
-    <p><a href="https://www.facebook.com/FastFoodExpress" target="_blank">Fast FoodExpress</a></p>
+    <a href="https://www.facebook.com/FastFoodExpress" target="_blank" class="fb-block">
+      <i class="fab fa-facebook-f"></i>
+      <span>Fast FoodExpress</span>
+    </a>
   </div>
 </div>
 
