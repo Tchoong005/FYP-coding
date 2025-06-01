@@ -81,6 +81,7 @@ if (isset($_SESSION['cart'])) {
       font-weight: bold;
       padding: 0 10px;
       transition: color 0.3s;
+      position: relative;
     }
 
     .topbar a:hover {
@@ -151,17 +152,6 @@ if (isset($_SESSION['cart'])) {
       display: block;
     }
 
-    .active-link::after {
-      content: '';
-      position: absolute;
-      bottom: -5px;
-      left: 10px;
-      right: 10px;
-      height: 3px;
-      background: var(--primary);
-      border-radius: 2px;
-    }
-
     .contact-hero {
       padding: 100px 20px;
       background: linear-gradient(135deg, #ffecec 0%, #ffffff 100%);
@@ -193,7 +183,7 @@ if (isset($_SESSION['cart'])) {
       padding: 30px;
       border-radius: 16px;
       box-shadow: 0 10px 30px rgba(0,0,0,0.08);
-      max-width: 700px;
+      max-width: 800px;
     }
 
     .info-box h3 {
@@ -273,7 +263,7 @@ if (isset($_SESSION['cart'])) {
     </div>
     <a href="profile.php">Profile</a>
     <a href="about.php">About</a>
-    <a href="contact.php" class="active-link">Contact</a>
+    <a href="contact.php">Contact</a>
     <a href="logout.php">Logout</a>
     <div class="cart-icon" data-count="<?php echo $cart_count; ?>" onclick="location.href='order_list.php'"><i class="fas fa-shopping-cart"></i></div>
   </div>
@@ -289,8 +279,8 @@ if (isset($_SESSION['cart'])) {
 <div class="contact-grid">
   <div class="info-box" data-aos="fade-up">
     <h3><i class="fas fa-phone-alt"></i> Phone</h3>
-    <p>016-774 8568</p>
-    <p>011-1052 5772</p>
+    <p>016-774 8568/011-1052 5772</p>
+    
 
     <h3><i class="fas fa-envelope"></i> Email</h3>
     <p>fastfoodexpress74@gmail.com</p>
