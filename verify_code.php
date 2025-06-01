@@ -66,8 +66,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if (mysqli_num_rows($result) == 1) {
         $update = "UPDATE customers SET is_verified = 1, verification_code = NULL WHERE email = '$email'";
         if (mysqli_query($conn, $update)) {
-            // ✅ Send welcome email now
-            $user = mysqli_fetch_assoc($result); // fetch the user info for email
+            $user = mysqli_fetch_assoc($result); // 获取用户资料
             $mail = new PHPMailer\PHPMailer\PHPMailer(true);
             try {
                 $mail->isSMTP();
@@ -94,12 +93,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 ";
                 $mail->send();
             } catch (Exception $e) {
-                // optional: log error
+                // Optional logging
             }
 
+            // 自动登入 🎉
+            $_SESSION['user_id'] = $user['id'];
+            $_SESSION['username'] = $user['username'];
+            $_SESSION['email'] = $user['email'];
+
             unset($_SESSION['pending_email'], $_SESSION['otp_sent_time']);
-            $_SESSION['registration_success'] = "Registration successful! You can now login.";
-            header("Location: login.php");
+            header("Location: index_user.php");
             exit();
         } else {
             $error = "Database error. Please try again.";
@@ -177,7 +180,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         .email-display {
             color: #666;
             margin-bottom: 15px;
-            word-break: break-all;
+            word-break: break-word;
         }
         .resend-section {
             margin-top: 15px;
