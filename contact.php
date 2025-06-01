@@ -298,7 +298,7 @@ if (isset($_SESSION['cart'])) {
     <p>Monday–Friday: 9:00 AM – 10:00 PM</p>
     <p>Weekend: 10:00 AM – 11:00 PM</p>
 
-    <a href="https://www.facebook.com/FastFoodExpress" target="_blank" class="fb-block">
+    <a href="https://www.facebook.com/profile.php?id=61576758549907" target="_blank" class="fb-block">
       <i class="fab fa-facebook-f"></i>
       <span>Fast FoodExpress</span>
     </a>
