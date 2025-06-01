@@ -290,6 +290,7 @@ if (isset($_SESSION['cart'])) {
   <div class="info-box" data-aos="fade-up">
     <h3><i class="fas fa-phone-alt"></i> Phone</h3>
     <p>016-774 8568</p>
+    <p>011-1052 5772</p>
 
     <h3><i class="fas fa-envelope"></i> Email</h3>
     <p>fastfoodexpress74@gmail.com</p>
