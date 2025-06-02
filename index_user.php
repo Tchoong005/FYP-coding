@@ -595,14 +595,6 @@ if (isset($_SESSION['cart'])) {
       <h3>Affordable Prices</h3>
       <p>Delicious food doesn't have to break the bank. Enjoy great value with every meal.</p>
     </div>
-    
-    <div class="feature-card" data-aos="fade-up" data-aos-delay="300">
-      <div class="feature-icon">
-        <i class="fas fa-headset"></i>
-      </div>
-      <h3>24/7 Support</h3>
-      <p>Our customer service team is always ready to assist you with any inquiries.</p>
-    </div>
   </div>
 </div>
 

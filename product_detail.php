@@ -53,7 +53,7 @@ $is_beverage = (strtolower($product['category']) === 'beverages');
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
-   <style>
+    <style>
         :root {
             --primary: #d6001c;
             --primary-dark: #b80018;
@@ -81,7 +81,7 @@ $is_beverage = (strtolower($product['category']) === 'beverages');
             line-height: 1.6;
         }
         
-        /* 统一顶部导航栏样式 - 与order_trace.php相同 */
+        /* 统一顶部导航栏样式 */
         .topbar {
             background-color: var(--dark-bg);
             color: white;
@@ -270,53 +270,55 @@ $is_beverage = (strtolower($product['category']) === 'beverages');
         }
 
         .container {
-            max-width: 1100px;
+            max-width: 1300px;
             margin: 40px auto;
             padding: 0 20px;
         }
 
         .product-detail {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 40px;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 30px;
         }
 
         .product-image {
-            flex: 1 1 350px;
-            max-width: 480px;
+            grid-column: 1;
             border-radius: 16px;
             overflow: hidden;
             box-shadow: 0 4px 14px rgba(0,0,0,0.1);
+            height: 400px;
         }
         .product-image img {
             width: 100%;
-            height: auto;
+            height: 100%;
+            object-fit: cover;
             display: block;
         }
 
         .product-info {
-            flex: 1 1 480px;
+            grid-column: 2;
             display: flex;
             flex-direction: column;
+            padding: 15px;
         }
 
         .product-info h2 {
             font-size: 32px;
             color: #222;
-            margin: 0;
+            margin: 0 0 10px;
         }
 
         .product-info p.description {
             color: var(--text-light);
             font-size: 16px;
-            margin: 12px 0 20px;
+            margin: 0 0 20px;
         }
 
         .product-info .price {
             font-size: 28px;
             color: var(--primary);
             font-weight: bold;
-            margin-bottom: 10px;
+            margin-bottom: 15px;
         }
 
         .stock-info {
@@ -329,9 +331,48 @@ $is_beverage = (strtolower($product['category']) === 'beverages');
             font-weight: 600;
             margin-top: 12px;
             margin-bottom: 4px;
+            display: block;
         }
 
-        .product-info input[type="number"],
+        .quantity-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .qty-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--light-bg);
+            border: 1px solid var(--border);
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .qty-btn:hover {
+            background: #e9ecef;
+        }
+
+        .qty-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        #quantity {
+            width: 60px;
+            height: 40px;
+            text-align: center;
+            font-size: 18px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+        }
+
         .product-info select,
         .product-info textarea {
             width: 100%;
@@ -358,84 +399,86 @@ $is_beverage = (strtolower($product['category']) === 'beverages');
             cursor: pointer;
             transition: all 0.3s ease;
             width: 100%;
-            margin-bottom: 20px;
+            margin-top: 10px;
         }
 
         .btn-add-cart:hover {
             background-color: var(--primary-dark);
-        }
-
-        /* 新增的消息提示框 */
-        .message-box {
-            position: fixed;
-            top: 20px;
-            left: 20px;
-            background-color: #d4edda;
-            border: 2px solid var(--success);
-            color: #155724;
-            padding: 15px 20px;
-            border-radius: 10px;
+            transform: translateY(-2px);
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-            font-weight: 600;
-            font-size: 16px;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.4s ease;
-            z-index: 9999;
-            min-width: 280px;
-        }
-        .message-box.show {
-            opacity: 1;
-            pointer-events: auto;
-        }
-        .message-box.error {
-            background-color: #f8d7da;
-            border-color: var(--danger);
-            color: #721c24;
         }
 
-        /* 推荐商品多选样式 */
+        .btn-add-cart:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        /* 推荐商品区域 */
+        .product-recommendations {
+            grid-column: 3;
+            background: #fff;
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+            height: fit-content;
+        }
+
+        .recommendations-title {
+            margin-bottom: 20px;
+            font-size: 22px;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
         .suggestions-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 24px;
+            grid-template-columns: 1fr;
+            gap: 20px;
         }
+        
         .suggestion-card {
             border: 1px solid var(--border);
-            border-radius: 16px;
+            border-radius: 12px;
             overflow: hidden;
             background: #fff;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
             transition: transform 0.3s ease;
             display: flex;
             flex-direction: column;
             cursor: pointer;
             user-select: none;
         }
+        
         .suggestion-card:hover {
-            transform: scale(1.03);
+            transform: translateY(-5px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.1);
         }
+        
         .suggestion-image {
             width: 100%;
-            height: 180px;
+            height: 120px;
             object-fit: cover;
         }
+        
         .suggestion-content {
-            padding: 14px;
-            flex-grow: 1;
+            padding: 12px;
         }
+        
         .suggestion-content h4 {
-            margin: 0 0 10px;
-            font-size: 18px;
-            color: var(--primary);
+            margin: 0 0 8px;
+            font-size: 16px;
+            color: var(--text);
         }
+        
         .suggestion-content p {
             margin: 0;
-            font-size: 15px;
+            font-size: 14px;
             color: var(--text-light);
         }
+        
         .suggestion-checkbox {
-            padding: 10px 14px;
+            padding: 10px 12px;
             border-top: 1px solid var(--border);
             background: var(--light-bg);
             display: flex;
@@ -443,23 +486,134 @@ $is_beverage = (strtolower($product['category']) === 'beverages');
             gap: 10px;
             justify-content: space-between;
         }
+        
         .suggestion-checkbox input[type="checkbox"] {
             width: 18px;
             height: 18px;
             cursor: pointer;
         }
+        
         .suggestion-checkbox label {
             cursor: pointer;
             font-weight: 600;
             user-select: none;
+            font-size: 14px;
         }
 
+        .suggestion-qty-control {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-left: auto;
+        }
+
+        .suggestion-qty-btn {
+            width: 28px;
+            height: 28px;
+            font-size: 16px;
+            border-radius: 50%;
+            background: #fff;
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .suggestion-qty-btn:hover {
+            background: #f0f0f0;
+        }
+
+        .suggestion-qty-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .suggestion-qty {
+            width: 40px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 4px;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        .stock-indicator {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+        
+        .in-stock {
+            background-color: rgba(76, 175, 80, 0.15);
+            color: var(--success);
+        }
+        
+        .low-stock {
+            background-color: rgba(255, 152, 0, 0.15);
+            color: var(--warning);
+        }
+        
+        .out-of-stock {
+            background-color: rgba(244, 67, 54, 0.15);
+            color: var(--danger);
+        }
+
+        /* 消息提示框 - 居中顶部 */
+        .message-box {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.85);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            font-weight: 600;
+            font-size: 16px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s ease;
+            z-index: 9999;
+            min-width: 280px;
+            text-align: center;
+        }
+        
+        .message-box.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        
+        .message-box.error {
+            background-color: rgba(244, 67, 54, 0.9);
+        }
+        
+        .message-box.success {
+            background-color: rgba(76, 175, 80, 0.9);
+        }
+
+        /* 响应式布局 */
+        @media (max-width: 992px) {
+            .product-detail {
+                grid-template-columns: 1fr 1fr;
+            }
+            .product-recommendations {
+                grid-column: 1 / span 2;
+                margin-top: 30px;
+            }
+        }
+        
         @media (max-width: 768px) {
             .product-detail {
-                flex-direction: column;
+                grid-template-columns: 1fr;
             }
-            .btn-add-cart {
-                width: 100%;
+            .product-recommendations {
+                grid-column: 1;
             }
             
             .topbar {
@@ -475,19 +629,14 @@ $is_beverage = (strtolower($product['category']) === 'beverages');
             .topbar .logo {
                 font-size: 20px;
             }
+            .header-section h2 {
+                font-size: 2.2rem;
+            }
+            .product-image {
+                height: 300px;
+            }
         }
 
-        /* 新增推荐商品数量输入框样式 */
-        .suggestion-qty {
-            width: 60px;
-            margin-left: auto;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 4px 8px;
-            font-size: 14px;
-            text-align: center;
-        }
-        
         .footer {
             background-color: #eee;
             text-align: center;
@@ -495,11 +644,52 @@ $is_beverage = (strtolower($product['category']) === 'beverages');
             font-size: 14px;
             margin-top: 40px;
         }
+        
+        .nutrition-info {
+            background-color: #f8f9fa;
+            border-radius: 12px;
+            padding: 15px;
+            margin-top: 20px;
+            border: 1px solid var(--border);
+        }
+        
+        .nutrition-info h3 {
+            margin-bottom: 12px;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .nutrition-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+        
+        .nutrition-item {
+            text-align: center;
+            padding: 8px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        
+        .nutrition-value {
+            font-weight: bold;
+            font-size: 16px;
+            color: var(--text);
+        }
+        
+        .nutrition-label {
+            font-size: 12px;
+            color: var(--text-light);
+        }
     </style>
 </head>
 <body>
 
-<!-- 🔝 Topbar - 与order_trace.php相同 -->
+<!-- 🔝 Topbar -->
 <div class="topbar">
     <div class="logo"><i class="fas fa-hamburger"></i> Fast<span>Food</span> Express</div>
     <div class="nav-links">
@@ -525,8 +715,8 @@ $is_beverage = (strtolower($product['category']) === 'beverages');
 
 <!-- 🧾 Header -->
 <div class="header-section" data-aos="fade-down">
-    <h2><i class="fas fa-utensils"></i> Please select</h2>
-    <p>Freshly made, delivered fast. Pick your meal below!</p>
+    <h2><i class="fas fa-utensils"></i> Product Details</h2>
+    <p>Enjoy our premium quality products with fast delivery</p>
 </div>
 
 <div class="container" data-aos="fade-up">
@@ -534,14 +724,37 @@ $is_beverage = (strtolower($product['category']) === 'beverages');
         <div class="product-image" data-aos="fade-right" data-aos-delay="100">
             <img src="<?php echo htmlspecialchars($product['image_url']); ?>" alt="<?php echo htmlspecialchars($product['name']); ?>" />
         </div>
-        <div class="product-info" data-aos="fade-left" data-aos-delay="150">
+        
+        <div class="product-info" data-aos="fade-up" data-aos-delay="150">
             <h2><?php echo htmlspecialchars($product['name']); ?></h2>
             <p class="description"><?php echo htmlspecialchars($product['description']); ?></p>
             <div class="price">RM <?php echo number_format($product['price'], 2); ?></div>
-            <div class="stock-info">Stock: <?php echo (int)$product['stock_quantity']; ?></div>
+            
+            <?php 
+            $stock_class = 'in-stock';
+            $stock_text = 'In Stock';
+            if ($product['stock_quantity'] <= 0) {
+                $stock_class = 'out-of-stock';
+                $stock_text = 'Out of Stock';
+            } elseif ($product['stock_quantity'] < 10) {
+                $stock_class = 'low-stock';
+                $stock_text = 'Low Stock';
+            }
+            ?>
+            <div class="stock-info">
+                <span class="stock-indicator <?php echo $stock_class; ?>">
+                    <i class="fas fa-<?php echo $product['stock_quantity'] > 0 ? 'check-circle' : 'times-circle'; ?>"></i> 
+                    <?php echo $stock_text; ?>: 
+                    <span><?php echo (int)$product['stock_quantity']; ?></span>
+                </span>
+            </div>
 
-            <label for="quantity">Quantity:</label>
-            <input type="number" id="quantity" name="quantity" min="1" value="1" />
+            <label>Quantity:</label>
+            <div class="quantity-control">
+                <button type="button" class="qty-btn" id="qtyMinus" disabled>-</button>
+                <input type="text" id="quantity" name="quantity" value="1" readonly />
+                <button type="button" class="qty-btn" id="qtyPlus">+</button>
+            </div>
 
             <?php if (!$is_beverage): ?>
                 <label for="sauce">Choose Sauce:</label>
@@ -554,128 +767,230 @@ $is_beverage = (strtolower($product['category']) === 'beverages');
                 </select>
             <?php endif; ?>
 
-            <label for="comment">Add a Message:</label>
-            <textarea id="comment" name="comment" placeholder="Any special instructions?"></textarea>
+            <label for="comment">Special Instructions:</label>
+            <textarea id="comment" name="comment" placeholder="Any special requests?"></textarea>
 
-            <button class="btn-add-cart" id="addToCartBtn">Add to Cart</button>
+            <button class="btn-add-cart" id="addToCartBtn" <?php echo $product['stock_quantity'] <= 0 ? 'disabled' : ''; ?>>
+                <?php echo $product['stock_quantity'] > 0 ? 'Add to Cart' : 'Out of Stock'; ?>
+            </button>
+        </div>
+        
+        <!-- 推荐商品区域 -->
+        <div class="product-recommendations" data-aos="fade-left" data-aos-delay="200">
+            <h3 class="recommendations-title"><i class="fas fa-star"></i> Recommended for You</h3>
+            <form id="suggestionsForm">
+                <div class="suggestions-grid">
+                    <?php
+                    $suggest_sql = "SELECT * FROM products WHERE id != $product_id AND stock_quantity > 0 ORDER BY RAND() LIMIT 3";
+                    $suggest_res = mysqli_query($conn, $suggest_sql);
+                    if ($suggest_res && mysqli_num_rows($suggest_res) > 0) {
+                        while ($suggest = mysqli_fetch_assoc($suggest_res)) {
+                            $suggest_stock_class = 'in-stock';
+                            $suggest_stock_text = 'In Stock';
+                            if ($suggest['stock_quantity'] <= 0) {
+                                $suggest_stock_class = 'out-of-stock';
+                                $suggest_stock_text = 'Out of Stock';
+                            } elseif ($suggest['stock_quantity'] < 10) {
+                                $suggest_stock_class = 'low-stock';
+                                $suggest_stock_text = 'Low Stock';
+                            }
+                            ?>
+                            <label class="suggestion-card" for="suggest_<?php echo $suggest['id']; ?>">
+                                <img src="<?php echo htmlspecialchars($suggest['image_url']); ?>" alt="<?php echo htmlspecialchars($suggest['name']); ?>" class="suggestion-image" />
+                                <div class="suggestion-content">
+                                    <h4><?php echo htmlspecialchars($suggest['name']); ?></h4>
+                                    <p>RM <?php echo number_format($suggest['price'], 2); ?> 
+                                        <span class="stock-indicator <?php echo $suggest_stock_class; ?>">
+                                            <?php echo $suggest_stock_text; ?>: <?php echo (int)$suggest['stock_quantity']; ?>
+                                        </span>
+                                    </p>
+                                </div>
+                                <div class="suggestion-checkbox">
+                                    <input type="checkbox" id="suggest_<?php echo $suggest['id']; ?>" name="suggestions[]" value="<?php echo $suggest['id']; ?>" 
+                                        <?php echo $suggest['stock_quantity'] <= 0 ? 'disabled' : ''; ?> />
+                                    <label for="suggest_<?php echo $suggest['id']; ?>">
+                                        <?php echo $suggest['stock_quantity'] > 0 ? 'Add to Order' : 'Out of Stock'; ?>
+                                    </label>
+                                    <div class="suggestion-qty-control" data-suggest-id="<?php echo $suggest['id']; ?>" data-stock="<?php echo (int)$suggest['stock_quantity']; ?>">
+                                        <button type="button" class="suggestion-qty-btn minus" disabled>-</button>
+                                        <input type="text" value="1" readonly class="suggestion-qty" 
+                                            <?php echo $suggest['stock_quantity'] <= 0 ? 'disabled' : ''; ?> />
+                                        <button type="button" class="suggestion-qty-btn plus" 
+                                            <?php echo $suggest['stock_quantity'] <= 1 ? 'disabled' : ''; ?>>+</button>
+                                    </div>
+                                </div>
+                            </label>
+                            <?php
+                        }
+                    } else {
+                        echo "<p>No recommendations available at the moment.</p>";
+                    }
+                    ?>
+                </div>
+            </form>
         </div>
     </div>
-</div>
-
-<!-- 推荐商品区域 -->
-<div class="container" data-aos="fade-up" style="margin-top: 60px;">
-    <h3 style="margin-bottom: 20px; font-size: 26px; color: var(--text);">You Might Also Like 🍴</h3>
-
-    <button id="toggleRecommendationsBtn" style="margin-bottom:12px; padding:8px 16px; font-size:16px; cursor:pointer;">
-        Show Recommendations ▼
-    </button>
-
-    <form id="suggestionsForm">
-        <div class="suggestions-grid" id="recommendationsSection" style="display:none; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px;">
-            <?php
-            $suggest_sql = "SELECT * FROM products WHERE id != $product_id AND stock_quantity > 0 ORDER BY RAND() LIMIT 4";
-            $suggest_res = mysqli_query($conn, $suggest_sql);
-            if ($suggest_res && mysqli_num_rows($suggest_res) > 0) {
-                while ($suggest = mysqli_fetch_assoc($suggest_res)) {
-                    ?>
-                    <label class="suggestion-card" for="suggest_<?php echo $suggest['id']; ?>" style="border: 1px solid var(--border); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; align-items: center; cursor: pointer;">
-                        <img src="<?php echo htmlspecialchars($suggest['image_url']); ?>" alt="<?php echo htmlspecialchars($suggest['name']); ?>" class="suggestion-image" style="max-width: 100%; border-radius: 6px;" />
-                        <div class="suggestion-content" style="margin-top: 8px; text-align: center;">
-                            <h4 style="margin: 4px 0;"><?php echo htmlspecialchars($suggest['name']); ?></h4>
-                            <p style="color: var(--text-light);">RM <?php echo number_format($suggest['price'], 2); ?></p>
-                        </div>
-                        <div class="suggestion-checkbox" style="margin-top: auto; display: flex; flex-direction: column; align-items: center;">
-                            <input type="checkbox" id="suggest_<?php echo $suggest['id']; ?>" name="suggestions[]" value="<?php echo $suggest['id']; ?>" style="margin-bottom: 6px;" />
-                            <div class="suggestion-qty-control" data-suggest-id="<?php echo $suggest['id']; ?>" style="display: inline-flex; align-items: center; gap: 6px;">
-                                <button type="button" class="qty-minus" disabled style="width: 28px; height: 28px; font-size: 18px; cursor: not-allowed;">-</button>
-                                <input type="text" value="1" readonly class="suggestion-qty" style="width: 36px; text-align: center; border-radius: 8px; border: 1px solid var(--border); padding: 4px 0;" />
-                                <button type="button" class="qty-plus" disabled style="width: 28px; height: 28px; font-size: 18px; cursor: not-allowed;">+</button>
-                            </div>
-                        </div>
-                    </label>
-                    <?php
-                }
-            }
-            ?>
-        </div>
-    </form>
 </div>
 
 <div class="message-box" id="messageBox"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
 <script>
-    AOS.init();
-
+    // 初始化AOS动画
+    AOS.init({
+        duration: 800,
+        once: true
+    });
+    
+    // 获取库存数量
+    const stockQuantity = <?php echo (int)$product['stock_quantity']; ?>;
+    
+    // 主商品数量控制
+    const qtyMinus = document.getElementById('qtyMinus');
+    const qtyPlus = document.getElementById('qtyPlus');
+    const quantityInput = document.getElementById('quantity');
+    const addToCartBtn = document.getElementById('addToCartBtn');
+    
+    // 初始数量设置
+    let currentQty = 1;
+    
+    // 更新数量按钮状态
+    function updateQtyButtons() {
+        qtyMinus.disabled = currentQty <= 1;
+        qtyPlus.disabled = currentQty >= stockQuantity;
+        
+        // 如果库存为0，禁用所有按钮
+        if (stockQuantity <= 0) {
+            qtyMinus.disabled = true;
+            qtyPlus.disabled = true;
+            addToCartBtn.disabled = true;
+        }
+    }
+    
+    // 减号按钮事件
+    qtyMinus.addEventListener('click', () => {
+        if (currentQty > 1) {
+            currentQty--;
+            quantityInput.value = currentQty;
+            updateQtyButtons();
+        }
+    });
+    
+    // 加号按钮事件
+    qtyPlus.addEventListener('click', () => {
+        if (currentQty < stockQuantity) {
+            currentQty++;
+            quantityInput.value = currentQty;
+            updateQtyButtons();
+        }
+    });
+    
+    // 初始化按钮状态
+    updateQtyButtons();
+    
     // 推荐商品勾选时启用数量输入框
     document.querySelectorAll('input[name="suggestions[]"]').forEach(cb => {
         cb.addEventListener('change', function() {
+            if (this.disabled) return;
+            
             const qtyControl = this.closest('.suggestion-checkbox').querySelector('.suggestion-qty-control');
-            const minusBtn = qtyControl.querySelector('.qty-minus');
-            const plusBtn = qtyControl.querySelector('.qty-plus');
+            const minusBtn = qtyControl.querySelector('.minus');
+            const plusBtn = qtyControl.querySelector('.plus');
             const qtyInput = qtyControl.querySelector('.suggestion-qty');
-
+            const stock = parseInt(qtyControl.dataset.stock);
+            
             if (this.checked) {
-                minusBtn.disabled = false;
-                plusBtn.disabled = false;
-                minusBtn.style.cursor = 'pointer';
-                plusBtn.style.cursor = 'pointer';
+                minusBtn.disabled = true; // 初始数量为1，减号禁用
+                plusBtn.disabled = stock <= 1; // 库存为1时加号禁用
             } else {
                 minusBtn.disabled = true;
                 plusBtn.disabled = true;
-                minusBtn.style.cursor = 'not-allowed';
-                plusBtn.style.cursor = 'not-allowed';
                 qtyInput.value = 1;
             }
         });
     });
+    
+    // 推荐商品数量控制
+    document.querySelectorAll('.suggestion-qty-control').forEach(control => {
+        const minusBtn = control.querySelector('.minus');
+        const plusBtn = control.querySelector('.plus');
+        const qtyInput = control.querySelector('.suggestion-qty');
+        const stock = parseInt(control.dataset.stock);
+        
+        minusBtn.addEventListener('click', () => {
+            let val = parseInt(qtyInput.value);
+            if (val > 1) {
+                qtyInput.value = val - 1;
+                // 启用加号按钮（如果之前因库存禁用）
+                if (val - 1 < stock) {
+                    plusBtn.disabled = false;
+                }
+            }
+            // 如果减到1，禁用减号按钮
+            minusBtn.disabled = (val - 1) <= 1;
+        });
+        
+        plusBtn.addEventListener('click', () => {
+            let val = parseInt(qtyInput.value);
+            if (val < stock) {
+                qtyInput.value = val + 1;
+                // 如果达到库存上限，禁用加号按钮
+                if (val + 1 >= stock) {
+                    plusBtn.disabled = true;
+                }
+                // 启用减号按钮
+                minusBtn.disabled = false;
+            }
+        });
+    });
 
-    function showMessage(msg, isError = false) {
+    // 显示消息函数
+    function showMessage(msg, type = 'success') {
         const box = document.getElementById('messageBox');
         box.textContent = msg;
-        if (isError) {
-            box.className = 'message-box error show';
-        } else {
-            box.className = 'message-box show';
-        }
+        box.className = `message-box ${type} show`;
+        
         setTimeout(() => {
             box.className = 'message-box';
         }, 3500);
     }
 
-    document.getElementById('addToCartBtn').addEventListener('click', function () {
+    // 加入购物车事件
+    addToCartBtn.addEventListener('click', function () {
         // 获取勾选的推荐商品及数量
-        const checkedBoxes = document.querySelectorAll('input[name="suggestions[]"]:checked');
+        const checkedBoxes = document.querySelectorAll('input[name="suggestions[]"]:checked:not([disabled])');
         let recommendedItems = [];
-        let invalidQty = false;
+        let isValid = true;
+        
         checkedBoxes.forEach(cb => {
             const suggestId = cb.value;
             const qtyInput = cb.closest('.suggestion-checkbox').querySelector('.suggestion-qty');
             let qty = parseInt(qtyInput.value);
+            const stock = parseInt(cb.closest('.suggestion-checkbox').querySelector('.suggestion-qty-control').dataset.stock);
+            
             if (isNaN(qty) || qty < 1) {
-                invalidQty = true;
-                return;
+                qty = 1;
             }
+            
+            if (qty > stock) {
+                const productName = cb.closest('.suggestion-card').querySelector('h4').textContent;
+                showMessage(`Not enough stock for ${productName}. Only ${stock} available.`, 'error');
+                isValid = false;
+            }
+            
             recommendedItems.push({id: suggestId, quantity: qty});
         });
-        if (invalidQty) {
-            showMessage('Recommended items quantity must be at least 1.', true);
-            return;
-        }
 
+        if (!isValid) return;
+        
         // 主商品参数
         const productId = <?php echo $product['id']; ?>;
-        const mainQtyInput = document.getElementById('quantity');
-        let mainQty = parseInt(mainQtyInput.value);
-        if (isNaN(mainQty) || mainQty < 1) {
-            showMessage('Quantity must be at least 1.', true);
-            return;
-        }
-
+        let mainQty = currentQty;
+        
         <?php if (!$is_beverage): ?>
         const sauceSelect = document.getElementById('sauce');
         if (!sauceSelect || !sauceSelect.value) {
-            showMessage('Please select a sauce.', true);
+            showMessage('Please select a sauce.', 'error');
             return;
         }
         <?php endif; ?>
@@ -692,59 +1007,31 @@ $is_beverage = (strtolower($product['category']) === 'beverages');
             recommendations: recommendedItems
         };
 
+        // 发送请求到服务器
         fetch('add_to_cart.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
-        }).then(res => res.json())
-          .then(res => {
+        })
+        .then(res => res.json())
+        .then(res => {
             if (res.success) {
-                showMessage('Added to cart successfully!');
+                showMessage('Items added to cart successfully!');
                 const cartIcon = document.querySelector('.cart-icon');
                 if (cartIcon) {
                     cartIcon.setAttribute('data-count', res.cart_count);
                 }
-
-                // ✅ 添加延迟跳转
+                
+                // 延迟跳转
                 setTimeout(() => {
                     window.location.href = 'products_user.php';
                 }, 1500);
             } else {
-                showMessage(res.message || 'Failed to add to cart.', true);
+                showMessage(res.message || 'Failed to add to cart.', 'error');
             }
-          }).catch(() => {
-            showMessage('Server error.', true);
-          });
-    });
-
-    // 显示/隐藏推荐商品区域
-    const toggleBtn = document.getElementById('toggleRecommendationsBtn');
-    const recSection = document.getElementById('recommendationsSection');
-
-    toggleBtn.addEventListener('click', () => {
-        if (recSection.style.display === 'none') {
-            recSection.style.display = 'grid';
-            toggleBtn.textContent = 'Hide Recommendations ▲';
-        } else {
-            recSection.style.display = 'none';
-            toggleBtn.textContent = 'Show Recommendations ▼';
-        }
-    });
-
-    // 数量加减按钮功能
-    document.querySelectorAll('.suggestion-qty-control').forEach(control => {
-        const minusBtn = control.querySelector('.qty-minus');
-        const plusBtn = control.querySelector('.qty-plus');
-        const qtyInput = control.querySelector('.suggestion-qty');
-
-        minusBtn.addEventListener('click', () => {
-            let val = parseInt(qtyInput.value);
-            if (val > 1) qtyInput.value = val - 1;
-        });
-
-        plusBtn.addEventListener('click', () => {
-            let val = parseInt(qtyInput.value);
-            qtyInput.value = val + 1;
+        })
+        .catch(() => {
+            showMessage('An error occurred. Please try again.', 'error');
         });
     });
 </script>
