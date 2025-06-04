@@ -41,6 +41,11 @@ if ($pid && $order_id) {
             if ($current_payment_status !== 'paid') {
                 if (updatePaymentStatus($order_id, 'paid')) {
                     reduceStockForOrder($order_id);
+                    // 清空购物车
+                    if (isset($_SESSION['cart'])) {
+                        unset($_SESSION['cart']);
+                        $cart_cleared = true;
+                    }
                     $payment_processed = true;
                 }
             }
@@ -799,6 +804,28 @@ function getOrderItems($order_id) {
       text-align: center;
       margin-top: 10px;
     }
+    
+    /* 购物车清空通知 */
+    .cart-cleared-notice {
+      background: #e8f4e8;
+      padding: 15px;
+      border-radius: 8px;
+      margin: 15px 0;
+      text-align: center;
+      border-left: 4px solid var(--success);
+      color: #333;
+      animation: slideIn 0.5s ease-out;
+    }
+    
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .cart-cleared-notice i {
+      color: var(--success);
+      margin-right: 10px;
+    }
   </style>
 </head>
 <body>
@@ -865,6 +892,13 @@ function getOrderItems($order_id) {
             <i class="fas fa-info-circle"></i>
             <span>Your payment has been processed successfully. Inventory has been updated.</span>
           </div>
+          
+          <?php if (isset($cart_cleared) && $cart_cleared): ?>
+            <div class="cart-cleared-notice">
+              <i class="fas fa-shopping-cart"></i>
+              <span>Your shopping cart has been cleared successfully.</span>
+            </div>
+          <?php endif; ?>
           
           <div class="payment-details">
             <div class="detail-card">
