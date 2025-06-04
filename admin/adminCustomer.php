@@ -141,36 +141,6 @@
             border-bottom: 1px solid #eee;
         }
 
-        .ban-btn {
-            padding: 6px 12px;
-            border: none;
-            background-color: #dc4949;
-            color: white;
-            font-size: 14px;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-        }
-
-        .ban-btn:hover {
-            background-color: #c53737;
-        }
-
-        .unban-btn {
-            padding: 6px 12px;
-            border: none;
-            background-color: #4CAF50;
-            color: white;
-            font-size: 14px;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-        }
-
-        .unban-btn:hover {
-            background-color: #3e8e41;
-        }
-
         .user-dropdown {
             position: relative;
             display: inline-block;
@@ -207,11 +177,6 @@
 
         .user-dropdown.show .dropdown-content {
             display: block;
-        }
-        
-        .status-banned {
-            color: #dc4949;
-            font-weight: bold;
         }
         
         .status-active {
@@ -374,7 +339,6 @@
                     <th>Email</th>
                     <th>Phone</th>
                     <th>Status</th>
-                    <th>Action</th>
                 </tr>
             </thead>
             <tbody>
@@ -387,61 +351,25 @@
                     die("Connection failed: " . $conn->connect_error);
                 }
                 
-                // Handle ban/unban actions
-                if (isset($_POST['action']) && isset($_POST['user_id'])) {
-                    $user_id = $_POST['user_id'];
-                    $action = $_POST['action'];
-                    
-                    if ($action === 'ban') {
-                        $stmt = $conn->prepare("UPDATE customers SET is_banned = 1 WHERE id = ?");
-                        $stmt->bind_param("i", $user_id);
-                        $stmt->execute();
-                    } elseif ($action === 'unban') {
-                        $stmt = $conn->prepare("UPDATE customers SET is_banned = 0 WHERE id = ?");
-                        $stmt->bind_param("i", $user_id);
-                        $stmt->execute();
-                    }
-                }
-                
-                // First, check if the is_banned column exists, if not, add it
-                $checkColumn = $conn->query("SHOW COLUMNS FROM customers LIKE 'is_banned'");
-                if ($checkColumn->num_rows == 0) {
-                    $conn->query("ALTER TABLE customers ADD COLUMN is_banned TINYINT(1) DEFAULT 0");
-                }
-                
-                // Fetch customer data with ban status
-                $sql = "SELECT id, username, email, phone, is_banned FROM customers";
+                // Fetch customer data
+                $sql = "SELECT id, username, email, phone FROM customers";
                 $result = $conn->query($sql);
                 
                 $counter = 1;
                 if ($result->num_rows > 0) {
                     // Output data of each row
                     while($row = $result->fetch_assoc()) {
-                        $status = $row['is_banned'] ? '<span class="status-banned">Banned</span>' : '<span class="status-active">Active</span>';
-                        $actionBtn = $row['is_banned'] ? 
-                            '<form method="post" style="display:inline;">
-                                <input type="hidden" name="user_id" value="'.$row['id'].'">
-                                <input type="hidden" name="action" value="unban">
-                                <button type="submit" class="unban-btn">Unban</button>
-                            </form>' : 
-                            '<form method="post" style="display:inline;">
-                                <input type="hidden" name="user_id" value="'.$row['id'].'">
-                                <input type="hidden" name="action" value="ban">
-                                <button type="submit" class="ban-btn">Ban</button>
-                            </form>';
-                        
                         echo "<tr>
                                 <td>".$counter."</td>
                                 <td>".$row["username"]."</td>
                                 <td>".$row["email"]."</td>
                                 <td>".$row["phone"]."</td>
-                                <td>".$status."</td>
-                                <td>".$actionBtn."</td>
+                                <td><span class='status-active'>Active</span></td>
                               </tr>";
                         $counter++;
                     }
                 } else {
-                    echo "<tr><td colspan='6'>No customers found</td></tr>";
+                    echo "<tr><td colspan='5'>No customers found</td></tr>";
                 }
                 $conn->close();
                 ?>
