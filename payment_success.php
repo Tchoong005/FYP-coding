@@ -1100,7 +1100,7 @@ function getOrderItems($order_id) {
             pdf.setTextColor(0, 0, 0);
             pdf.text(`Order ID: #<?php echo $order_id; ?>`, 20, 40);
             pdf.text(`Payment ID: <?php echo $pid; ?>`, 20, 45);
-            pdf.text(`Date & Time: <?php echo $order_time; ?> (MYT)`, 20, 50);
+            pdf.text(`Date & Time: <?php echo $order_time; ?>`, 20, 50);
             pdf.text(`Payment Status: Completed`, 20, 55);
             
             // Order items table
