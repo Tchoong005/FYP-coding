@@ -11,7 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->bind_param("i", $id);
         
         if ($stmt->execute()) {
-            $_SESSION['success'] = "Product restored successfully!";
+            $_SESSION['success'] = "";
         } else {
             $_SESSION['error'] = "Error restoring product: " . $conn->error;
         }
@@ -352,6 +352,8 @@ $products = $conn->query("
             <div class="user-dropdown" id="userDropdown">
                 <img src="img/72-729716_user-avatar-png-graphic-free-download-icon.png" alt="User Avatar">
                 <div class="dropdown-content">
+                 <a href="profile.php">Edit profile</a>
+                <a href="adminlogout.php">Logout</a>
                     
                 </div>
             </div>

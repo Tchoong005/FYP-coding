@@ -412,7 +412,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 
                 <div class="button-group">
                     <div>
-                        <a href="adminhome.html" class="button">Return to Homepage</a>
+                        <a href="adminhome.php" class="button">Return to Homepage</a>
                         <a href="changepassword.php" class="button">Change Password</a>
                     </div>
                     <button type="submit">Update Profile</button>

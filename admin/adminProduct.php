@@ -20,6 +20,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
         
+        // Validate category is not deleted
+        if (isCategoryDeleted($conn, $category)) {
+            $_SESSION['error'] = "Selected category is not available.";
+            header("Location: adminProduct.php");
+            exit;
+        }
+        
         $stmt = $conn->prepare("INSERT INTO products (name, description, price, category, stock_quantity, image_url) VALUES (?, ?, ?, ?, ?, ?)");
         $stmt->bind_param("ssdsis", $name, $description, $price, $category, $stock, $image_url);
         
@@ -44,6 +51,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Validate product name uniqueness (excluding current product)
         if (!isProductNameUnique($conn, $name, $id)) {
             $_SESSION['error'] = "Another product named '$name' already exists.";
+            header("Location: adminProduct.php?action=edit&id=$id");
+            exit;
+        }
+        
+        // Validate category is not deleted
+        if (isCategoryDeleted($conn, $category)) {
+            $_SESSION['error'] = "Selected category is not available.";
             header("Location: adminProduct.php?action=edit&id=$id");
             exit;
         }
@@ -77,12 +91,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
 }
 
-// Fetch all active products with category display names
+// Fetch all active products with active categories only
 $products = $conn->query("
     SELECT p.*, c.display_name as category_display 
     FROM products p
     JOIN categories c ON p.category = c.name
-    WHERE p.deleted_at IS NULL
+    WHERE p.deleted_at IS NULL AND c.deleted_at IS NULL
     ORDER BY c.display_name, p.name
 ");
 
@@ -100,6 +114,20 @@ function isProductNameUnique($conn, $name, $currentId = null) {
     }
     return true;
 }
+
+// Helper function to check if category is deleted
+function isCategoryDeleted($conn, $categoryName) {
+    $stmt = $conn->prepare("SELECT deleted_at FROM categories WHERE name = ?");
+    $stmt->bind_param("s", $categoryName);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    if ($result->num_rows > 0) {
+        $row = $result->fetch_assoc();
+        return $row['deleted_at'] !== null;
+    }
+    return true; // Consider non-existent categories as deleted
+}
 ?>
 
 <!DOCTYPE html>
@@ -110,7 +138,7 @@ function isProductNameUnique($conn, $name, $currentId = null) {
     <title>Product Management - KFG FOOD</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
     <style>
-        * {
+* {
             padding: 0;
             margin: 0;
             box-sizing: border-box;
@@ -268,12 +296,6 @@ function isProductNameUnique($conn, $name, $currentId = null) {
 
         .user-dropdown.show .dropdown-content {
             display: block;
-        }
-        * {
-            padding: 0;
-            margin: 0;
-            box-sizing: border-box;
-            font-family: 'poppins', sans-serif;
         }
 
         .main {
@@ -446,6 +468,25 @@ function isProductNameUnique($conn, $name, $currentId = null) {
         .deleted-row:hover {
             opacity: 1;
         }
+
+        .alert {
+            padding: 15px;
+            margin-bottom: 20px;
+            border: 1px solid transparent;
+            border-radius: 4px;
+        }
+
+        .alert-success {
+            background-color: #dff0d8;
+            border-color: #d6e9c6;
+            color: #3c763d;
+        }
+
+        .alert-danger {
+            background-color: #f2dede;
+            border-color: #ebccd1;
+            color: #a94442;
+        }
     </style>
 </head>
 <body>
@@ -461,12 +502,12 @@ function isProductNameUnique($conn, $name, $currentId = null) {
             <div class="user-dropdown" id="userDropdown">
                 <img src="img/72-729716_user-avatar-png-graphic-free-download-icon.png" alt="User Avatar">
                 <div class="dropdown-content">
+                <a href="profile.php">Edit profile</a>
+                <a href="adminlogout.php">Logout</a>
                     
                 </div>
             </div>
-
         </div>
-
     </div>
 
     <div class="list">
@@ -526,10 +567,7 @@ function isProductNameUnique($conn, $name, $currentId = null) {
                 </a>
             </li>
         </ul>
-        
-
     </div>
-
 
     <div class="main">
         <div class="card">
@@ -633,7 +671,7 @@ function isProductNameUnique($conn, $name, $currentId = null) {
                     <label for="category">Category</label>
                     <select id="category" name="category" required>
                         <?php 
-                        $categories = $conn->query("SELECT name, display_name FROM categories ORDER BY display_name");
+                        $categories = $conn->query("SELECT name, display_name FROM categories WHERE deleted_at IS NULL ORDER BY display_name");
                         while($cat = $categories->fetch_assoc()): ?>
                             <option value="<?= htmlspecialchars($cat['name']) ?>"><?= htmlspecialchars($cat['display_name']) ?></option>
                         <?php endwhile; ?>
@@ -676,7 +714,7 @@ function isProductNameUnique($conn, $name, $currentId = null) {
                     <label for="edit_category">Category</label>
                     <select id="edit_category" name="category" required>
                         <?php 
-                        $categories = $conn->query("SELECT name, display_name FROM categories ORDER BY display_name");
+                        $categories = $conn->query("SELECT name, display_name FROM categories WHERE deleted_at IS NULL ORDER BY display_name");
                         while($cat = $categories->fetch_assoc()): ?>
                             <option value="<?= htmlspecialchars($cat['name']) ?>"><?= htmlspecialchars($cat['display_name']) ?></option>
                         <?php endwhile; ?>
@@ -777,17 +815,16 @@ function isProductNameUnique($conn, $name, $currentId = null) {
             }
         };
 
-
-           const dropdown = document.getElementById('userDropdown');
-    dropdown.addEventListener('click', function (event) {
-      event.stopPropagation();
-      this.classList.toggle('show');
-    });
-  
-    // Close dropdown if clicked outside
-    window.addEventListener('click', function () {
-      dropdown.classList.remove('show');
-    });
+        const dropdown = document.getElementById('userDropdown');
+        dropdown.addEventListener('click', function (event) {
+            event.stopPropagation();
+            this.classList.toggle('show');
+        });
+    
+        // Close dropdown if clicked outside
+        window.addEventListener('click', function () {
+            dropdown.classList.remove('show');
+        });
     </script>
 </body>
 </html>

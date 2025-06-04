@@ -197,7 +197,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_status'])) {
         }
 
         th {
-            background-color: #f8f8f8;
+           background-color: #dc4949;
+           color: white;
             font-weight: 600;
         }
 

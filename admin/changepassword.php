@@ -28,16 +28,36 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     } elseif (empty($new_password)) {
         $error = "New password cannot be empty";
     } else {
-        // Hash the new password before storing
-        $hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
+        // Password validation rules
+        $min_length = 6;
+        $has_number = preg_match('#[0-9]#', $new_password);
+        $has_uppercase = preg_match('#[A-Z]#', $new_password);
+        $has_lowercase = preg_match('#[a-z]#', $new_password);
+        $has_special = preg_match('#[^\w]#', $new_password);
         
-        // Update password
-        $update_query = "UPDATE staff SET password = '$hashed_password' WHERE email = '$email'";
-        
-        if (mysqli_query($conn, $update_query)) {
-            $success = "Password changed successfully!";
+        // Validate password strength
+        if (strlen($new_password) < $min_length) {
+            $error = "Password must be at least {$min_length} characters long";
+        } elseif (!$has_number) {
+            $error = "Password must contain at least one number";
+        } elseif (!$has_uppercase) {
+            $error = "Password must contain at least one uppercase letter";
+        } elseif (!$has_lowercase) {
+            $error = "Password must contain at least one lowercase letter";
+        } elseif (!$has_special) {
+            $error = "Password must contain at least one special character";
         } else {
-            $error = "Error changing password: " . mysqli_error($conn);
+            // Hash the new password before storing
+            $hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
+            
+            // Update password
+            $update_query = "UPDATE staff SET password = '$hashed_password' WHERE email = '$email'";
+            
+            if (mysqli_query($conn, $update_query)) {
+                $success = "Password changed successfully!";
+            } else {
+                $error = "Error changing password: " . mysqli_error($conn);
+            }
         }
     }
 }
@@ -396,17 +416,49 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         </div>
     </div>
 
-    <script>
-        const dropdown = document.getElementById('userDropdown');
-        dropdown.addEventListener('click', function (event) {
-          event.stopPropagation();
-          this.classList.toggle('show');
-        });
-      
-        // Close dropdown if clicked outside
-        window.addEventListener('click', function () {
-          dropdown.classList.remove('show');
-        });
-    </script>
+<script>
+function validatePassword() {
+    var new_password = document.getElementById('new_password').value;
+    var confirm_password = document.getElementById('confirm_password').value;
+    
+    // Check password length
+    if (new_password.length < 6) {
+        alert("Password must be at least 6 characters long");
+        return false;
+    }
+    
+    // Check for at least one number
+    if (!/\d/.test(new_password)) {
+        alert("Password must contain at least one number");
+        return false;
+    }
+    
+    // Check for at least one uppercase letter
+    if (!/[A-Z]/.test(new_password)) {
+        alert("Password must contain at least one uppercase letter");
+        return false;
+    }
+    
+    // Check for at least one lowercase letter
+    if (!/[a-z]/.test(new_password)) {
+        alert("Password must contain at least one lowercase letter");
+        return false;
+    }
+    
+    // Check for at least one special character
+    if (!/[^a-zA-Z0-9]/.test(new_password)) {
+        alert("Password must contain at least one special character");
+        return false;
+    }
+    
+    // Check if passwords match
+    if (new_password !== confirm_password) {
+        alert("Passwords do not match");
+        return false;
+    }
+    
+    return true;
+}
+</script>
 </body>
 </html>

@@ -59,7 +59,7 @@
         </div>
         <h1>Access Denied</h1>
         <p>You don't have sufficient permissions to access the Staff Management System. Only Super Administrators can access this page.</p>
-        <a href="adminhome.html" class="btn">Return to Dashboard</a>
+        <a href="adminhome.php" class="btn">Return to Dashboard</a>
     </div>
     
     <!-- Font Awesome for the icon -->

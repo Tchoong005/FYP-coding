@@ -18,19 +18,12 @@ try {
     throw new \PDOException($e->getMessage(), (int)$e->getCode());
 }
 
-// Handle month selection
-$selectedMonth = isset($_GET['month']) ? $_GET['month'] : date('Y-m');
-$year = date('Y', strtotime($selectedMonth));
-$month = date('m', strtotime($selectedMonth));
-
-// Get sales data for the selected month by day
+// Get sales data for the last 7 days
 $salesData = [];
 $dates = [];
-$daysInMonth = date('t', strtotime($selectedMonth));
-
-for ($i = 1; $i <= $daysInMonth; $i++) {
-    $date = date('Y-m-d', strtotime("$selectedMonth-$i"));
-    $dates[] = date('j M', strtotime($date));
+for ($i = 6; $i >= 0; $i--) {
+    $date = date('Y-m-d', strtotime("-$i days"));
+    $dates[] = date('M j', strtotime($date));
     
     $stmt = $pdo->prepare("SELECT COALESCE(SUM(final_total), 0) as total FROM orders WHERE DATE(created_at) = ?");
     $stmt->execute([$date]);
@@ -38,107 +31,36 @@ for ($i = 1; $i <= $daysInMonth; $i++) {
     $salesData[] = $result['total'];
 }
 
-// Get sales by category for the selected month
+// Get sales by category
 $categoryData = [];
 $categoryLabels = [];
-$stmt = $pdo->prepare("
+$stmt = $pdo->query("
     SELECT c.display_name, SUM(oi.price * oi.quantity) as total 
     FROM order_items oi
     JOIN products p ON oi.product_id = p.id
     JOIN categories c ON p.category = c.name
-    JOIN orders o ON oi.order_id = o.id
-    WHERE YEAR(o.created_at) = ? AND MONTH(o.created_at) = ?
     GROUP BY c.display_name
 ");
-$stmt->execute([$year, $month]);
 while ($row = $stmt->fetch()) {
     $categoryLabels[] = $row['display_name'];
     $categoryData[] = $row['total'];
 }
 
 // Get recent orders for the table
-$stmt = $pdo->prepare("
+$stmt = $pdo->query("
     SELECT o.id, o.recipient_name, o.final_total, o.order_status, o.created_at 
     FROM orders o 
-    WHERE YEAR(o.created_at) = ? AND MONTH(o.created_at) = ?
     ORDER BY o.created_at DESC 
     LIMIT 10
 ");
-$stmt->execute([$year, $month]);
 $recentOrders = $stmt->fetchAll();
 
-// Get total metrics for the selected month
-$stmt = $pdo->prepare("SELECT COUNT(*) as order_count, SUM(final_total) as total_revenue FROM orders WHERE YEAR(created_at) = ? AND MONTH(created_at) = ?");
-$stmt->execute([$year, $month]);
+// Get total metrics
+$stmt = $pdo->query("SELECT COUNT(*) as order_count, SUM(final_total) as total_revenue FROM orders");
 $totals = $stmt->fetch();
 
-$stmt = $pdo->prepare("SELECT COUNT(DISTINCT user_id) as customer_count FROM orders WHERE YEAR(created_at) = ? AND MONTH(created_at) = ?");
-$stmt->execute([$year, $month]);
+$stmt = $pdo->query("SELECT COUNT(DISTINCT user_id) as customer_count FROM orders");
 $customerCount = $stmt->fetch();
-
-// Handle PDF generation
-if (isset($_GET['download_pdf'])) {
-    require_once('C:/xampp/htdocs/dashboard/fastfood/TCPDF-main/TCPDF-main/tcpdf.php');
-    
-    // Create new PDF document
-    $pdf = new TCPDF(PDF_PAGE_ORIENTATION, PDF_UNIT, PDF_PAGE_FORMAT, true, 'UTF-8', false);
-    
-    // Set document information
-    $pdf->SetCreator('FastFood Express');
-    $pdf->SetAuthor('FastFood Express');
-    $pdf->SetTitle('Sales Report - ' . date('F Y', strtotime($selectedMonth)));
-    $pdf->SetSubject('Sales Report');
-    
-    // Add a page
-    $pdf->AddPage();
-    
-    // Set font
-    $pdf->SetFont('helvetica', 'B', 16);
-    $pdf->Cell(0, 10, 'FastFood Express - Sales Report', 0, 1, 'C');
-    $pdf->SetFont('helvetica', '', 12);
-    $pdf->Cell(0, 10, date('F Y', strtotime($selectedMonth)), 0, 1, 'C');
-    
-    // Add summary cards
-    $pdf->SetFont('helvetica', 'B', 12);
-    $pdf->Cell(90, 10, 'Total Orders:', 0, 0);
-    $pdf->SetFont('helvetica', '', 12);
-    $pdf->Cell(0, 10, $totals['order_count'] ?? 0, 0, 1);
-    
-    $pdf->SetFont('helvetica', 'B', 12);
-    $pdf->Cell(90, 10, 'Total Revenue:', 0, 0);
-    $pdf->SetFont('helvetica', '', 12);
-    $pdf->Cell(0, 10, 'RM ' . number_format($totals['total_revenue'] ?? 0, 2), 0, 1);
-    
-    $pdf->SetFont('helvetica', 'B', 12);
-    $pdf->Cell(90, 10, 'Active Customers:', 0, 0);
-    $pdf->SetFont('helvetica', '', 12);
-    $pdf->Cell(0, 10, $customerCount['customer_count'] ?? 0, 0, 1);
-    
-    // Add recent orders table
-    $pdf->SetFont('helvetica', 'B', 14);
-    $pdf->Cell(0, 10, 'Recent Orders', 0, 1);
-    
-    $pdf->SetFont('helvetica', 'B', 10);
-    $pdf->SetFillColor(240, 240, 240);
-    $pdf->Cell(30, 7, 'Order ID', 1, 0, 'C', 1);
-    $pdf->Cell(50, 7, 'Customer', 1, 0, 'C', 1);
-    $pdf->Cell(40, 7, 'Date', 1, 0, 'C', 1);
-    $pdf->Cell(30, 7, 'Amount', 1, 0, 'C', 1);
-    $pdf->Cell(40, 7, 'Status', 1, 1, 'C', 1);
-    
-    $pdf->SetFont('helvetica', '', 10);
-    foreach ($recentOrders as $order) {
-        $pdf->Cell(30, 7, '#' . $order['id'], 1, 0, 'C');
-        $pdf->Cell(50, 7, $order['recipient_name'], 1, 0, 'L');
-        $pdf->Cell(40, 7, date('Y-m-d', strtotime($order['created_at'])), 1, 0, 'C');
-        $pdf->Cell(30, 7, 'RM ' . number_format($order['final_total'], 2), 1, 0, 'R');
-        $pdf->Cell(40, 7, ucfirst($order['order_status']), 1, 1, 'C');
-    }
-    
-    // Output PDF
-    $pdf->Output('sales_report_' . $selectedMonth . '.pdf', 'D');
-    exit;
-}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -149,11 +71,13 @@ if (isset($_GET['download_pdf'])) {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        * {
+                * {
             padding: 0;
             margin: 0;
             box-sizing: border-box;
             font-family: 'poppins', sans-serif;
+
+
         }
 
         .user {
@@ -212,6 +136,7 @@ if (isset($_GET['download_pdf'])) {
             cursor: pointer;
         }
 
+
         .list {
             position: fixed;
             top: 60px;
@@ -219,15 +144,18 @@ if (isset($_GET['download_pdf'])) {
             height: 100%;
             background: rgba(220, 73, 73, 0.897);
             overflow-x: hidden;
+
         }
 
         .list ul {
             margin-top: 20px;
+
         }
 
         .list ul li {
             width: 100%;
             list-style: none;
+
         }
 
         .list ul li a {
@@ -237,17 +165,23 @@ if (isset($_GET['download_pdf'])) {
             height: 60px;
             display: flex;
             align-items: center;
+
+
         }
 
         .list ul li a i {
+
             min-width: 60px;
             font-size: 24px;
             text-align: center;
+
         }
 
         .list ul li:hover {
             background: rgb(227, 125, 125);
         }
+
+
 
         .main {
             position: absolute;
@@ -255,7 +189,9 @@ if (isset($_GET['download_pdf'])) {
             width: calc(100%-260px);
             left: 260px;
             min-height: calc(100%-60px);
+
         }
+
 
         .user-dropdown {
             position: relative;
@@ -294,7 +230,13 @@ if (isset($_GET['download_pdf'])) {
         .user-dropdown.show .dropdown-content {
             display: block;
         }
-        
+        * {
+            padding: 0;
+            margin: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+
         .main {
             position: absolute;
             top: 60px;
@@ -317,37 +259,15 @@ if (isset($_GET['download_pdf'])) {
         }
 
         .report-period {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .report-period select {
-            padding: 8px 12px;
-            border-radius: 5px;
-            border: 1px solid #ddd;
             background: white;
-        }
-
-        .report-period .download-btn {
-            padding: 8px 15px;
-            background: #dc4949;
-            color: white;
-            border: none;
+            padding: 10px 15px;
             border-radius: 5px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-
-        .report-period .download-btn:hover {
-            background: #c44141;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
 
         .cards {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(4, 1fr);
             gap: 20px;
             margin-bottom: 30px;
         }
@@ -458,10 +378,10 @@ if (isset($_GET['download_pdf'])) {
                 
             </div>
             
-           <div class="user-dropdown" id="userDropdown">
+            <div class="user-dropdown" id="userDropdown">
                 <img src="img/72-729716_user-avatar-png-graphic-free-download-icon.png" alt="User Avatar">
                 <div class="dropdown-content">
-                 <a href="profile.php">Edit profile</a>
+                <a href="profile.php">Edit profile</a>
                 <a href="adminlogout.php">Logout</a>
                     
                 </div>
@@ -536,22 +456,7 @@ if (isset($_GET['download_pdf'])) {
         <div class="report-header">
             <h1>Sales Report</h1>
             <div class="report-period">
-                <form method="get" action="">
-                    <select name="month" onchange="this.form.submit()">
-                        <?php
-                        // Generate options for 2025 months
-                        for ($m = 1; $m <= 12; $m++) {
-                            $monthValue = "2025-" . str_pad($m, 2, '0', STR_PAD_LEFT);
-                            $monthName = date('F Y', strtotime($monthValue));
-                            $selected = ($monthValue == $selectedMonth) ? 'selected' : '';
-                            echo "<option value='$monthValue' $selected>$monthName</option>";
-                        }
-                        ?>
-                    </select>
-                </form>
-                <a href="?month=<?= $selectedMonth ?>&download_pdf=1" class="download-btn">
-                    <i class="fas fa-download"></i> Download PDF
-                </a>
+                <?= date('F Y') ?>
             </div>
         </div>
         
@@ -567,6 +472,11 @@ if (isset($_GET['download_pdf'])) {
                 <h2>RM <?= number_format($totals['total_revenue'] ?? 0, 2) ?></h2>
             </div>
             <div class="card">
+                <i class="fas fa-utensils"></i>
+                <h3>Products Sold</h3>
+                <h2><?= array_sum($categoryData) ?></h2>
+            </div>
+            <div class="card">
                 <i class="fas fa-users"></i>
                 <h3>Active Customers</h3>
                 <h2><?= $customerCount['customer_count'] ?? 0 ?></h2>
@@ -575,10 +485,13 @@ if (isset($_GET['download_pdf'])) {
         
         <div class="charts">
             <div class="chart-container">
-                <h2>Sales Overview - <?= date('F Y', strtotime($selectedMonth)) ?></h2>
+                <h2>Sales Overview (Last 7 Days)</h2>
                 <canvas id="salesChart"></canvas>
             </div>
-           
+            <div class="chart-container">
+                <h2>Sales by Category</h2>
+                <canvas id="categoryChart"></canvas>
+            </div>
         </div>
         
         <div class="recent-orders">
@@ -618,7 +531,7 @@ if (isset($_GET['download_pdf'])) {
         const salesChart = new Chart(salesCtx, {
             type: 'line',
             data: {
-                labels: <?= json_encode(range(1, $daysInMonth)) ?>,
+                labels: <?= json_encode($dates) ?>,
                 datasets: [{
                     label: 'Daily Sales (RM)',
                     data: <?= json_encode($salesData) ?>,
@@ -644,9 +557,35 @@ if (isset($_GET['download_pdf'])) {
             }
         });
 
+        // Category Chart
+        const categoryCtx = document.getElementById('categoryChart').getContext('2d');
+        const categoryChart = new Chart(categoryCtx, {
+            type: 'doughnut',
+            data: {
+                labels: <?= json_encode($categoryLabels) ?>,
+                datasets: [{
+                    data: <?= json_encode($categoryData) ?>,
+                    backgroundColor: [
+                        'rgba(220, 73, 73, 0.7)',
+                        'rgba(54, 162, 235, 0.7)',
+                        'rgba(255, 206, 86, 0.7)',
+                        'rgba(75, 192, 192, 0.7)',
+                        'rgba(153, 102, 255, 0.7)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                    }
+                }
+            }
+        });
 
-
-    const dropdown = document.getElementById('userDropdown');
+            const dropdown = document.getElementById('userDropdown');
     dropdown.addEventListener('click', function (event) {
       event.stopPropagation();
       this.classList.toggle('show');
@@ -656,8 +595,6 @@ if (isset($_GET['download_pdf'])) {
     window.addEventListener('click', function () {
       dropdown.classList.remove('show');
     });
-
- 
     </script>
 </body>
 </html>

@@ -355,6 +355,8 @@ $categories = $conn->query("SELECT * FROM categories WHERE deleted_at IS NOT NUL
             <div class="user-dropdown" id="userDropdown">
                 <img src="img/72-729716_user-avatar-png-graphic-free-download-icon.png" alt="User Avatar">
                 <div class="dropdown-content">
+                <a href="profile.php">Edit profile</a>
+                <a href="adminlogout.php">Logout</a>
                     
                 </div>
             </div>

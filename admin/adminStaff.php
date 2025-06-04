@@ -559,6 +559,8 @@ $staffList = $stmt->get_result();
             <div class="user-dropdown" id="userDropdown">
                 <img src="img/72-729716_user-avatar-png-graphic-free-download-icon.png" alt="User Avatar">
                 <div class="dropdown-content">
+                <a href="profile.php">Edit profile</a>
+                <a href="adminlogout.php">Logout</a>
                     
                 </div>
             </div>
@@ -727,8 +729,7 @@ $staffList = $stmt->get_result();
                     <div class="form-group">
                         <label for="role">Role</label>
                         <select id="role" name="role" class="form-control" required>
-                            <option value="IT Technician">IT Technician</option>
-                            <option value="IT Support">IT Support</option>
+                            
                             <option value="admin">Admin</option>
                         </select>
                     </div>

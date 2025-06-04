@@ -46,10 +46,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             session_regenerate_id(true);
 
             if ($row["usertype"] == "superadmin") {
-                header("location:adminHome.html");
+                header("location:adminHome.php");
                 exit();
             } elseif ($row["usertype"] == "admin") {
-                header("location:adminHome.html");
+                header("location:adminHome.php");
                 exit();
             }
         } else {
@@ -258,7 +258,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 </div>
                 
                 <div class="forgot-password">
-                    <a href="#">Forgot Password?</a>
+                    <a href="staff_forgot_password.php">Forgot Password?</a>
                 </div>
                 
                 <button type="submit" class="btn">LOGIN</button>
