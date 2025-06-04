@@ -7,13 +7,58 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 
+// Generate CSRF token if not exists
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
 $user_id = $_SESSION['user_id'];
 $order_type = isset($_GET['type']) ? $_GET['type'] : 'delivery'; // Default to delivery
+$success_message = '';
 
-// Fetch active orders for the current user
+// Handle order status updates
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['csrf_token']) && hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
+    if (isset($_POST['update_status'])) {
+        $order_id = intval($_POST['order_id']);
+        $new_status = $_POST['new_status'];
+        
+        // Validate and update order status
+        $valid_statuses = ['completed', 'cancelled'];
+        if (in_array($new_status, $valid_statuses)) {
+            // Check if order is in a state that allows user update
+            $check_sql = "SELECT order_status, delivery_method FROM orders WHERE id = ? AND user_id = ?";
+            $check_stmt = mysqli_prepare($conn, $check_sql);
+            mysqli_stmt_bind_param($check_stmt, "ii", $order_id, $user_id);
+            mysqli_stmt_execute($check_stmt);
+            mysqli_stmt_bind_result($check_stmt, $current_status, $delivery_method);
+            mysqli_stmt_fetch($check_stmt);
+            mysqli_stmt_close($check_stmt);
+            
+            // Only allow update if order is in valid state
+            $allowed_current_statuses = ($delivery_method == 'delivery') 
+                ? ['delivered'] 
+                : ['ready'];
+            
+            if (in_array($current_status, $allowed_current_statuses)) {
+                $update_sql = "UPDATE orders SET order_status = ? WHERE id = ? AND user_id = ?";
+                $stmt = mysqli_prepare($conn, $update_sql);
+                mysqli_stmt_bind_param($stmt, "sii", $new_status, $order_id, $user_id);
+                mysqli_stmt_execute($stmt);
+                
+                if (mysqli_stmt_affected_rows($stmt) > 0) {
+                    $success_message = "Order status updated successfully!";
+                }
+                
+                mysqli_stmt_close($stmt);
+            }
+        }
+    }
+}
+
+// Fetch active orders for the current user (excluding cancelled and completed)
 $sql = "SELECT * FROM orders 
         WHERE user_id = $user_id 
-        AND order_status NOT IN ('delivered', 'completed', 'cancelled')
+        AND order_status NOT IN ('cancelled', 'completed', 'canceled')  -- 排除已取消订单
         AND delivery_method = '$order_type'
         ORDER BY created_at DESC";
 $result = mysqli_query($conn, $sql);
@@ -422,8 +467,33 @@ if (!empty($_SESSION['cart'])) {
             color: white;
         }
         
+        .status-on_delivery {
+            background-color: #9c27b0;
+            color: white;
+        }
+        
         .status-delivery {
             background-color: var(--success);
+            color: white;
+        }
+        
+        .status-delivered {
+            background-color: var(--success);
+            color: white;
+        }
+        
+        .status-completed {
+            background-color: var(--success);
+            color: white;
+        }
+        
+        .status-cancelled {
+            background-color: var(--danger);
+            color: white;
+        }
+        
+        .status-ready {
+            background-color: #4caf50;
             color: white;
         }
         
@@ -579,6 +649,7 @@ if (!empty($_SESSION['cart'])) {
             display: flex;
             justify-content: flex-end;
             gap: 15px;
+            flex-wrap: wrap;
         }
         
         .action-btn {
@@ -593,6 +664,24 @@ if (!empty($_SESSION['cart'])) {
             gap: 8px;
         }
         
+        .action-view {
+            background: #e3f2fd;
+            color: #2196f3;
+        }
+        
+        .action-view:hover {
+            background: #bbdefb;
+        }
+        
+        .action-received {
+            background: #e8f5e9;
+            color: var(--success);
+        }
+        
+        .action-received:hover {
+            background: #c8e6c9;
+        }
+        
         .action-cancel {
             background: #ffebee;
             color: var(--danger);
@@ -602,22 +691,46 @@ if (!empty($_SESSION['cart'])) {
             background: #ffcdd2;
         }
         
-        .action-support {
-            background: #e3f2fd;
-            color: #2196f3;
-        }
-        
-        .action-support:hover {
-            background: #bbdefb;
-        }
-        
         .footer {
-    background-color: #eee;
-    text-align: center;
-    padding: 20px;
-    font-size: 14px;
-    margin-top: 40px;
-}
+            background-color: #eee;
+            text-align: center;
+            padding: 20px;
+            font-size: 14px;
+            margin-top: 40px;
+        }
+        
+        /* Notification */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            z-index: 1000;
+            transform: translateX(120%);
+            transition: transform 0.3s ease-out;
+        }
+        
+        .notification.show {
+            transform: translateX(0);
+        }
+        
+        .notification.success {
+            background-color: var(--success);
+        }
+        
+        .notification.error {
+            background-color: var(--danger);
+        }
+        
+        .notification i {
+            font-size: 1.2rem;
+        }
         
         /* Responsive design */
         @media (max-width: 768px) {
@@ -670,6 +783,165 @@ if (!empty($_SESSION['cart'])) {
             .order-details {
                 padding: 20px;
             }
+            
+            .actions {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .action-btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            overflow: auto;
+        }
+        
+        .modal-content {
+            background: white;
+            margin: 5% auto;
+            padding: 30px;
+            border-radius: 16px;
+            max-width: 700px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            position: relative;
+        }
+        
+        .close-modal {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 28px;
+            cursor: pointer;
+            color: #777;
+            transition: color 0.3s;
+        }
+        
+        .close-modal:hover {
+            color: var(--primary);
+        }
+        
+        .modal-header {
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 20px;
+        }
+        
+        .modal-header h3 {
+            color: var(--primary);
+            font-size: 1.8rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .order-items {
+            max-height: 400px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+        }
+        
+        .order-item {
+            display: flex;
+            padding: 15px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .order-item:last-child {
+            border-bottom: none;
+        }
+        
+        .item-image {
+            width: 100px;
+            height: 100px;
+            border-radius: 10px;
+            background: #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 20px;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+        
+        .item-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .item-image i {
+            font-size: 2.5rem;
+            color: #ccc;
+        }
+        
+        .item-details {
+            flex-grow: 1;
+        }
+        
+        .item-name {
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin-bottom: 5px;
+        }
+        
+        .item-quantity, .item-price {
+            color: var(--text-light);
+            font-size: 0.95rem;
+            margin-bottom: 3px;
+        }
+        
+        .item-total {
+            font-weight: bold;
+            margin-top: 8px;
+            font-size: 1.1rem;
+        }
+        
+        .modal-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+        }
+        
+        .order-summary {
+            background: var(--light-bg);
+            border-radius: 10px;
+            padding: 15px;
+            width: 100%;
+        }
+        
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        
+        .summary-label {
+            color: var(--text-light);
+        }
+        
+        .summary-value {
+            font-weight: 500;
+        }
+        
+        .summary-total {
+            font-weight: bold;
+            font-size: 1.2rem;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 2px dashed var(--border);
         }
     </style>
 </head>
@@ -706,6 +978,14 @@ if (!empty($_SESSION['cart'])) {
 </div>
 
 <div class="container">
+    <!-- Notification Area -->
+    <?php if (!empty($success_message)): ?>
+        <div class="notification success show">
+            <i class="fas fa-check-circle"></i>
+            <?php echo $success_message; ?>
+        </div>
+    <?php endif; ?>
+    
     <!-- Order Type Toggle -->
     <div class="order-toggle">
         <button class="toggle-btn <?php echo $order_type == 'delivery' ? 'active' : ''; ?>" data-type="delivery">
@@ -735,7 +1015,7 @@ if (!empty($_SESSION['cart'])) {
                         ['status' => 'pending', 'label' => 'Order Placed', 'icon' => '📝'],
                         ['status' => 'preparing', 'label' => 'Preparing', 'icon' => '👨‍🍳'],
                         ['status' => 'on_delivery', 'label' => 'On the Way', 'icon' => '🚚'],
-                        ['status' => 'delivered', 'label' => 'Delivered', 'icon' => '✅']
+                        ['status' => 'delivered', 'label' => 'Delivered', 'icon' => '📦']
                     ];
                 } else {
                     $steps = [
@@ -750,8 +1030,22 @@ if (!empty($_SESSION['cart'])) {
                 foreach ($steps as $index => $step) {
                     if ($step['status'] == $order['order_status']) {
                         $current_step_index = $index;
-                        $progress = ($index + 1) * 25;
+                        $progress = ($index + 1) * (100 / count($steps));
                         break;
+                    }
+                }
+                
+                // Fetch order items with image_url from products table
+                $order_items = [];
+                $items_sql = "SELECT oi.*, p.name, p.image_url 
+                              FROM order_items oi 
+                              JOIN products p ON oi.product_id = p.id 
+                              WHERE order_id = {$order['id']}";
+                $items_result = mysqli_query($conn, $items_sql);
+                
+                if ($items_result && mysqli_num_rows($items_result) > 0) {
+                    while ($item_row = mysqli_fetch_assoc($items_result)) {
+                        $order_items[] = $item_row;
                     }
                 }
             ?>
@@ -857,12 +1151,75 @@ if (!empty($_SESSION['cart'])) {
                     </div>
                     
                     <div class="actions">
-                        <button class="action-btn action-cancel">
-                            <i class="fas fa-times-circle"></i> Cancel Order
+                        <!-- View Order Items Button -->
+                        <button class="action-btn action-view" data-order-id="<?php echo $order['id']; ?>">
+                            <i class="fas fa-list"></i> View Order Items
                         </button>
-                        <button class="action-btn action-support">
-                            <i class="fas fa-headset"></i> Contact Support
-                        </button>
+                        
+                        <?php if (($order['order_status'] == 'delivered' && $order['delivery_method'] == 'delivery') || 
+                                  ($order['order_status'] == 'ready' && $order['delivery_method'] == 'dine_in')): ?>
+                            <form method="post" style="display:inline;">
+                                <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+                                <input type="hidden" name="order_id" value="<?php echo $order['id']; ?>">
+                                <input type="hidden" name="new_status" value="completed">
+                                <button type="submit" name="update_status" class="action-btn action-received">
+                                    <i class="fas fa-check-circle"></i> Received Food
+                                </button>
+                            </form>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                
+                <!-- Order Items Modal -->
+                <div class="modal" id="modal-<?php echo $order['id']; ?>">
+                    <div class="modal-content">
+                        <span class="close-modal" data-modal="modal-<?php echo $order['id']; ?>">&times;</span>
+                        <div class="modal-header">
+                            <h3><i class="fas fa-list"></i> Order #<?php echo $order['id']; ?> Items</h3>
+                        </div>
+                        
+                        <div class="order-items">
+                            <?php if (!empty($order_items)): ?>
+                                <?php foreach ($order_items as $item): ?>
+                                    <div class="order-item">
+                                        <div class="item-image">
+                                            <?php if (!empty($item['image_url'])): ?>
+                                                <img src="<?php echo $item['image_url']; ?>" alt="<?php echo htmlspecialchars($item['name']); ?>">
+                                            <?php else: ?>
+                                                <i class="fas fa-hamburger"></i>
+                                            <?php endif; ?>
+                                        </div>
+                                        <div class="item-details">
+                                            <div class="item-name"><?php echo htmlspecialchars($item['name']); ?></div>
+                                            <div class="item-quantity">Quantity: <?php echo $item['quantity']; ?></div>
+                                            <div class="item-price">Price: RM <?php echo number_format($item['price'], 2); ?></div>
+                                            <div class="item-total">Total: RM <?php echo number_format($item['price'] * $item['quantity'], 2); ?></div>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <p>No items found for this order.</p>
+                            <?php endif; ?>
+                        </div>
+                        
+                        <div class="modal-footer">
+                            <div class="order-summary">
+                                <div class="summary-row">
+                                    <span class="summary-label">Subtotal:</span>
+                                    <span class="summary-value">RM <?php echo number_format($order['total_price'], 2); ?></span>
+                                </div>
+                                <?php if ($order['delivery_method'] == 'delivery'): ?>
+                                <div class="summary-row">
+                                    <span class="summary-label">Delivery Fee:</span>
+                                    <span class="summary-value">RM <?php echo number_format($order['delivery_fee'], 2); ?></span>
+                                </div>
+                                <?php endif; ?>
+                                <div class="summary-row summary-total">
+                                    <span class="summary-label">Total:</span>
+                                    <span class="summary-value">RM <?php echo number_format($order['final_total'], 2); ?></span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             <?php endforeach; ?>
@@ -901,23 +1258,45 @@ if (!empty($_SESSION['cart'])) {
             });
         });
         
-        // Add functionality to action buttons
-        document.querySelectorAll('.action-cancel').forEach(button => {
+        // View Order Items functionality
+        document.querySelectorAll('.action-view').forEach(button => {
             button.addEventListener('click', function() {
-                const orderCard = this.closest('.order-card');
-                const orderId = orderCard.querySelector('.order-id span').textContent;
-                if (confirm(`Are you sure you want to cancel order #${orderId}?`)) {
-                    alert(`Cancellation request for order #${orderId} sent. Our team will contact you shortly.`);
+                const orderId = this.getAttribute('data-order-id');
+                const modal = document.getElementById(`modal-${orderId}`);
+                if (modal) {
+                    modal.style.display = 'block';
                 }
             });
         });
         
-        document.querySelectorAll('.action-support').forEach(button => {
+        // Close modal functionality
+        document.querySelectorAll('.close-modal').forEach(button => {
             button.addEventListener('click', function() {
-                const orderCard = this.closest('.order-card');
-                const orderId = orderCard.querySelector('.order-id span').textContent;
-                alert(`Support request for order #${orderId} submitted. We'll contact you shortly.`);
+                const modalId = this.getAttribute('data-modal');
+                const modal = document.getElementById(modalId);
+                if (modal) {
+                    modal.style.display = 'none';
+                }
             });
+        });
+        
+        // Close modal when clicking outside content
+        window.addEventListener('click', function(event) {
+            document.querySelectorAll('.modal').forEach(modal => {
+                if (event.target === modal) {
+                    modal.style.display = 'none';
+                }
+            });
+        });
+        
+        // Auto-hide notifications
+        const notifications = document.querySelectorAll('.notification');
+        notifications.forEach(notification => {
+            if (notification.classList.contains('show')) {
+                setTimeout(() => {
+                    notification.classList.remove('show');
+                }, 5000);
+            }
         });
     });
 </script>

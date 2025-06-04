@@ -503,7 +503,7 @@ if (isset($_SESSION['cart'])) {
   
   <div class="team-members">
     <div class="team-member" data-aos="fade-up" data-aos-delay="200">
-      <img src="" alt="Leader">
+      <img src="img/Dennis.jpg" alt="Leader">
       <div class="member-info">
         <h3>Dennis Yew Shun Yao</h3>
         <p>Leader</p>
@@ -511,7 +511,7 @@ if (isset($_SESSION['cart'])) {
     </div>
     
     <div class="team-member" data-aos="fade-up" data-aos-delay="300">
-      <img src="" alt="Member">
+      <img src="img/chongkaiyang.jpg" alt="Member">
       <div class="member-info">
         <h3>Chong Kai Yang</h3>
         <p>Member</p>

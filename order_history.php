@@ -25,25 +25,56 @@ if (!empty($_SESSION['cart'])) {
 // Get user ID
 $user_id = $_SESSION['user_id'];
 
-// Fetch order history
-$sql = "SELECT * FROM orders 
-        WHERE user_id = $user_id 
-        AND (order_status = 'completed' OR payment_status = 'canceled')
-        ORDER BY created_at DESC";
-$result = mysqli_query($conn, $sql);
+// Fetch all orders
+$sql_all = "SELECT * FROM orders 
+           WHERE user_id = $user_id 
+           ORDER BY created_at DESC";
+$result_all = mysqli_query($conn, $sql_all);
 
-$orders = [];
-if ($result) {
-    while ($row = mysqli_fetch_assoc($result)) {
-        $orders[] = $row;
+$all_orders = [];
+if ($result_all) {
+    while ($row = mysqli_fetch_assoc($result_all)) {
+        $all_orders[] = $row;
     }
 } else {
     die("Query failed: " . mysqli_error($conn));
 }
 
-// Fetch order items for each order
-foreach ($orders as &$order) {
-    $order_id = $order['id'];
+// Fetch successful orders (paid and completed/delivered)
+$sql_success = "SELECT * FROM orders 
+               WHERE user_id = $user_id 
+               AND payment_status = 'paid'
+               AND order_status IN ('completed', 'delivered')
+               ORDER BY created_at DESC";
+$result_success = mysqli_query($conn, $sql_success);
+
+$success_orders = [];
+if ($result_success) {
+    while ($row = mysqli_fetch_assoc($result_success)) {
+        $success_orders[] = $row;
+    }
+} else {
+    die("Query failed: " . mysqli_error($conn));
+}
+
+// Fetch canceled orders
+$sql_canceled = "SELECT * FROM orders 
+                WHERE user_id = $user_id 
+                AND payment_status = 'canceled'
+                ORDER BY created_at DESC";
+$result_canceled = mysqli_query($conn, $sql_canceled);
+
+$canceled_orders = [];
+if ($result_canceled) {
+    while ($row = mysqli_fetch_assoc($result_canceled)) {
+        $canceled_orders[] = $row;
+    }
+} else {
+    die("Query failed: " . mysqli_error($conn));
+}
+
+// Function to fetch order items
+function fetch_order_items($conn, $order_id) {
     $sql_items = "SELECT oi.*, p.name, p.image_url 
                  FROM order_items oi
                  JOIN products p ON oi.product_id = p.id
@@ -56,7 +87,24 @@ foreach ($orders as &$order) {
             $order_items[] = $item;
         }
     }
-    $order['items'] = $order_items;
+    return $order_items;
+}
+
+// Add items to all orders
+foreach ($all_orders as &$order) {
+    $order['items'] = fetch_order_items($conn, $order['id']);
+}
+unset($order); // break the reference
+
+// Add items to successful orders
+foreach ($success_orders as &$order) {
+    $order['items'] = fetch_order_items($conn, $order['id']);
+}
+unset($order); // break the reference
+
+// Add items to canceled orders
+foreach ($canceled_orders as &$order) {
+    $order['items'] = fetch_order_items($conn, $order['id']);
 }
 unset($order); // break the reference
 ?>
@@ -68,6 +116,7 @@ unset($order); // break the reference
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+        /* ... (保留所有原有样式) ... */
         :root {
             --primary: #d6001c;
             --primary-dark: #b80018;
@@ -80,6 +129,10 @@ unset($order); // break the reference
             --success: #4caf50;
             --warning: #ff9800;
             --danger: #f44336;
+            --info: #2196f3;
+            --processing: #2196f3;
+            --ready: #9c27b0;
+            --on-the-way: #673ab7;
         }
         
         * {
@@ -331,6 +384,57 @@ unset($order); // break the reference
             background-color: var(--primary-dark);
         }
         
+        /* Order Tabs */
+        .order-tabs {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .tab-btn {
+            background-color: white;
+            border: none;
+            padding: 12px 24px;
+            margin: 0 5px;
+            border-radius: 30px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+        }
+        
+        .tab-btn i {
+            margin-right: 8px;
+        }
+        
+        .tab-btn:hover {
+            background-color: #f0f0f0;
+        }
+        
+        .tab-btn.active {
+            background-color: var(--primary);
+            color: white;
+            box-shadow: 0 4px 8px rgba(214, 0, 28, 0.2);
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Order Cards */
         .order-card {
             background: white;
             border-radius: 12px;
@@ -338,6 +442,7 @@ unset($order); // break the reference
             margin: 20px 0;
             overflow: hidden;
             transition: transform 0.3s, box-shadow 0.3s;
+            border-left: 5px solid var(--primary);
         }
         
         .order-card:hover {
@@ -370,9 +475,31 @@ unset($order); // break the reference
             border-radius: 20px;
             font-weight: bold;
             font-size: 14px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .status-preparing {
+            background-color: #e3f2fd;
+            color: var(--processing);
+        }
+        
+        .status-pending {
+            background-color: #fff3e0;
+            color: var(--warning);
+        }
+        
+        .status-on-the-way {
+            background-color: #ede7f6;
+            color: var(--on-the-way);
         }
         
         .status-completed {
+            background-color: #e8f5e9;
+            color: var(--success);
+        }
+        
+        .status-delivered {
             background-color: #e8f5e9;
             color: var(--success);
         }
@@ -441,6 +568,11 @@ unset($order); // break the reference
             border-radius: 8px;
             background: #fafafa;
             margin-bottom: 10px;
+            transition: transform 0.2s;
+        }
+        
+        .item-card:hover {
+            transform: translateX(5px);
         }
         
         .item-card:last-child {
@@ -491,26 +623,10 @@ unset($order); // break the reference
             flex-wrap: wrap;
         }
         
-        .order-actions a {
-            display: inline-block;
-            padding: 8px 16px;
-            background: white;
-            border: 1px solid var(--primary);
-            color: var(--primary);
-            border-radius: 6px;
-            text-decoration: none;
-            font-weight: bold;
-            margin-left: 10px;
-            transition: all 0.3s;
-        }
-        
-        .order-actions a:hover {
-            background: var(--primary);
-            color: white;
-        }
-        
         .payment-status {
             font-weight: bold;
+            display: flex;
+            align-items: center;
         }
         
         .status-paid {
@@ -523,6 +639,91 @@ unset($order); // break the reference
         
         .status-canceled {
             color: var(--danger);
+        }
+        
+        /* Status timeline */
+        .status-timeline {
+            display: flex;
+            justify-content: space-between;
+            padding: 15px 20px;
+            background: #f5f7fa;
+            border-top: 1px solid #eee;
+        }
+        
+        .status-step {
+            text-align: center;
+            position: relative;
+            flex: 1;
+            padding: 0 10px;
+        }
+        
+        .status-step::before {
+            content: '';
+            position: absolute;
+            top: 25px;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: #ddd;
+            z-index: 1;
+        }
+        
+        .status-step:first-child::before {
+            left: 50%;
+        }
+        
+        .status-step:last-child::before {
+            right: 50%;
+        }
+        
+        .step-icon {
+            position: relative;
+            width: 50px;
+            height: 50px;
+            background: #fff;
+            border-radius: 50%;
+            margin: 0 auto 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #ddd;
+            z-index: 2;
+        }
+        
+        .step-icon.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+        
+        .step-label {
+            font-size: 12px;
+            color: #888;
+        }
+        
+        .step-icon.active + .step-label {
+            color: var(--primary);
+            font-weight: bold;
+        }
+        
+        /* Section headers */
+        .section-header {
+            display: flex;
+            align-items: center;
+            margin: 40px 0 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--primary);
+        }
+        
+        .section-header h2 {
+            color: var(--primary);
+            font-size: 1.8rem;
+            margin: 0;
+        }
+        
+        .section-header i {
+            margin-right: 12px;
+            font-size: 1.5rem;
         }
         
         /* Responsive design */
@@ -557,16 +758,31 @@ unset($order); // break the reference
                 align-items: flex-start;
             }
             
-            .order-actions {
-                margin-top: 15px;
-                width: 100%;
+            .status-timeline {
+                flex-direction: column;
+                align-items: flex-start;
             }
             
-            .order-actions a {
-                display: block;
-                text-align: center;
-                margin-left: 0;
-                margin-top: 10px;
+            .status-step {
+                text-align: left;
+                padding: 10px 0;
+                width: 100%;
+                display: flex;
+                align-items: center;
+            }
+            
+            .status-step::before {
+                display: none;
+            }
+            
+            .step-icon {
+                margin: 0 15px 0 0;
+            }
+            
+            .tab-btn {
+                margin: 5px;
+                padding: 10px 15px;
+                font-size: 14px;
             }
         }
 
@@ -596,13 +812,146 @@ unset($order); // break the reference
                 text-align: left;
                 width: 100%;
             }
+            
+            .tab-btn {
+                width: 100%;
+                margin: 5px 0;
+                justify-content: center;
+            }
         }
+        
         .footer {
             background-color: #eee;
             text-align: center;
             padding: 20px;
             font-size: 14px;
             margin-top: 40px;
+        }
+        
+        /* Status indicators */
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-indicator.preparing {
+            background-color: var(--processing);
+        }
+        
+        .status-indicator.pending {
+            background-color: var(--warning);
+        }
+        
+        .status-indicator.on-the-way {
+            background-color: var(--on-the-way);
+        }
+        
+        .status-indicator.completed {
+            background-color: var(--success);
+        }
+        
+        .status-indicator.delivered {
+            background-color: var(--success);
+        }
+        
+        .status-indicator.canceled {
+            background-color: var(--danger);
+        }
+        /* 新增进度条样式 - 与order_trace一致 */
+        .progress-tracker {
+            padding: 25px;
+            background: #f0f7ff;
+            border-top: 1px solid var(--border);
+        }
+        
+        .tracker-title {
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.1rem;
+        }
+        
+        .tracker-steps {
+            display: flex;
+            justify-content: space-between;
+            position: relative;
+            padding: 20px 0 30px;
+        }
+        
+        .tracker-steps::before {
+            content: '';
+            position: absolute;
+            top: 40px;
+            left: 0;
+            right: 0;
+            height: 6px;
+            background: #e0e0e0;
+            z-index: 1;
+            border-radius: 3px;
+        }
+        
+        .progress-bar {
+            position: absolute;
+            top: 40px;
+            left: 0;
+            height: 6px;
+            background: var(--success);
+            z-index: 2;
+            transition: width 0.5s ease;
+            border-radius: 3px;
+        }
+        
+        .step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            z-index: 3;
+            flex: 1;
+        }
+        
+        .step-icon {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: #e0e0e0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 12px;
+            font-size: 1.2rem;
+            transition: all 0.3s;
+        }
+        
+        .step.active .step-icon {
+            background: var(--success);
+            color: white;
+            transform: scale(1.1);
+            box-shadow: 0 4px 10px rgba(76, 175, 80, 0.3);
+        }
+        
+        .step-text {
+            text-align: center;
+            font-size: 0.9rem;
+            color: var(--text-light);
+            max-width: 100px;
+            line-height: 1.4;
+        }
+        
+        .step.active .step-text {
+            color: var(--text);
+            font-weight: bold;
+        }
+        
+        /* 移除的pending状态样式 */
+        .status-pending {
+            display: none;
         }
     </style>
 </head>
@@ -635,98 +984,419 @@ unset($order); // break the reference
 <!-- Header -->
 <div class="header-section" data-aos="fade-down">
     <h2><i class="fas fa-history"></i> Your Order History</h2>
-    <p>Review your completed and canceled orders with FastFood Express</p>
+    <p>Review all your orders with FastFood Express</p>
 </div>
 
 <div class="container">
-    <?php if (empty($orders)): ?>
-        <div class="no-orders" data-aos="fade-up">
-            <i class="fas fa-box-open"></i>
-            <h3>No Order History Found</h3>
-            <p>You haven't completed any orders yet. Browse our menu and place your first order!</p>
-            <a href="products_user.php" class="btn">Browse Menu</a>
-        </div>
-    <?php else: ?>
-        <?php foreach ($orders as $order): 
-            $status_class = ($order['order_status'] == 'completed') ? 'status-completed' : 'status-canceled';
-            $payment_class = 'status-' . str_replace(' ', '-', strtolower($order['payment_status']));
-        ?>
-        <div class="order-card" data-aos="fade-up">
-            <div class="order-header">
-                <div class="order-header-left">
-                    <h3>Order #<?php echo $order['id']; ?></h3>
-                    <p><i class="far fa-calendar"></i> <?php echo date('F j, Y g:i A', strtotime($order['created_at'])); ?></p>
-                </div>
-                <div class="order-status <?php echo $status_class; ?>">
-                    <?php echo ucfirst($order['order_status']); ?>
-                </div>
+    <!-- 修改标签 - 移除Pending -->
+    <div class="order-tabs">
+        <button class="tab-btn active" onclick="showTab('all')">
+            <i class="fas fa-list"></i> All Orders
+        </button>
+        <button class="tab-btn" onclick="showTab('success')">
+            <i class="fas fa-check-circle"></i> Successful
+        </button>
+        <button class="tab-btn" onclick="showTab('canceled')">
+            <i class="fas fa-times-circle"></i> Canceled
+        </button>
+    </div>
+    
+    <!-- All Orders Tab -->
+    <div id="all" class="tab-content active">
+        <?php if (empty($all_orders)): ?>
+            <div class="no-orders" data-aos="fade-up">
+                <i class="fas fa-box-open"></i>
+                <h3>No Orders Found</h3>
+                <p>You haven't placed any orders yet. Browse our menu and place your first order!</p>
+                <a href="products_user.php" class="btn">Browse Menu</a>
             </div>
-            
-            <div class="order-details">
-                <div class="order-summary">
-                    <h4><i class="fas fa-receipt"></i> Order Summary</h4>
-                    <div class="summary-item">
-                        <span class="summary-label">Subtotal:</span>
-                        <span class="summary-value">RM <?php echo number_format($order['total_price'], 2); ?></span>
+        <?php else: ?>
+            <?php foreach ($all_orders as $order): 
+                // 计算进度条状态
+                $steps = [];
+                $progress = 0;
+                
+                if ($order['delivery_method'] == 'delivery') {
+                    $steps = [
+                        ['icon' => '📝', 'label' => 'Order Placed', 'status' => 'pending'],
+                        ['icon' => '👨‍🍳', 'label' => 'Preparing', 'status' => 'preparing'],
+                        ['icon' => '🚚', 'label' => 'On the Way', 'status' => 'on_delivery'],
+                        ['icon' => '📦', 'label' => 'Delivered', 'status' => 'delivered']
+                    ];
+                } else {
+                    $steps = [
+                        ['icon' => '📝', 'label' => 'Order Placed', 'status' => 'pending'],
+                        ['icon' => '👨‍🍳', 'label' => 'Preparing', 'status' => 'preparing'],
+                        ['icon' => '🛎️', 'label' => 'Ready', 'status' => 'ready'],
+                        ['icon' => '✅', 'label' => 'Completed', 'status' => 'completed']
+                    ];
+                }
+                
+                $current_step_index = 0;
+                foreach ($steps as $index => $step) {
+                    if ($step['status'] == $order['order_status']) {
+                        $current_step_index = $index;
+                        $progress = ($index + 1) * (100 / count($steps));
+                        break;
+                    }
+                }
+                
+                $status_class = '';
+                $status_text = '';
+                
+                // Determine status based on order_status
+                switch ($order['order_status']) {
+                    case 'preparing':
+                        $status_class = 'status-preparing';
+                        $status_text = 'Preparing <i class="fas fa-utensils"></i>';
+                        break;
+                    case 'pending':
+                        $status_class = 'status-pending';
+                        $status_text = 'Pending <i class="fas fa-clock"></i>';
+                        break;
+                    case 'on_delivery':
+                        $status_class = 'status-on-the-way';
+                        $status_text = 'On the Way <i class="fas fa-truck"></i>';
+                        break;
+                    case 'completed':
+                        $status_class = 'status-completed';
+                        $status_text = 'Completed <i class="fas fa-check-circle"></i>';
+                        break;
+                    case 'delivered':
+                        $status_class = 'status-delivered';
+                        $status_text = 'Delivered <i class="fas fa-home"></i>';
+                        break;
+                    default:
+                        if ($order['payment_status'] == 'canceled') {
+                            $status_class = 'status-canceled';
+                            $status_text = 'Canceled <i class="fas fa-ban"></i>';
+                        } else {
+                            $status_class = 'status-pending';
+                            $status_text = 'Processing <i class="fas fa-cog"></i>';
+                        }
+                }
+                
+                $payment_class = 'status-' . str_replace(' ', '-', strtolower($order['payment_status']));
+            ?>
+            <div class="order-card" data-aos="fade-up">
+                <div class="order-header">
+                    <div class="order-header-left">
+                        <h3>Order #<?php echo $order['id']; ?></h3>
+                        <p><i class="far fa-calendar"></i> <?php echo date('F j, Y g:i A', strtotime($order['created_at'])); ?></p>
                     </div>
-                    <div class="summary-item">
-                        <span class="summary-label">Delivery Fee:</span>
-                        <span class="summary-value">RM <?php echo number_format($order['delivery_fee'], 2); ?></span>
-                    </div>
-                    <div class="summary-item total-row">
-                        <span class="summary-label">Total Amount:</span>
-                        <span class="summary-value">RM <?php echo number_format($order['final_total'], 2); ?></span>
-                    </div>
-                    <div class="summary-item">
-                        <span class="summary-label">Payment Method:</span>
-                        <span class="summary-value"><?php 
-                            if ($order['payment_method'] == 'credit_card') echo 'Credit Card';
-                            elseif ($order['payment_method'] == 'cash') echo 'Cash';
-                            else echo 'Counter Payment';
-                        ?></span>
-                    </div>
-                    <div class="summary-item">
-                        <span class="summary-label">Delivery Method:</span>
-                        <span class="summary-value"><?php 
-                            echo ($order['delivery_method'] == 'delivery') ? 'Delivery' : 'Dine In';
-                        ?></span>
+                    <div class="order-status <?php echo $status_class; ?>">
+                        <span class="status-indicator <?php echo $order['order_status']; ?>"></span>
+                        <?php echo $status_text; ?>
                     </div>
                 </div>
                 
-                <div class="order-items">
-                    <h4><i class="fas fa-utensils"></i> Order Items</h4>
-                    <div class="item-list">
-                        <?php foreach ($order['items'] as $item): ?>
-                        <div class="item-card">
-                            <div class="item-image">
-                                <img src="<?php echo htmlspecialchars($item['image_url']); ?>" alt="<?php echo htmlspecialchars($item['name']); ?>">
+                <!-- 使用新的进度条样式 -->
+                <?php if ($order['payment_status'] != 'canceled' && $order['order_status'] != 'canceled'): ?>
+                <div class="progress-tracker">
+                    <div class="tracker-title">
+                        <i class="fas fa-shipping-fast"></i> Order Progress
+                    </div>
+                    <div class="tracker-steps">
+                        <div class="progress-bar" style="width: <?php echo $progress; ?>%"></div>
+                        <?php foreach ($steps as $index => $step): ?>
+                            <div class="step <?php echo $index <= $current_step_index ? 'active' : ''; ?>">
+                                <div class="step-icon"><?php echo $step['icon']; ?></div>
+                                <div class="step-text"><?php echo $step['label']; ?></div>
                             </div>
-                            <div class="item-details">
-                                <div class="item-name"><?php echo htmlspecialchars($item['name']); ?></div>
-                                <div class="item-price">RM <?php echo number_format($item['price'], 2); ?></div>
-                            </div>
-                            <div class="item-quantity">
-                                Qty: <?php echo $item['quantity']; ?>
-                            </div>
-                        </div>
                         <?php endforeach; ?>
                     </div>
                 </div>
-            </div>
-            
-            <div class="order-footer">
-                <div class="payment-status <?php echo $payment_class; ?>">
-                    <i class="fas fa-credit-card"></i> Payment Status: 
-                    <span><?php echo ucfirst($order['payment_status']); ?></span>
+                <?php else: ?>
+                <div class="progress-tracker" style="text-align: center; background: #ffebee; color: #f44336;">
+                    <i class="fas fa-ban"></i> This order has been canceled.
                 </div>
-                <div class="order-actions">
-                    <a href="#"><i class="fas fa-redo"></i> Reorder</a>
-                    <a href="#"><i class="fas fa-question-circle"></i> Get Help</a>
+                <?php endif; ?>
+                
+                <div class="order-details">
+                    <div class="order-summary">
+                        <h4><i class="fas fa-receipt"></i> Order Summary</h4>
+                        <div class="summary-item">
+                            <span class="summary-label">Subtotal:</span>
+                            <span class="summary-value">RM <?php echo number_format($order['total_price'], 2); ?></span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">Delivery Fee:</span>
+                            <span class="summary-value">RM <?php echo number_format($order['delivery_fee'], 2); ?></span>
+                        </div>
+                        <div class="summary-item total-row">
+                            <span class="summary-label">Total Amount:</span>
+                            <span class="summary-value">RM <?php echo number_format($order['final_total'], 2); ?></span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">Payment Method:</span>
+                            <span class="summary-value"><?php 
+                                if ($order['payment_method'] == 'credit_card') echo 'Credit Card';
+                                elseif ($order['payment_method'] == 'cash') echo 'Cash';
+                                else echo 'Counter Payment';
+                            ?></span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">Delivery Method:</span>
+                            <span class="summary-value"><?php 
+                                echo ($order['delivery_method'] == 'delivery') ? 'Delivery' : 'Dine In';
+                            ?></span>
+                        </div>
+                    </div>
+                    
+                    <div class="order-items">
+                        <h4><i class="fas fa-utensils"></i> Order Items</h4>
+                        <div class="item-list">
+                            <?php foreach ($order['items'] as $item): ?>
+                            <div class="item-card">
+                                <div class="item-image">
+                                    <img src="<?php echo htmlspecialchars($item['image_url']); ?>" alt="<?php echo htmlspecialchars($item['name']); ?>">
+                                </div>
+                                <div class="item-details">
+                                    <div class="item-name"><?php echo htmlspecialchars($item['name']); ?></div>
+                                    <div class="item-price">RM <?php echo number_format($item['price'], 2); ?></div>
+                                </div>
+                                <div class="item-quantity">
+                                    Qty: <?php echo $item['quantity']; ?>
+                                </div>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="order-footer">
+                    <div class="payment-status <?php echo $payment_class; ?>">
+                        <i class="fas fa-credit-card"></i> Payment Status: 
+                        <span><?php echo ucfirst($order['payment_status']); ?></span>
+                    </div>
                 </div>
             </div>
-        </div>
-        <?php endforeach; ?>
-    <?php endif; ?>
+            <?php endforeach; ?>
+        <?php endif; ?>
+    </div>
+    
+    <!-- Successful Orders Tab -->
+    <div id="success" class="tab-content">
+        <?php if (empty($success_orders)): ?>
+            <div class="no-orders" data-aos="fade-up">
+                <i class="fas fa-check-circle"></i>
+                <h3>No Successful Orders</h3>
+                <p>You haven't completed any orders yet. Place an order to get started!</p>
+                <a href="products_user.php" class="btn">Browse Menu</a>
+            </div>
+        <?php else: ?>
+            <?php foreach ($success_orders as $order): 
+                // 计算进度条状态
+                $steps = [];
+                $progress = 0;
+                
+                if ($order['delivery_method'] == 'delivery') {
+                    $steps = [
+                        ['icon' => '📝', 'label' => 'Order Placed', 'status' => 'pending'],
+                        ['icon' => '👨‍🍳', 'label' => 'Preparing', 'status' => 'preparing'],
+                        ['icon' => '🚚', 'label' => 'On the Way', 'status' => 'on_delivery'],
+                        ['icon' => '📦', 'label' => 'Delivered', 'status' => 'delivered']
+                    ];
+                } else {
+                    $steps = [
+                        ['icon' => '📝', 'label' => 'Order Placed', 'status' => 'pending'],
+                        ['icon' => '👨‍🍳', 'label' => 'Preparing', 'status' => 'preparing'],
+                        ['icon' => '🛎️', 'label' => 'Ready', 'status' => 'ready'],
+                        ['icon' => '✅', 'label' => 'Completed', 'status' => 'completed']
+                    ];
+                }
+                
+                $current_step_index = count($steps) - 1; // 成功订单显示全部完成
+                $progress = 100;
+                
+                $status_class = ($order['order_status'] == 'completed') ? 'status-completed' : 'status-delivered';
+                $status_text = ($order['order_status'] == 'completed') ? 'Completed <i class="fas fa-check-circle"></i>' : 'Delivered <i class="fas fa-home"></i>';
+                $payment_class = 'status-paid';
+            ?>
+            <div class="order-card" data-aos="fade-up">
+                <div class="order-header">
+                    <div class="order-header-left">
+                        <h3>Order #<?php echo $order['id']; ?></h3>
+                        <p><i class="far fa-calendar"></i> <?php echo date('F j, Y g:i A', strtotime($order['created_at'])); ?></p>
+                    </div>
+                    <div class="order-status <?php echo $status_class; ?>">
+                        <span class="status-indicator <?php echo $order['order_status']; ?>"></span>
+                        <?php echo $status_text; ?>
+                    </div>
+                </div>
+                
+                <!-- 使用新的进度条样式 -->
+                <div class="progress-tracker">
+                    <div class="tracker-title">
+                        <i class="fas fa-shipping-fast"></i> Order Progress
+                    </div>
+                    <div class="tracker-steps">
+                        <div class="progress-bar" style="width: <?php echo $progress; ?>%"></div>
+                        <?php foreach ($steps as $index => $step): ?>
+                            <div class="step <?php echo $index <= $current_step_index ? 'active' : ''; ?>">
+                                <div class="step-icon"><?php echo $step['icon']; ?></div>
+                                <div class="step-text"><?php echo $step['label']; ?></div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+                
+                <div class="order-details">
+                    <div class="order-summary">
+                        <h4><i class="fas fa-receipt"></i> Order Summary</h4>
+                        <div class="summary-item">
+                            <span class="summary-label">Subtotal:</span>
+                            <span class="summary-value">RM <?php echo number_format($order['total_price'], 2); ?></span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">Delivery Fee:</span>
+                            <span class="summary-value">RM <?php echo number_format($order['delivery_fee'], 2); ?></span>
+                        </div>
+                        <div class="summary-item total-row">
+                            <span class="summary-label">Total Amount:</span>
+                            <span class="summary-value">RM <?php echo number_format($order['final_total'], 2); ?></span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">Payment Method:</span>
+                            <span class="summary-value"><?php 
+                                if ($order['payment_method'] == 'credit_card') echo 'Credit Card';
+                                elseif ($order['payment_method'] == 'cash') echo 'Cash';
+                                else echo 'Counter Payment';
+                            ?></span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">Delivery Method:</span>
+                            <span class="summary-value"><?php 
+                                echo ($order['delivery_method'] == 'delivery') ? 'Delivery' : 'Dine In';
+                            ?></span>
+                        </div>
+                    </div>
+                    
+                    <div class="order-items">
+                        <h4><i class="fas fa-utensils"></i> Order Items</h4>
+                        <div class="item-list">
+                            <?php foreach ($order['items'] as $item): ?>
+                            <div class="item-card">
+                                <div class="item-image">
+                                    <img src="<?php echo htmlspecialchars($item['image_url']); ?>" alt="<?php echo htmlspecialchars($item['name']); ?>">
+                                </div>
+                                <div class="item-details">
+                                    <div class="item-name"><?php echo htmlspecialchars($item['name']); ?></div>
+                                    <div class="item-price">RM <?php echo number_format($item['price'], 2); ?></div>
+                                </div>
+                                <div class="item-quantity">
+                                    Qty: <?php echo $item['quantity']; ?>
+                                </div>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="order-footer">
+                    <div class="payment-status status-paid">
+                        <i class="fas fa-credit-card"></i> Payment Status: 
+                        <span>Paid</span>
+                    </div>
+                </div>
+            </div>
+            <?php endforeach; ?>
+        <?php endif; ?>
+    </div>
+    
+    <!-- Canceled Orders Tab -->
+    <div id="canceled" class="tab-content">
+        <?php if (empty($canceled_orders)): ?>
+            <div class="no-orders" data-aos="fade-up">
+                <i class="fas fa-ban"></i>
+                <h3>No Canceled Orders</h3>
+                <p>You haven't canceled any orders. That's great!</p>
+            </div>
+        <?php else: ?>
+            <?php foreach ($canceled_orders as $order): 
+                $status_class = 'status-canceled';
+                $status_text = 'Canceled <i class="fas fa-ban"></i>';
+                $payment_class = 'status-canceled';
+            ?>
+            <div class="order-card" data-aos="fade-up">
+                <div class="order-header">
+                    <div class="order-header-left">
+                        <h3>Order #<?php echo $order['id']; ?></h3>
+                        <p><i class="far fa-calendar"></i> <?php echo date('F j, Y g:i A', strtotime($order['created_at'])); ?></p>
+                    </div>
+                    <div class="order-status <?php echo $status_class; ?>">
+                        <span class="status-indicator canceled"></span>
+                        <?php echo $status_text; ?>
+                    </div>
+                </div>
+                
+                <!-- 取消订单显示特殊提示 -->
+                <div class="progress-tracker" style="text-align: center; background: #ffebee; color: #f44336;">
+                    <i class="fas fa-ban"></i> This order has been canceled.
+                </div>
+                
+                <div class="order-details">
+                    <div class="order-summary">
+                        <h4><i class="fas fa-receipt"></i> Order Summary</h4>
+                        <div class="summary-item">
+                            <span class="summary-label">Subtotal:</span>
+                            <span class="summary-value">RM <?php echo number_format($order['total_price'], 2); ?></span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">Delivery Fee:</span>
+                            <span class="summary-value">RM <?php echo number_format($order['delivery_fee'], 2); ?></span>
+                        </div>
+                        <div class="summary-item total-row">
+                            <span class="summary-label">Total Amount:</span>
+                            <span class="summary-value">RM <?php echo number_format($order['final_total'], 2); ?></span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">Payment Method:</span>
+                            <span class="summary-value"><?php 
+                                if ($order['payment_method'] == 'credit_card') echo 'Credit Card';
+                                elseif ($order['payment_method'] == 'cash') echo 'Cash';
+                                else echo 'Counter Payment';
+                            ?></span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">Delivery Method:</span>
+                            <span class="summary-value"><?php 
+                                echo ($order['delivery_method'] == 'delivery') ? 'Delivery' : 'Dine In';
+                            ?></span>
+                        </div>
+                    </div>
+                    
+                    <div class="order-items">
+                        <h4><i class="fas fa-utensils"></i> Order Items</h4>
+                        <div class="item-list">
+                            <?php foreach ($order['items'] as $item): ?>
+                            <div class="item-card">
+                                <div class="item-image">
+                                    <img src="<?php echo htmlspecialchars($item['image_url']); ?>" alt="<?php echo htmlspecialchars($item['name']); ?>">
+                                </div>
+                                <div class="item-details">
+                                    <div class="item-name"><?php echo htmlspecialchars($item['name']); ?></div>
+                                    <div class="item-price">RM <?php echo number_format($item['price'], 2); ?></div>
+                                </div>
+                                <div class="item-quantity">
+                                    Qty: <?php echo $item['quantity']; ?>
+                                </div>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="order-footer">
+                    <div class="payment-status status-canceled">
+                        <i class="fas fa-credit-card"></i> Payment Status: 
+                        <span>Canceled</span>
+                    </div>
+                </div>
+            </div>
+            <?php endforeach; ?>
+        <?php endif; ?>
+    </div>
 </div>
 
 <!-- Footer -->
@@ -753,6 +1423,25 @@ unset($order); // break the reference
             }
         });
     });
+    
+    // Tab switching functionality
+    function showTab(tabId) {
+        // Hide all tab contents
+        document.querySelectorAll('.tab-content').forEach(tab => {
+            tab.classList.remove('active');
+        });
+        
+        // Deactivate all tab buttons
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        
+        // Show selected tab
+        document.getElementById(tabId).classList.add('active');
+        
+        // Activate selected button
+        document.querySelector(`.tab-btn[onclick="showTab('${tabId}')"]`).classList.add('active');
+    }
 </script>
 </body>
 </html>

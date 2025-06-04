@@ -2,7 +2,7 @@
 session_start();
 include 'db.php';
 
-// 启用错误报告（调试用）
+// 启用错误报告
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
@@ -10,6 +10,8 @@ error_reporting(E_ALL);
 if (!isset($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
+
+date_default_timezone_set('Asia/Kuala_Lumpur');
 
 // 检查用户是否登录
 if (!isset($_SESSION['user_id'])) {
@@ -34,10 +36,20 @@ if (empty($cart)) {
     exit;
 }
 
-// 获取用户信息
-$user_sql = "SELECT username, phone, address FROM customers WHERE id = $user_id LIMIT 1";
-$user_result = mysqli_query($conn, $user_sql);
-$user_data = mysqli_fetch_assoc($user_result);
+// 使用预处理语句获取用户信息
+$user_sql = "SELECT username, phone, address FROM customers WHERE id = ? LIMIT 1";
+$user_stmt = $conn->prepare($user_sql);
+$user_stmt->bind_param("i", $user_id);
+$user_stmt->execute();
+$user_result = $user_stmt->get_result();
+$user_data = $user_result->fetch_assoc();
+$user_stmt->close();
+
+// 检查用户信息是否完整
+$user_info_complete = true;
+if (empty($user_data['username']) || empty($user_data['phone']) || empty($user_data['address'])) {
+    $user_info_complete = false;
+}
 
 // 计算总价和获取产品信息
 $total_price = 0;
@@ -45,15 +57,19 @@ $product_info = [];
 foreach ($cart as $item) {
     $pid = (int)$item['product_id'];
     if (!isset($product_info[$pid])) {
-        $sql = "SELECT id, name, price, image_url FROM products WHERE id = $pid LIMIT 1";
-        $res = mysqli_query($conn, $sql);
-        if (!$res || mysqli_num_rows($res) === 0) {
-            // 如果产品不存在，从购物车中移除
+        $sql = "SELECT id, name, price, image_url, stock_quantity FROM products WHERE id = ? LIMIT 1";
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param("i", $pid);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        
+        if (!$res || $res->num_rows === 0) {
             unset($_SESSION['cart'][$pid]);
             header("Location: checkout.php");
             exit;
         }
-        $product_info[$pid] = mysqli_fetch_assoc($res);
+        $product_info[$pid] = $res->fetch_assoc();
+        $stmt->close();
     }
     $total_price += $product_info[$pid]['price'] * $item['quantity'];
 }
@@ -64,17 +80,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
         $error = "Invalid CSRF token";
     } else {
+        // 提交后重新生成CSRF令牌
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        
         // 更新配送方式
         if (isset($_POST['delivery_method'])) {
-            $_SESSION['delivery_method'] = mysqli_real_escape_string($conn, $_POST['delivery_method']);
+            $_SESSION['delivery_method'] = $_POST['delivery_method'];
         }
         
         // 更新收件人信息
         if (isset($_POST['recipient_name'])) {
             $_SESSION['checkout_info'] = [
-                'recipient_name' => mysqli_real_escape_string($conn, $_POST['recipient_name']),
-                'recipient_phone' => mysqli_real_escape_string($conn, $_POST['recipient_phone']),
-                'recipient_address' => mysqli_real_escape_string($conn, $_POST['recipient_address'])
+                'recipient_name' => $_POST['recipient_name'],
+                'recipient_phone' => $_POST['recipient_phone'],
+                'recipient_address' => $_POST['recipient_address']
             ];
         }
         
@@ -82,7 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (isset($_POST['submit_payment'])) {
             // 获取支付方式
             $payment_method = isset($_POST['payment_method']) 
-                ? mysqli_real_escape_string($conn, $_POST['payment_method']) 
+                ? $_POST['payment_method'] 
                 : ($_SESSION['payment_method'] ?? 'credit_card');
             
             // 获取收件人信息
@@ -91,131 +110,197 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $recipient_address = $_SESSION['checkout_info']['recipient_address'] ?? $user_data['address'];
             $delivery_method = $_SESSION['delivery_method'] ?? 'delivery';
 
-            // 开始事务
-            mysqli_begin_transaction($conn);
+            // 验证收件人信息是否完整
+            $info_error = '';
+            if (empty($recipient_name)) {
+                $info_error = "Recipient name is required";
+            } elseif (empty($recipient_phone)) {
+                $info_error = "Recipient phone is required";
+            } elseif ($delivery_method === 'delivery' && empty($recipient_address)) {
+                $info_error = "Delivery address is required";
+            }
+            
+            if (!empty($info_error)) {
+                $error = $info_error;
+            } else {
+                // 开始事务
+                mysqli_begin_transaction($conn);
 
-            try {
-                // 创建订单
-                $now = date('Y-m-d H:i:s');
-                // 修正：根据配送方式设置配送费
-                $delivery_fee = ($delivery_method === 'delivery') ? 6.00 : 0.00;
-                $final_total = $total_price + $delivery_fee;
-                
-                // 根据支付方式设置支付状态
-                $payment_status = 'pending';
-                if ($payment_method === 'cash') {
-                    $payment_status = 'cash_on_delivery';
-                } elseif ($payment_method === 'counter') {
-                    $payment_status = 'pay_at_counter';
-                }
-                
-                // 订单状态始终为pending
-                $order_status = 'pending';
-                
-                // 修复SQL语句：字段数量和绑定参数一致
-                $sql_order = "INSERT INTO orders (user_id, recipient_name, recipient_phone, recipient_address, 
-                              delivery_method, total_price, delivery_fee, final_total, payment_method, 
-                              payment_status, order_status, created_at)
-                              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-
-                $stmt = $conn->prepare($sql_order);
-                if (!$stmt) {
-                    throw new Exception("Prepare failed: " . $conn->error);
-                }
-                
-                // 修复绑定参数：确保12个参数对应12个字段
-                $stmt->bind_param("issssdddssss", 
-                    $user_id, 
-                    $recipient_name, 
-                    $recipient_phone,
-                    $recipient_address, 
-                    $delivery_method, 
-                    $total_price, 
-                    $delivery_fee, 
-                    $final_total, 
-                    $payment_method, 
-                    $payment_status, 
-                    $order_status, 
-                    $now
-                );
-                
-                if (!$stmt->execute()) {
-                    throw new Exception("Execute failed: " . $stmt->error);
-                }
-                
-                $order_id = $conn->insert_id;
-                $stmt->close();
-
-                // 添加订单项
-                foreach ($cart as $item) {
-                    $pid = (int)$item['product_id'];
-                    // 确保产品信息存在
-                    if (!isset($product_info[$pid])) {
-                        $sql = "SELECT id, name, price FROM products WHERE id = $pid LIMIT 1";
-                        $res = mysqli_query($conn, $sql);
-                        if (!$res || mysqli_num_rows($res) === 0) {
-                            throw new Exception("Invalid product ID: $pid");
+                try {
+                    // 检查库存是否充足（所有支付方式都需要检查）
+                    $insufficient_stock = [];
+                    foreach ($cart as $item) {
+                        $pid = (int)$item['product_id'];
+                        $quantity = (int)$item['quantity'];
+                        
+                        if (!isset($product_info[$pid])) {
+                            $sql = "SELECT stock_quantity FROM products WHERE id = ? LIMIT 1";
+                            $stmt = $conn->prepare($sql);
+                            $stmt->bind_param("i", $pid);
+                            $stmt->execute();
+                            $res = $stmt->get_result();
+                            if (!$res || $res->num_rows === 0) {
+                                throw new Exception("Invalid product ID: $pid");
+                            }
+                            $product_info[$pid] = $res->fetch_assoc();
+                            $stmt->close();
                         }
-                        $product_info[$pid] = mysqli_fetch_assoc($res);
+                        
+                        if ($product_info[$pid]['stock_quantity'] < $quantity) {
+                            $insufficient_stock[] = $product_info[$pid]['name'] . 
+                                " (Available: {$product_info[$pid]['stock_quantity']}, Requested: $quantity)";
+                        }
                     }
                     
-                    $quantity = (int)$item['quantity'];
-                    $sauce = isset($item['sauce']) ? mysqli_real_escape_string($conn, $item['sauce']) : '';
-                    $comment = isset($item['comment']) ? mysqli_real_escape_string($conn, $item['comment']) : '';
-                    $price = $product_info[$pid]['price'];
+                    if (!empty($insufficient_stock)) {
+                        throw new Exception("Insufficient stock: " . implode(", ", $insufficient_stock));
+                    }
 
-                    $sql_item = "INSERT INTO order_items (order_id, product_id, quantity, sauce, comment, price)
-                                 VALUES (?, ?, ?, ?, ?, ?)";
-                    $stmt_item = $conn->prepare($sql_item);
-                    if (!$stmt_item) {
-                        throw new Exception("Item prepare failed: " . $conn->error);
+                    // 创建订单
+                    $now = date('Y-m-d H:i:s');
+                    $delivery_fee = ($delivery_method === 'delivery') ? 6.00 : 0.00;
+                    $final_total = $total_price + $delivery_fee;
+                    
+                    $payment_status = 'pending';
+                    if ($payment_method === 'cash') {
+                        $payment_status = 'cash_on_delivery';
+                    } elseif ($payment_method === 'counter') {
+                        $payment_status = 'pay_at_counter';
                     }
                     
-                    $stmt_item->bind_param("iiissd", $order_id, $pid, $quantity, $sauce, $comment, $price);
+                    $order_status = 'pending';
                     
-                    if (!$stmt_item->execute()) {
-                        throw new Exception("Item execute failed: " . $stmt_item->error);
+                    // 使用预处理语句创建订单
+                    $sql_order = "INSERT INTO orders (user_id, recipient_name, recipient_phone, recipient_address, 
+                                  delivery_method, total_price, delivery_fee, final_total, payment_method, 
+                                  payment_status, order_status, created_at)
+                                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+                    $stmt = $conn->prepare($sql_order);
+                    if (!$stmt) {
+                        throw new Exception("Prepare failed: " . $conn->error);
                     }
-                    $stmt_item->close();
+                    
+                    $stmt->bind_param("issssddsssss", 
+                        $user_id, 
+                        $recipient_name, 
+                        $recipient_phone,
+                        $recipient_address, 
+                        $delivery_method, 
+                        $total_price, 
+                        $delivery_fee, 
+                        $final_total, 
+                        $payment_method, 
+                        $payment_status, 
+                        $order_status, 
+                        $now
+                    );
+                    
+                    if (!$stmt->execute()) {
+                        throw new Exception("Execute failed: " . $stmt->error);
+                    }
+                    
+                    $order_id = $conn->insert_id;
+                    $stmt->close();
+
+                    // 添加订单项
+                    foreach ($cart as $item) {
+                        $pid = (int)$item['product_id'];
+                        if (!isset($product_info[$pid])) {
+                            $sql = "SELECT id, name, price FROM products WHERE id = ? LIMIT 1";
+                            $stmt = $conn->prepare($sql);
+                            $stmt->bind_param("i", $pid);
+                            $stmt->execute();
+                            $res = $stmt->get_result();
+                            if (!$res || $res->num_rows === 0) {
+                                throw new Exception("Invalid product ID: $pid");
+                            }
+                            $product_info[$pid] = $res->fetch_assoc();
+                            $stmt->close();
+                        }
+                        
+                        $quantity = (int)$item['quantity'];
+                        $sauce = isset($item['sauce']) ? $item['sauce'] : '';
+                        $comment = isset($item['comment']) ? $item['comment'] : '';
+                        $price = $product_info[$pid]['price'];
+
+                        $sql_item = "INSERT INTO order_items (order_id, product_id, quantity, sauce, comment, price)
+                                     VALUES (?, ?, ?, ?, ?, ?)";
+                        $stmt_item = $conn->prepare($sql_item);
+                        if (!$stmt_item) {
+                            throw new Exception("Item prepare failed: " . $conn->error);
+                        }
+                        
+                        $stmt_item->bind_param("iiissd", $order_id, $pid, $quantity, $sauce, $comment, $price);
+                        
+                        if (!$stmt_item->execute()) {
+                            throw new Exception("Item execute failed: " . $stmt_item->error);
+                        }
+                        $stmt_item->close();
+                        
+                        // 关键修改：仅当非信用卡支付时才减少库存
+                        if ($payment_method !== 'credit_card') {
+                            $sql_update = "UPDATE products SET stock_quantity = stock_quantity - ? WHERE id = ?";
+                            $stmt_update = $conn->prepare($sql_update);
+                            if (!$stmt_update) {
+                                throw new Exception("Stock update prepare failed: " . $conn->error);
+                            }
+                            
+                            $stmt_update->bind_param("ii", $quantity, $pid);
+                            if (!$stmt_update->execute()) {
+                                throw new Exception("Stock update failed: " . $stmt_update->error);
+                            }
+                            $stmt_update->close();
+                        }
+                    }
+
+                    // 提交事务
+                    mysqli_commit($conn);
+                    
+                    // 仅清除购物车，保留其他信息以防支付失败
+                    unset($_SESSION['cart']);
+                    
+                    // 根据支付方式重定向
+                    if ($payment_method === 'credit_card') {
+                        header("Location: payment.php?order_id=".$order_id);
+                        exit;
+                    } else {
+                        // 非信用卡支付直接重定向到成功页面
+                        header("Location: index_user.php?order_success=".$order_id);
+                        exit;
+                    }
+
+                } catch (Exception $e) {
+                    mysqli_rollback($conn);
+                    $error = "Order processing failed: " . $e->getMessage();
+                    error_log("Order Error: " . $e->getMessage() . "\nSQL Error: " . ($conn->error ?? ''));
+                    
+                    // 关键修改：支付失败时不取消订单，保留在系统中
+                    if (isset($order_id)) {
+                        // 将失败订单标记为取消状态
+                        $update_sql = "UPDATE orders SET order_status = 'cancelled' WHERE id = ?";
+                        $update_stmt = $conn->prepare($update_sql);
+                        $update_stmt->bind_param("i", $order_id);
+                        $update_stmt->execute();
+                        $update_stmt->close();
+                    }
                 }
-
-                // 提交事务
-                mysqli_commit($conn);
-                
-                // 清除会话数据
-                unset($_SESSION['cart']);
-                unset($_SESSION['checkout_info']);
-                unset($_SESSION['delivery_method']);
-                unset($_SESSION['payment_method']);
-                
-                // 根据支付方式重定向
-                if ($payment_method === 'credit_card') {
-                    header("Location: payment.php?order_id=".$order_id);
-                } else {
-                    header("Location: index_user.php?order_success=".$order_id);
-                }
-                exit;
-
-            } catch (Exception $e) {
-                mysqli_rollback($conn);
-                $error = "Order processing failed: " . $e->getMessage();
-                error_log("Order Error: " . $e->getMessage() . "\nSQL Error: " . ($conn->error ?? ''));
             }
         }
     }
 }
 
 // 获取当前结账信息
-$recipient_name = $_SESSION['checkout_info']['recipient_name'] ?? $user_data['username'];
-$recipient_phone = $_SESSION['checkout_info']['recipient_phone'] ?? $user_data['phone'];
-$recipient_address = $_SESSION['checkout_info']['recipient_address'] ?? $user_data['address'];
+$recipient_name = $_SESSION['checkout_info']['recipient_name'] ?? $user_data['username'] ?? '';
+$recipient_phone = $_SESSION['checkout_info']['recipient_phone'] ?? $user_data['phone'] ?? '';
+$recipient_address = $_SESSION['checkout_info']['recipient_address'] ?? $user_data['address'] ?? '';
 $delivery_method = $_SESSION['delivery_method'] ?? 'delivery';
 $payment_method = $_SESSION['payment_method'] ?? 'credit_card';
 
 // 计算购物车数量
 $cart_count = array_sum(array_column($cart, 'quantity'));
 
-// 计算总额 - 修正：根据配送方式设置配送费
+// 计算总额
 $delivery_fee = ($delivery_method === 'delivery') ? 6.00 : 0.00;
 $final_total = $total_price + $delivery_fee;
 ?>
@@ -224,7 +309,8 @@ $final_total = $total_price + $delivery_fee;
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Checkout - FastFood Express</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure Checkout - FastFood Express</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
@@ -245,16 +331,16 @@ $final_total = $total_price + $delivery_fee;
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #f5f7fa;
             color: var(--text);
             line-height: 1.6;
         }
 
-        /* 🔝 更新后的顶部导航栏 */
+        /* 🔝 顶部导航栏 */
         .topbar {
             background-color: var(--dark-bg);
             color: white;
@@ -441,7 +527,16 @@ $final_total = $total_price + $delivery_fee;
         h3 {
             font-size: 18px;
             color: #555;
-            margin-top: 0;
+            margin-top: 20px;
+            position: relative;
+            padding-left: 25px;
+        }
+        
+        .h3-icon {
+            position: absolute;
+            left: 0;
+            top: 2px;
+            color: #d6001c;
         }
         
         .order-item {
@@ -460,6 +555,7 @@ $final_total = $total_price + $delivery_fee;
             height: 80px;
             border-radius: 4px;
             object-fit: cover;
+            border: 1px solid #eee;
         }
         
         .item-details {
@@ -490,20 +586,30 @@ $final_total = $total_price + $delivery_fee;
         
         .delivery-option {
             flex: 1;
-            padding: 10px;
+            padding: 15px 10px;
             border: 1px solid #ddd;
             border-radius: 4px;
             text-align: center;
             cursor: pointer;
+            transition: all 0.3s;
         }
         
         .delivery-option.selected {
             border-color: #d6001c;
             background: #fff0f0;
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(214, 0, 28, 0.1);
+        }
+        
+        .delivery-option i {
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: #d6001c;
         }
         
         .form-group {
             margin-bottom: 15px;
+            position: relative;
         }
         
         label {
@@ -518,10 +624,20 @@ $final_total = $total_price + $delivery_fee;
         textarea,
         select {
             width: 100%;
-            padding: 10px;
+            padding: 12px;
             border: 1px solid #ddd;
             border-radius: 4px;
             font-family: inherit;
+            transition: border 0.3s;
+        }
+        
+        input[type="text"]:focus,
+        input[type="tel"]:focus,
+        textarea:focus,
+        select:focus {
+            border-color: #d6001c;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(214, 0, 28, 0.1);
         }
         
         textarea {
@@ -537,11 +653,14 @@ $final_total = $total_price + $delivery_fee;
             border-radius: 4px;
             margin-bottom: 10px;
             cursor: pointer;
+            transition: all 0.3s;
         }
         
         .payment-option.selected {
             border-color: #d6001c;
             background: #fff0f0;
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(214, 0, 28, 0.1);
         }
         
         .payment-option input {
@@ -556,7 +675,9 @@ $final_total = $total_price + $delivery_fee;
         
         .payment-icon {
             margin-right: 10px;
-            font-size: 20px;
+            font-size: 24px;
+            width: 30px;
+            text-align: center;
         }
         
         .summary-row {
@@ -570,23 +691,34 @@ $final_total = $total_price + $delivery_fee;
             font-weight: bold;
             font-size: 18px;
             color: #d6001c;
+            padding-top: 10px;
         }
         
         .btn {
             background: #d6001c;
             color: white;
             border: none;
-            padding: 12px 20px;
+            padding: 15px 20px;
             font-size: 16px;
             font-weight: bold;
             border-radius: 4px;
             cursor: pointer;
             width: 100%;
-            transition: background 0.3s;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
         }
         
         .btn:hover {
             background: #b50018;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(214, 0, 28, 0.2);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
         }
         
         .btn-update {
@@ -601,9 +733,12 @@ $final_total = $total_price + $delivery_fee;
         .error {
             color: #d6001c;
             background: #fff0f0;
-            padding: 10px;
+            padding: 15px;
             border-radius: 4px;
             margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
         
         .footer {
@@ -612,6 +747,7 @@ $final_total = $total_price + $delivery_fee;
             padding: 20px;
             font-size: 14px;
             margin-top: 40px;
+            color: #666;
         }
         
         /* Message overlay styles */
@@ -643,15 +779,19 @@ $final_total = $total_price + $delivery_fee;
             text-align: center;
             max-width: 400px;
             width: 90%;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
         }
         
         .message-box h3 {
             color: #d6001c;
             margin-bottom: 20px;
+            font-size: 22px;
+            padding-left: 0;
         }
         
         .message-box p {
             margin-bottom: 20px;
+            line-height: 1.6;
         }
         
         .spinner {
@@ -667,6 +807,86 @@ $final_total = $total_price + $delivery_fee;
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
+        }
+        
+        /* New styles for payment method info */
+        .payment-info {
+            background-color: #f8f9fa;
+            border-left: 4px solid #d6001c;
+            padding: 15px;
+            margin-top: 15px;
+            border-radius: 4px;
+            font-size: 14px;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+        
+        .stock-info {
+            background-color: #fffaf0;
+            border: 1px solid #ffd700;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-size: 14px;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+        
+        .stock-warning {
+            color: #ff5722;
+            font-weight: bold;
+            margin-top: 5px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .btn-auto-fill {
+            background: #f0f0f0;
+            border: 1px solid #ddd;
+            color: #555;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+        
+        .btn-auto-fill:hover {
+            background: #e0e0e0;
+            transform: translateY(-2px);
+        }
+        
+        .secure-badge {
+            background: #4caf50;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        
+        .header-security {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #eee;
+        }
+        
+        .security-info {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 13px;
+            color: #666;
         }
         
         /* Responsive design */
@@ -700,7 +920,7 @@ $final_total = $total_price + $delivery_fee;
     </style>
 </head>
 <body>
-<!-- 🔝 更新后的顶部导航栏 -->
+<!-- 🔝 顶部导航栏 -->
 <div class="topbar">
     <div class="logo"><i class="fas fa-hamburger"></i> Fast<span>Food</span> Express</div>
     <div class="nav-links">
@@ -737,6 +957,18 @@ $final_total = $total_price + $delivery_fee;
     <div class="left-column">
         <h2>Your Order</h2>
         
+        <?php if ($payment_method === 'credit_card'): ?>
+            <div class="stock-info">
+                <i class="fas fa-info-circle"></i> 
+                <div>For credit/debit card payments, stock will be reserved when payment is successful.</div>
+            </div>
+        <?php else: ?>
+            <div class="stock-info">
+                <i class="fas fa-info-circle"></i> 
+                <div>For cash/counter payments, stock will be reduced immediately upon order confirmation.</div>
+            </div>
+        <?php endif; ?>
+        
         <?php foreach ($cart as $item): ?>
             <?php 
             $pid = (int)$item['product_id'];
@@ -756,6 +988,12 @@ $final_total = $total_price + $delivery_fee;
                             <?php if (!empty($item['comment'])): ?>
                                 <br>Note: <?php echo htmlspecialchars($item['comment']); ?>
                             <?php endif; ?>
+                            <?php if ($payment_method !== 'credit_card' && $product['stock_quantity'] < $item['quantity']): ?>
+                                <div class="stock-warning">
+                                    <i class="fas fa-exclamation-triangle"></i> 
+                                    Only <?php echo $product['stock_quantity']; ?> available in stock
+                                </div>
+                            <?php endif; ?>
                         </div>
                     </div>
                     <div class="item-total">
@@ -770,27 +1008,43 @@ $final_total = $total_price + $delivery_fee;
         <h2>Payment Details</h2>
         
         <?php if (!empty($error)): ?>
-            <div class="error"><?php echo htmlspecialchars($error); ?></div>
+            <div class="error">
+                <i class="fas fa-exclamation-circle"></i>
+                <div><?php echo htmlspecialchars($error); ?></div>
+            </div>
         <?php endif; ?>
 
         <form id="paymentForm" method="POST" action="checkout.php">
             <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
             
-            <h3>Order Method</h3>
+            <h3>
+                <i class="fas fa-truck h3-icon"></i>
+                Order Method
+            </h3>
             <div class="delivery-method">
                 <label class="delivery-option <?php echo $delivery_method === 'delivery' ? 'selected' : ''; ?>">
                     <input type="radio" name="delivery_method" value="delivery" 
                         <?php echo $delivery_method === 'delivery' ? 'checked' : ''; ?> hidden>
-                    Delivery
+                    <i class="fas fa-truck"></i>
+                    <div>Delivery</div>
                 </label>
                 <label class="delivery-option <?php echo $delivery_method === 'dine_in' ? 'selected' : ''; ?>">
                     <input type="radio" name="delivery_method" value="dine_in" 
                         <?php echo $delivery_method === 'dine_in' ? 'checked' : ''; ?> hidden>
-                    Dine-in
+                    <i class="fas fa-store"></i>
+                    <div>Dine-in</div>
                 </label>
             </div>
 
-            <h3>Recipient Information</h3>
+            <h3>
+                <i class="fas fa-user h3-icon"></i>
+                Recipient Information
+            </h3>
+            <div class="form-group">
+                <button type="button" id="fill-address" class="btn-auto-fill">
+                    <i class="fas fa-user-check"></i> Use My Information
+                </button>
+            </div>
             <div class="form-group">
                 <label for="recipient_name">Full Name</label>
                 <input type="text" id="recipient_name" name="recipient_name" 
@@ -809,7 +1063,10 @@ $final_total = $total_price + $delivery_fee;
                     <?php echo $delivery_method === 'dine_in' ? '' : 'required'; ?>><?php echo htmlspecialchars($recipient_address); ?></textarea>
             </div>
 
-            <h3>Payment Method</h3>
+            <h3>
+                <i class="fas fa-credit-card h3-icon"></i>
+                Payment Method
+            </h3>
             <label class="payment-option <?php echo $payment_method === 'credit_card' ? 'selected' : ''; ?>">
                 <input type="radio" name="payment_method" value="credit_card" 
                     <?php echo $payment_method === 'credit_card' ? 'checked' : ''; ?> hidden>
@@ -832,8 +1089,25 @@ $final_total = $total_price + $delivery_fee;
                 <span class="payment-icon">🏪</span>
                 <span>Pay at Counter</span>
             </label>
+            
+            <!-- Payment method information -->
+            <div id="cash-info" class="payment-info" style="display: none;">
+                <i class="fas fa-info-circle"></i> 
+                <div>You will pay in cash when your order is delivered. Stock will be reduced immediately.</div>
+            </div>
+            <div id="counter-info" class="payment-info" style="display: none;">
+                <i class="fas fa-info-circle"></i> 
+                <div>Please pay at the counter when you arrive. Stock will be reduced immediately.</div>
+            </div>
+            <div id="credit-info" class="payment-info" style="display: none;">
+                <i class="fas fa-info-circle"></i> 
+                <div>You will be redirected to our secure payment gateway. Stock will be reserved after successful payment.</div>
+            </div>
 
-            <h3>Order Summary</h3>
+            <h3>
+                <i class="fas fa-receipt h3-icon"></i>
+                Order Summary
+            </h3>
             <div class="summary-row">
                 <span>Subtotal:</span>
                 <span>RM <?php echo number_format($total_price, 2); ?></span>
@@ -846,8 +1120,20 @@ $final_total = $total_price + $delivery_fee;
                 <span>Total:</span>
                 <span>RM <?php echo number_format($final_total, 2); ?></span>
             </div>
+            
+            <div class="header-security">
+                <div class="security-info">
+                    <i class="fas fa-lock"></i>
+                    <span>Secure Payment</span>
+                </div>
+                <div class="security-info">
+                    <i class="fas fa-shield-alt"></i>
+                    <span>SSL Encryption</span>
+                </div>
+            </div>
 
             <button type="submit" name="submit_payment" class="btn" id="submitBtn">
+                <i class="fas fa-lock"></i>
                 <?php echo ($payment_method === 'credit_card') ? 'Proceed to Payment' : 'Complete Order'; ?>
             </button>
         </form>
@@ -861,6 +1147,27 @@ $final_total = $total_price + $delivery_fee;
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
     $(document).ready(function() {
+        // 显示初始支付方式信息
+        showPaymentInfo('<?php echo $payment_method; ?>');
+        
+        // 地址自动填充
+        $('#fill-address').click(function() {
+            var name = <?php echo json_encode($user_data['username'] ?? ''); ?>;
+            var phone = <?php echo json_encode($user_data['phone'] ?? ''); ?>;
+            var address = <?php echo json_encode($user_data['address'] ?? ''); ?>;
+            
+            // 检查用户信息是否完整
+            if (!name || !phone || !address) {
+                if (confirm('Your profile information is incomplete. Would you like to update your profile now?')) {
+                    window.location.href = 'profile.php';
+                }
+            } else {
+                $('#recipient_name').val(name);
+                $('#recipient_phone').val(phone);
+                $('#recipient_address').val(address);
+            }
+        });
+        
         // 更新配送方式和UI
         $('input[name="delivery_method"]').change(function() {
             $('.delivery-option').removeClass('selected');
@@ -883,10 +1190,22 @@ $final_total = $total_price + $delivery_fee;
                 // 配送时禁用"pay at counter"
                 $('.payment-option:has(input[value="counter"])').addClass('disabled')
                     .find('input').prop('disabled', true);
+                    
+                // 如果当前选中柜台支付，则自动选择第一个可用支付方式
+                if ($('input[name="payment_method"]:checked').val() === 'counter') {
+                    $('input[name="payment_method"][value="credit_card"]').prop('checked', true).trigger('change');
+                    $('.payment-option:has(input[value="credit_card"])').addClass('selected');
+                }
             } else {
                 // 堂食时禁用"cash on delivery"
                 $('.payment-option:has(input[value="cash"])').addClass('disabled')
                     .find('input').prop('disabled', true);
+                    
+                // 如果当前选中现金支付，则自动选择第一个可用支付方式
+                if ($('input[name="payment_method"]:checked').val() === 'cash') {
+                    $('input[name="payment_method"][value="credit_card"]').prop('checked', true).trigger('change');
+                    $('.payment-option:has(input[value="credit_card"])').addClass('selected');
+                }
             }
             
             // 更新总计显示
@@ -908,16 +1227,29 @@ $final_total = $total_price + $delivery_fee;
             $('.payment-option').removeClass('selected');
             $(this).closest('.payment-option').addClass('selected');
             updateSubmitButtonText();
+            showPaymentInfo($(this).val());
         });
+        
+        // 显示支付方式信息
+        function showPaymentInfo(method) {
+            $('.payment-info').hide();
+            if (method === 'cash') {
+                $('#cash-info').show();
+            } else if (method === 'counter') {
+                $('#counter-info').show();
+            } else {
+                $('#credit-info').show();
+            }
+        }
         
         // 根据选择更新提交按钮文本
         function updateSubmitButtonText() {
             const paymentMethod = $('input[name="payment_method"]:checked').val();
             
             if (paymentMethod === 'credit_card') {
-                $('#submitBtn').text('Proceed to Payment');
+                $('#submitBtn').html('<i class="fas fa-lock"></i> Proceed to Payment');
             } else {
-                $('#submitBtn').text('Complete Order');
+                $('#submitBtn').html('<i class="fas fa-check-circle"></i> Complete Order');
             }
         }
         
@@ -937,10 +1269,13 @@ $final_total = $total_price + $delivery_fee;
             // 显示适当的消息
             if (paymentMethod === 'credit_card') {
                 $('#messageTitle').text('Redirecting to Payment');
-                $('#messageText').text('You selected Credit/Debit Card payment. Redirecting to payment gateway...');
-            } else {
+                $('#messageText').text('You selected Credit/Debit Card payment. Redirecting to our secure payment gateway...');
+            } else if (paymentMethod === 'cash') {
                 $('#messageTitle').text('Processing Order');
-                $('#messageText').text('Your order is being processed...');
+                $('#messageText').text('Your order is being processed. You will pay with cash upon delivery. Stock is being updated.');
+            } else if (paymentMethod === 'counter') {
+                $('#messageTitle').text('Processing Order');
+                $('#messageText').text('Your order is being processed. Please pay at the counter when you arrive. Stock is being updated.');
             }
             
             overlay.addClass('active');

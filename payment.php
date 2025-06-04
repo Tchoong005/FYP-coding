@@ -6,6 +6,11 @@ $dotenv->load();
 
 \Stripe\Stripe::setApiKey($_ENV['STRIPE_SECRET_KEY']);
 
+// 生成CSRF令牌
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
 // 获取订单ID
 $order_id = isset($_GET['order_id']) ? (int)$_GET['order_id'] : 0;
 
@@ -39,7 +44,7 @@ if ($order['payment_status'] === 'canceled') {
 }
 
 // 获取订单项
-$items_sql = "SELECT oi.*, p.name, p.image_url 
+$items_sql = "SELECT oi.*, p.name, p.image_url, p.stock_quantity 
               FROM order_items oi 
               JOIN products p ON oi.product_id = p.id 
               WHERE order_id = $order_id";
@@ -97,6 +102,7 @@ if (isset($_SESSION['cart'])) {
       --success: #10b981;
       --error: #ef4444;
       --warning: #f59e0b;
+      --info: #3b82f6;
       --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
       --card-shadow: 0 2px 10px rgba(0,0,0,0.05);
     }
@@ -116,7 +122,7 @@ if (isset($_SESSION['cart'])) {
       color: var(--text);
     }
     
-    /* 顶部导航栏样式 - 与产品页面一致 */
+    /* 顶部导航栏样式 */
     .topbar {
       background-color: #222;
       color: white;
@@ -377,6 +383,24 @@ if (isset($_SESSION['cart'])) {
       margin-top: 5px;
     }
     
+    .item-stock {
+      font-size: 13px;
+      margin-top: 5px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      display: inline-block;
+    }
+    
+    .stock-ok {
+      background-color: rgba(16, 185, 129, 0.15);
+      color: var(--success);
+    }
+    
+    .stock-low {
+      background-color: rgba(245, 158, 11, 0.15);
+      color: var(--warning);
+    }
+    
     .total {
       display: flex;
       justify-content: space-between;
@@ -573,6 +597,44 @@ if (isset($_SESSION['cart'])) {
       border: 1px solid var(--success);
     }
     
+    /* 安全指示器 */
+    .security-indicator {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 15px;
+      margin: 20px 0;
+      padding: 15px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+    
+    .security-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+    }
+    
+    .security-icon {
+      width: 50px;
+      height: 50px;
+      background: #e6f7ff;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      color: var(--info);
+    }
+    
+    .security-text {
+      font-size: 12px;
+      text-align: center;
+      color: var(--text-light);
+    }
+    
     /* 取消提示框 */
     .cancel-notification {
       position: fixed;
@@ -582,8 +644,8 @@ if (isset($_SESSION['cart'])) {
       width: 400px;
       max-width: 90%;
       padding: 25px;
-      background: #f0f0f0; /* 灰色背景 */
-      border: 3px solid #10b981; /* 绿色边框 */
+      background: #f0f0f0;
+      border: 3px solid #10b981;
       border-radius: 10px;
       box-shadow: 0 5px 20px rgba(0,0,0,0.2);
       z-index: 1000;
@@ -592,7 +654,7 @@ if (isset($_SESSION['cart'])) {
     }
     
     .cancel-notification h3 {
-      color: #ef4444; /* 红色文字 */
+      color: #ef4444;
       margin-bottom: 15px;
       font-size: 22px;
     }
@@ -676,6 +738,63 @@ if (isset($_SESSION['cart'])) {
       100% { transform: rotate(360deg); }
     }
     
+    /* 支付成功动画 */
+    .success-animation {
+      display: flex;
+      justify-content: center;
+      margin: 20px 0;
+    }
+    
+    .checkmark {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      display: block;
+      stroke-width: 2;
+      stroke: #4bb71b;
+      stroke-miterlimit: 10;
+      box-shadow: inset 0px 0px 0px #4bb71b;
+      animation: fill .4s ease-in-out .4s forwards, scale .3s ease-in-out .9s both;
+    }
+    
+    .checkmark__circle {
+      stroke-dasharray: 166;
+      stroke-dashoffset: 166;
+      stroke-width: 2;
+      stroke-miterlimit: 10;
+      stroke: #4bb71b;
+      fill: none;
+      animation: stroke 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+    }
+    
+    .checkmark__check {
+      transform-origin: 50% 50%;
+      stroke-dasharray: 48;
+      stroke-dashoffset: 48;
+      animation: stroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.8s forwards;
+    }
+    
+    @keyframes stroke {
+      100% {
+        stroke-dashoffset: 0;
+      }
+    }
+    
+    @keyframes scale {
+      0%, 100% {
+        transform: none;
+      }
+      50% {
+        transform: scale3d(1.1, 1.1, 1);
+      }
+    }
+    
+    @keyframes fill {
+      100% {
+        box-shadow: inset 0px 0px 0px 50px #4bb71b;
+      }
+    }
+    
     @media (max-width: 768px) {
       .container {
         flex-direction: column;
@@ -695,6 +814,10 @@ if (isset($_SESSION['cart'])) {
       
       .nav-links {
         gap: 10px;
+      }
+      
+      .security-indicator {
+        flex-wrap: wrap;
       }
     }
   </style>
@@ -770,8 +893,33 @@ if (isset($_SESSION['cart'])) {
         </div>
       <?php endif; ?>
       
+      <!-- 安全指示器 -->
+      <div class="security-indicator">
+        <div class="security-item">
+          <div class="security-icon">
+            <i class="fas fa-lock"></i>
+          </div>
+          <div class="security-text">256-bit Encryption</div>
+        </div>
+        <div class="security-item">
+          <div class="security-icon">
+            <i class="fas fa-shield-alt"></i>
+          </div>
+          <div class="security-text">PCI DSS Compliant</div>
+        </div>
+        <div class="security-item">
+          <div class="security-icon">
+            <i class="fas fa-user-shield"></i>
+          </div>
+          <div class="security-text">Fraud Protection</div>
+        </div>
+      </div>
+      
       <?php if (!$payment_canceled): ?>
         <form id="payment-form">
+          <!-- CSRF 令牌 -->
+          <input type="hidden" id="csrf_token" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+          
           <div class="form-group">
             <label for="name">Cardholder Name</label>
             <input type="text" id="name" placeholder="John Doe" required>
@@ -797,7 +945,7 @@ if (isset($_SESSION['cart'])) {
           
           <div class="secure-note">
             <i class="fas fa-shield-alt"></i>
-            <span>Secured by Stripe</span>
+            <span>Secured by Stripe | No card data stored on our servers</span>
           </div>
         </form>
       <?php else: ?>
@@ -836,6 +984,13 @@ if (isset($_SESSION['cart'])) {
                 <?php endif; ?>
                 <?php if (!empty($item['comment'])): ?>
                   <br>Note: <?php echo htmlspecialchars($item['comment']); ?>
+                <?php endif; ?>
+              </div>
+              <div class="item-stock <?php echo $item['stock_quantity'] >= $item['quantity'] ? 'stock-ok' : 'stock-low'; ?>">
+                <i class="fas fa-box"></i> 
+                Stock: <?php echo $item['stock_quantity']; ?> 
+                <?php if ($item['stock_quantity'] < $item['quantity']): ?>
+                  (Insufficient)
                 <?php endif; ?>
               </div>
             </div>
@@ -888,7 +1043,7 @@ if (isset($_SESSION['cart'])) {
       
       <div class="security">
         <i class="fas fa-shield-alt"></i>
-        <span>Your payment details are securely encrypted</span>
+        <span>Your payment details are securely encrypted and processed by Stripe</span>
       </div>
     </div>
   </div>
@@ -900,10 +1055,13 @@ if (isset($_SESSION['cart'])) {
 
 <?php if (!$payment_canceled): ?>
 <script>
+  // 添加支付状态标志
+  let paymentCompleted = false;
+  
   const stripe = Stripe('<?php echo $_ENV['STRIPE_PUBLISHABLE_KEY']; ?>');
   const elements = stripe.elements();
   
-  // 创建不带邮政编码字段的卡元素
+  // 创建不带邮政编码字段的卡元素，并禁用Link功能
   const card = elements.create('card', {
     style: {
       base: {
@@ -912,9 +1070,11 @@ if (isset($_SESSION['cart'])) {
         '::placeholder': {
           color: '#9ca3af',
         },
+        iconColor: '#d6001c',
       },
     },
-    hidePostalCode: true
+    hidePostalCode: true,
+    disableLink: true  // 禁用Stripe Link功能
   });
   
   card.mount('#card-element');
@@ -934,8 +1094,18 @@ if (isset($_SESSION['cart'])) {
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
     
+    // 验证CSRF令牌
+    const csrfToken = document.getElementById('csrf_token').value;
+    if (!csrfToken) {
+      const displayError = document.getElementById('card-errors');
+      displayError.textContent = 'Security token missing. Please refresh the page.';
+      return;
+    }
+    
     // 显示处理覆盖层
     const overlay = document.getElementById('messageOverlay');
+    document.getElementById('messageTitle').textContent = 'Processing Payment';
+    document.getElementById('messageText').textContent = 'Please wait while we process your payment...';
     overlay.classList.add('active');
     
     // 禁用提交按钮防止多次提交
@@ -943,77 +1113,113 @@ if (isset($_SESSION['cart'])) {
     submitButton.disabled = true;
     submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing Payment';
     
-    const {paymentIntent, error} = await stripe.confirmCardPayment(
-      '<?php echo $paymentIntent->client_secret; ?>',
-      {
-        payment_method: {
-          card: card,
-          billing_details: {
-            name: document.getElementById('name').value
+    try {
+      const {paymentIntent, error} = await stripe.confirmCardPayment(
+        '<?php echo $paymentIntent->client_secret; ?>',
+        {
+          payment_method: {
+            card: card,
+            billing_details: {
+              name: document.getElementById('name').value
+            }
           }
         }
+      );
+      
+      if (error) {
+        // 向客户显示错误
+        overlay.classList.remove('active');
+        submitButton.disabled = false;
+        submitButton.innerHTML = '<i class="fas fa-lock"></i> Pay RM <?php echo number_format($order["final_total"], 2); ?>';
+        
+        const errorElement = document.getElementById('card-errors');
+        errorElement.textContent = error.message || 'An error occurred during payment processing.';
+      } else if (paymentIntent.status === 'succeeded') {
+        // 标记支付已完成
+        paymentCompleted = true;
+        
+        // 更新消息显示支付成功
+        document.getElementById('messageTitle').textContent = 'Payment Successful!';
+        document.getElementById('messageText').textContent = 'Your payment was processed successfully.';
+        
+        // 更新UI显示成功状态
+        setTimeout(() => {
+          // 重定向到成功页面
+          window.location.href = 'payment_success.php?order_id=<?php echo $order_id; ?>&payment_intent=' + paymentIntent.id;
+        }, 2000);
       }
-    );
-    
-    if (error) {
-      // 向客户显示错误
+    } catch (error) {
+      console.error('Payment processing error:', error);
       overlay.classList.remove('active');
       submitButton.disabled = false;
       submitButton.innerHTML = '<i class="fas fa-lock"></i> Pay RM <?php echo number_format($order["final_total"], 2); ?>';
       
       const errorElement = document.getElementById('card-errors');
-      errorElement.textContent = error.message;
-    } else if (paymentIntent.status === 'succeeded') {
-      // 支付成功，重定向到成功页面
-      window.location.href = 'payment_success.php?order_id=<?php echo $order_id; ?>&payment_intent=' + paymentIntent.id;
+      errorElement.textContent = 'An unexpected error occurred. Please try again.';
     }
   });
   
   // 处理取消支付按钮
   document.getElementById('cancel-payment-btn').addEventListener('click', function() {
-    // 显示加载状态
-    const overlay = document.getElementById('messageOverlay');
-    document.getElementById('messageTitle').textContent = 'Canceling Payment';
-    document.getElementById('messageText').textContent = 'Please wait while we cancel your payment...';
-    overlay.classList.add('active');
-    
-    // 发送AJAX请求取消支付
-    fetch('cancel_payment.php?order_id=<?php echo $order_id; ?>')
-      .then(response => response.json())
-      .then(data => {
-        if (data.success) {
-          // 隐藏加载状态
-          overlay.classList.remove('active');
-          
-          // 显示取消通知
-          document.getElementById('overlay').style.display = 'block';
-          document.getElementById('cancelNotification').style.display = 'block';
-          
-          // 开始倒计时
-          let count = 5;
-          const countdown = document.getElementById('countdown');
-          countdown.textContent = count;
-          
-          const timer = setInterval(() => {
-            count--;
+    if (confirm('Are you sure you want to cancel this payment?')) {
+      // 标记支付已完成
+      paymentCompleted = true;
+      
+      // 显示加载状态
+      const overlay = document.getElementById('messageOverlay');
+      document.getElementById('messageTitle').textContent = 'Canceling Payment';
+      document.getElementById('messageText').textContent = 'Please wait while we cancel your payment...';
+      overlay.classList.add('active');
+      
+      // 发送AJAX请求取消支付
+      fetch('cancel_payment.php?order_id=<?php echo $order_id; ?>')
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            // 隐藏加载状态
+            overlay.classList.remove('active');
+            
+            // 显示取消通知
+            document.getElementById('overlay').style.display = 'block';
+            document.getElementById('cancelNotification').style.display = 'block';
+            
+            // 开始倒计时
+            let count = 5;
+            const countdown = document.getElementById('countdown');
             countdown.textContent = count;
             
-            if (count <= 0) {
-              clearInterval(timer);
-              window.location.href = 'index_user.php';
-            }
-          }, 1000);
-        } else {
-          // 处理错误
+            const timer = setInterval(() => {
+              count--;
+              countdown.textContent = count;
+              
+              if (count <= 0) {
+                clearInterval(timer);
+                window.location.href = 'index_user.php';
+              }
+            }, 1000);
+          } else {
+            // 处理错误
+            overlay.classList.remove('active');
+            alert('Error canceling payment: ' + (data.message || 'Unknown error'));
+          }
+        })
+        .catch(error => {
           overlay.classList.remove('active');
-          alert('Error canceling payment: ' + data.message);
-        }
-      })
-      .catch(error => {
-        overlay.classList.remove('active');
-        console.error('Error:', error);
-        alert('An error occurred while canceling the payment.');
+          console.error('Error:', error);
+          alert('An error occurred while canceling the payment.');
+        });
+    }
+  });
+  
+  // 处理浏览器后退键
+  window.addEventListener('beforeunload', function(e) {
+    if (!paymentCompleted) {
+      // 用户离开页面时取消支付
+      fetch('cancel_payment.php?order_id=<?php echo $order_id; ?>', {
+        method: 'POST',
+        keepalive: true
       });
+    }
   });
 </script>
 <?php endif; ?>

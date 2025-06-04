@@ -26,6 +26,14 @@ if (!$order_result || mysqli_num_rows($order_result) === 0) {
     exit();
 }
 
+// 检查订单状态
+$order_data = mysqli_fetch_assoc($order_result);
+if ($order_data['payment_status'] !== 'pending') {
+    header('Content-Type: application/json');
+    echo json_encode(['success' => false, 'message' => 'Order cannot be canceled']);
+    exit();
+}
+
 // 更新订单状态为已取消
 $update_sql = "UPDATE orders SET payment_status = 'canceled', order_status = 'canceled' WHERE id = $order_id";
 if (mysqli_query($conn, $update_sql)) {
