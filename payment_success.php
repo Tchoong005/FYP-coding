@@ -1085,11 +1085,7 @@ function getOrderItems($order_id) {
             pdf.setTextColor(0, 0, 0);
             pdf.setFont('helvetica', 'normal');
             pdf.text('PAYMENT RECEIPT', centerX, 22, null, null, 'center');
-            
-            pdf.setFontSize(10);
-            pdf.setTextColor(100, 100, 100);
-            pdf.text('Kuala Lumpur, Malaysia', centerX, 27, null, null, 'center');
-            
+
             // Draw line
             pdf.setLineWidth(0.5);
             pdf.setDrawColor(0, 0, 0);
