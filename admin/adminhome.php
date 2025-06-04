@@ -29,7 +29,7 @@ $stmt = $pdo->query("SELECT COUNT(*) as count FROM products WHERE deleted_at IS 
 $productsData = $stmt->fetch();
 
 // Get active customers count
-$stmt = $pdo->query("SELECT COUNT(*) as count FROM customers WHERE is_banned = 0");
+$stmt = $pdo->query("SELECT COUNT(*) as count FROM customers");
 $customersData = $stmt->fetch();
 
 // Get recent orders

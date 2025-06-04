@@ -50,10 +50,9 @@ if ($result_all) {
     die("Query failed: " . mysqli_error($conn));
 }
 
-// Fetch successful orders (paid and completed/delivered)
+// 修改点1: 移除payment_status条件，只根据订单状态筛选
 $sql_success = "SELECT * FROM orders 
                WHERE user_id = $user_id 
-               AND payment_status = 'paid'
                AND order_status IN ('completed', 'delivered')
                ORDER BY created_at $sort_order";
 $result_success = mysqli_query($conn, $sql_success);
@@ -1292,7 +1291,7 @@ unset($order); // break the reference
                 
                 $status_class = ($order['order_status'] == 'completed') ? 'status-completed' : 'status-delivered';
                 $status_text = ($order['order_status'] == 'completed') ? 'Completed <i class="fas fa-check-circle"></i>' : 'Delivered <i class="fas fa-home"></i>';
-                $payment_class = 'status-paid';
+                $payment_class = 'status-' . str_replace(' ', '-', strtolower($order['payment_status']));
             ?>
             <div class="order-card" data-aos="fade-up">
                 <div class="order-header">
@@ -1375,9 +1374,9 @@ unset($order); // break the reference
                 </div>
                 
                 <div class="order-footer">
-                    <div class="payment-status status-paid">
+                    <div class="payment-status <?php echo $payment_class; ?>">
                         <i class="fas fa-credit-card"></i> Payment Status: 
-                        <span>Paid</span>
+                        <span><?php echo ucfirst($order['payment_status']); ?></span>
                     </div>
                 </div>
             </div>
