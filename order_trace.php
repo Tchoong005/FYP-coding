@@ -55,10 +55,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['csrf_token']) && hash
     }
 }
 
-// Fetch active orders for the current user (excluding cancelled and completed)
+// Fetch active orders for the current user (excluding cancelled, completed and delivered)
 $sql = "SELECT * FROM orders 
         WHERE user_id = $user_id 
-        AND order_status NOT IN ('cancelled', 'completed', 'canceled')  -- 排除已取消订单
+        AND order_status NOT IN ('cancelled', 'completed', 'delivered', 'canceled')  -- 排除已取消和已完成订单
         AND delivery_method = '$order_type'
         ORDER BY created_at DESC";
 $result = mysqli_query($conn, $sql);
@@ -673,24 +673,6 @@ if (!empty($_SESSION['cart'])) {
             background: #bbdefb;
         }
         
-        .action-received {
-            background: #e8f5e9;
-            color: var(--success);
-        }
-        
-        .action-received:hover {
-            background: #c8e6c9;
-        }
-        
-        .action-cancel {
-            background: #ffebee;
-            color: var(--danger);
-        }
-        
-        .action-cancel:hover {
-            background: #ffcdd2;
-        }
-        
         .footer {
             background-color: #eee;
             text-align: center;
@@ -943,6 +925,20 @@ if (!empty($_SESSION['cart'])) {
             padding-top: 10px;
             border-top: 2px dashed var(--border);
         }
+        
+        .status-info {
+            background: #e3f2fd;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+            border-left: 4px solid #2196f3;
+            font-size: 0.95rem;
+        }
+        
+        .status-info i {
+            color: #2196f3;
+            margin-right: 10px;
+        }
     </style>
 </head>
 <body>
@@ -994,6 +990,12 @@ if (!empty($_SESSION['cart'])) {
         <button class="toggle-btn <?php echo $order_type == 'dine_in' ? 'active' : ''; ?>" data-type="dine_in">
             <i class="fas fa-store"></i> Dine-In Orders
         </button>
+    </div>
+    
+    <!-- Status Information -->
+    <div class="status-info">
+        <i class="fas fa-info-circle"></i>
+        Completed and delivered orders are now displayed in your <a href="order_history.php">Order History</a>.
     </div>
     
     <?php if (empty($orders)): ?>
@@ -1155,18 +1157,6 @@ if (!empty($_SESSION['cart'])) {
                         <button class="action-btn action-view" data-order-id="<?php echo $order['id']; ?>">
                             <i class="fas fa-list"></i> View Order Items
                         </button>
-                        
-                        <?php if (($order['order_status'] == 'delivered' && $order['delivery_method'] == 'delivery') || 
-                                  ($order['order_status'] == 'ready' && $order['delivery_method'] == 'dine_in')): ?>
-                            <form method="post" style="display:inline;">
-                                <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
-                                <input type="hidden" name="order_id" value="<?php echo $order['id']; ?>">
-                                <input type="hidden" name="new_status" value="completed">
-                                <button type="submit" name="update_status" class="action-btn action-received">
-                                    <i class="fas fa-check-circle"></i> Received Food
-                                </button>
-                            </form>
-                        <?php endif; ?>
                     </div>
                 </div>
                 

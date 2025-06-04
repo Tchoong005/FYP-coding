@@ -206,6 +206,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_status'])) {
             background-color: #f5f5f5;
         }
 
+        /* Status Styles */
         .status-pending {
             color: #ff9800;
             font-weight: 600;
@@ -216,7 +217,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_status'])) {
             font-weight: 600;
         }
 
-        .status-delivery {
+        .status-on_delivery {
+            color: #4caf50;
+            font-weight: 600;
+        }
+
+        .status-delivered {
+            color: #9e9e9e;
+            font-weight: 600;
+        }
+
+        .status-ready {
             color: #4caf50;
             font-weight: 600;
         }
@@ -251,18 +262,41 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_status'])) {
         .status-form {
             display: flex;
             gap: 10px;
+            align-items: center;
         }
 
         .status-select {
             padding: 6px;
             border-radius: 4px;
             border: 1px solid #ddd;
+            min-width: 120px;
+        }
+
+        .disabled-select {
+            background-color: #f5f5f5;
+            cursor: not-allowed;
         }
 
         .h2 {
             margin-bottom: 20px;
             color: #333;
         }
+        
+        .status-indicator {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .delivery-method {
+            text-transform: capitalize;
+        }
+        .status-canceled {
+    color: #f44336;
+    font-weight: 600;
+}
     </style>
 </head>
 
@@ -370,31 +404,61 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_status'])) {
                     
                     if ($result->num_rows > 0) {
                         while($row = $result->fetch_assoc()) {
-                            $status_class = 'status-' . strtolower(str_replace(' ', '-', $row['order_status']));
+                            // Format status text for display
+                            $status_display = ucwords(str_replace('_', ' ', $row['order_status']));
+                            $status_class = 'status-' . $row['order_status'];
+                            
+                            // Check if order is completed/delivered
+                            $is_final = ($row['order_status'] == 'completed' || $row['order_status'] == 'delivered'|| $row['order_status'] == 'canceled');
+                            
                             echo "<tr>";
                             echo "<td>#" . $row['id'] . "</td>";
                             echo "<td>" . htmlspecialchars($row['recipient_name']) . "</td>";
                             echo "<td>" . htmlspecialchars($row['recipient_phone']) . "</td>";
-                            echo "<td>" . ucfirst(str_replace('_', ' ', $row['delivery_method'])) . "</td>";
+                            echo "<td class='delivery-method'>" . ucwords(str_replace('_', ' ', $row['delivery_method'])) . "</td>";
                             echo "<td>RM" . number_format($row['final_total'], 2) . "</td>";
-                            echo "<td><span class='$status_class'>" . ucfirst($row['order_status']) . "</span></td>";
-                            echo "<td>" . ucfirst(str_replace('_', ' ', $row['payment_status'])) . "</td>";
+                            echo "<td><span class='$status_class status-indicator'>" . $status_display . "</span></td>";
+                            echo "<td>" . ucwords(str_replace('_', ' ', $row['payment_status'])) . "</td>";
                             echo "<td>" . date('d M Y H:i', strtotime($row['created_at'])) . "</td>";
                             echo "<td class='action-btns'>";
                             echo "<div class='status-form'>";
-                            echo "<form method='post' action='adminorder.php'>";
-                            echo "<input type='hidden' name='order_id' value='" . $row['id'] . "'>";
-                            echo "<select name='status' class='status-select' onchange='this.form.submit()'>";
-                            echo "<option value='pending'" . ($row['order_status'] == 'pending' ? ' selected' : '') . ">Pending</option>";
-                            echo "<option value='preparing'" . ($row['order_status'] == 'preparing' ? ' selected' : '') . ">Preparing</option>";
-                            echo "<option value='deliverd'" . ($row['order_status'] == 'deliverd' ? ' selected' : '') . ">Deliverd</option>";
-                            echo "<option value='on_delivery'" . ($row['order_status'] == 'on_delivery' ? ' selected' : '') . ">On the way</option>";
-                            echo "<option value='ready'" . ($row['order_status'] == 'ready' ? ' selected' : '') . ">Ready</option>";
-                            echo "<option value='completed'" . ($row['order_status'] == 'completed' ? ' selected' : '') . ">Completed</option>";
-
-                            echo "</select>";
-                            echo "<input type='hidden' name='update_status' value='1'>";
-                            echo "</form>";
+                            
+                            if (!$is_final) {
+                                echo "<form method='post' action='adminorder.php'>";
+                                echo "<input type='hidden' name='order_id' value='" . $row['id'] . "'>";
+                                echo "<input type='hidden' name='update_status' value='1'>";
+                                echo "<select name='status' class='status-select' onchange='this.form.submit()'>";
+                                
+                                // Different options based on delivery method
+                                if ($row['delivery_method'] == 'delivery') {
+                                    $options = [
+                                        'pending' => 'Pending',
+                                        'preparing' => 'Preparing',
+                                        'on_delivery' => 'On the Way',
+                                        'delivered' => 'Delivered'
+                                    ];
+                                } else {
+                                    $options = [
+                                        'pending' => 'Pending',
+                                        'preparing' => 'Preparing',
+                                        'ready' => 'Ready',
+                                        'completed' => 'Completed'
+                                    ];
+                                }
+                                
+                                foreach ($options as $value => $label) {
+                                    $selected = $row['order_status'] == $value ? 'selected' : '';
+                                    echo "<option value='$value' $selected>$label</option>";
+                                }
+                                
+                                echo "</select>";
+                                echo "</form>";
+                            } else {
+                                echo "<select class='status-select disabled-select' disabled>";
+                                echo "<option>" . $status_display . "</option>";
+                                echo "</select>";
+                            }
+                            
                             echo "<a href='order_details.php?order_id=" . $row['id'] . "' class='action-btn view-btn'>View</a>";
                             echo "</div>";
                             echo "</td>";
