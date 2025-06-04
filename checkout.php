@@ -54,6 +54,7 @@ if (empty($user_data['username']) || empty($user_data['phone']) || empty($user_d
 // 计算总价和获取产品信息
 $total_price = 0;
 $product_info = [];
+$has_stock_issues = false;
 foreach ($cart as $item) {
     $pid = (int)$item['product_id'];
     if (!isset($product_info[$pid])) {
@@ -72,6 +73,11 @@ foreach ($cart as $item) {
         $stmt->close();
     }
     $total_price += $product_info[$pid]['price'] * $item['quantity'];
+    
+    // 检查库存问题
+    if ($product_info[$pid]['stock_quantity'] < $item['quantity']) {
+        $has_stock_issues = true;
+    }
 }
 
 // 处理表单提交
@@ -105,9 +111,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 : ($_SESSION['payment_method'] ?? 'credit_card');
             
             // 获取收件人信息
-            $recipient_name = $_SESSION['checkout_info']['recipient_name'] ?? $user_data['username'];
-            $recipient_phone = $_SESSION['checkout_info']['recipient_phone'] ?? $user_data['phone'];
-            $recipient_address = $_SESSION['checkout_info']['recipient_address'] ?? $user_data['address'];
+            $recipient_name = $_SESSION['checkout_info']['recipient_name'] ?? $user_data['username'] ?? '';
+            $recipient_phone = $_SESSION['checkout_info']['recipient_phone'] ?? $user_data['phone'] ?? '';
+            $recipient_address = $_SESSION['checkout_info']['recipient_address'] ?? $user_data['address'] ?? '';
             $delivery_method = $_SESSION['delivery_method'] ?? 'delivery';
 
             // 验证收件人信息是否完整
@@ -257,15 +263,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // 提交事务
                     mysqli_commit($conn);
                     
-                    // 仅清除购物车，保留其他信息以防支付失败
-                    unset($_SESSION['cart']);
-                    
                     // 根据支付方式重定向
                     if ($payment_method === 'credit_card') {
+                        // 保留购物车直到支付成功
+                        $_SESSION['current_order_id'] = $order_id;
                         header("Location: payment.php?order_id=".$order_id);
                         exit;
                     } else {
-                        // 非信用卡支付直接重定向到成功页面
+                        // 非信用卡支付清除购物车并重定向到成功页面
+                        unset($_SESSION['cart']);
                         header("Location: index_user.php?order_success=".$order_id);
                         exit;
                     }
@@ -274,16 +280,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     mysqli_rollback($conn);
                     $error = "Order processing failed: " . $e->getMessage();
                     error_log("Order Error: " . $e->getMessage() . "\nSQL Error: " . ($conn->error ?? ''));
-                    
-                    // 关键修改：支付失败时不取消订单，保留在系统中
-                    if (isset($order_id)) {
-                        // 将失败订单标记为取消状态
-                        $update_sql = "UPDATE orders SET order_status = 'cancelled' WHERE id = ?";
-                        $update_stmt = $conn->prepare($update_sql);
-                        $update_stmt->bind_param("i", $order_id);
-                        $update_stmt->execute();
-                        $update_stmt->close();
-                    }
                 }
             }
         }
@@ -741,6 +737,17 @@ $final_total = $total_price + $delivery_fee;
             gap: 10px;
         }
         
+        .success {
+            color: #4caf50;
+            background: #f0fff0;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
         .footer {
             background-color: #eee;
             text-align: center;
@@ -956,6 +963,13 @@ $final_total = $total_price + $delivery_fee;
 <main>
     <div class="left-column">
         <h2>Your Order</h2>
+        
+        <?php if ($has_stock_issues): ?>
+            <div class="error">
+                <i class="fas fa-exclamation-triangle"></i>
+                <div>Some items in your cart have insufficient stock. Please review your order.</div>
+            </div>
+        <?php endif; ?>
         
         <?php if ($payment_method === 'credit_card'): ?>
             <div class="stock-info">
@@ -1284,6 +1298,11 @@ $final_total = $total_price + $delivery_fee;
             if (!$('input[name="payment_method"]').is(':checked')) {
                 $(this).append('<input type="hidden" name="payment_method" value="' + 
                     ($('input[name="payment_method"]').first().val()) + '">');
+            }
+            
+            // 如果是信用卡支付，临时清除购物车显示
+            if (paymentMethod === 'credit_card') {
+                $('.cart-icon').attr('data-count', '0');
             }
             
             // 提交表单
