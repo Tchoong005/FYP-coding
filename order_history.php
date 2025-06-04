@@ -115,6 +115,9 @@ unset($order); // break the reference
     <title>Order History - FastFood Express</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         /* ... (保留所有原有样式) ... */
         :root {
@@ -953,6 +956,51 @@ unset($order); // break the reference
         .status-pending {
             display: none;
         }
+        
+        /* PDF 生成按钮 */
+        .pdf-btn {
+            background-color: #d6001c;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-weight: 500;
+            transition: background-color 0.3s;
+        }
+        
+        .pdf-btn:hover {
+            background-color: #b80018;
+        }
+        
+        /* 通知样式 */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            border-radius: 8px;
+            background: #4caf50;
+            color: white;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            transform: translateX(200%);
+            transition: transform 0.4s ease;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .notification.show {
+            transform: translateX(0);
+        }
+        
+        .notification.error {
+            background: var(--danger);
+        }
     </style>
 </head>
 <body>
@@ -985,6 +1033,12 @@ unset($order); // break the reference
 <div class="header-section" data-aos="fade-down">
     <h2><i class="fas fa-history"></i> Your Order History</h2>
     <p>Review all your orders with FastFood Express</p>
+</div>
+
+<!-- 通知 -->
+<div id="notification" class="notification">
+    <i class="fas fa-check-circle"></i>
+    <span>PDF receipt generated successfully!</span>
 </div>
 
 <div class="container">
@@ -1169,6 +1223,11 @@ unset($order); // break the reference
                         <i class="fas fa-credit-card"></i> Payment Status: 
                         <span><?php echo ucfirst($order['payment_status']); ?></span>
                     </div>
+                    <?php if ($order['payment_status'] == 'paid'): ?>
+                    <button class="pdf-btn" onclick="generatePDF(this, <?php echo $order['id']; ?>, <?php echo htmlspecialchars(json_encode($order['items'])); ?>, <?php echo $order['total_price']; ?>, <?php echo $order['delivery_fee']; ?>, <?php echo $order['final_total']; ?>, '<?php echo date('M j, Y H:i', strtotime($order['created_at'])); ?> (MYT)')">
+                        <i class="fas fa-file-pdf"></i> Generate PDF
+                    </button>
+                    <?php endif; ?>
                 </div>
             </div>
             <?php endforeach; ?>
@@ -1298,6 +1357,9 @@ unset($order); // break the reference
                         <i class="fas fa-credit-card"></i> Payment Status: 
                         <span>Paid</span>
                     </div>
+                    <button class="pdf-btn" onclick="generatePDF(this, <?php echo $order['id']; ?>, <?php echo htmlspecialchars(json_encode($order['items'])); ?>, <?php echo $order['total_price']; ?>, <?php echo $order['delivery_fee']; ?>, <?php echo $order['final_total']; ?>, '<?php echo date('M j, Y H:i', strtotime($order['created_at'])); ?> (MYT)')">
+                        <i class="fas fa-file-pdf"></i> Generate PDF
+                    </button>
                 </div>
             </div>
             <?php endforeach; ?>
@@ -1441,6 +1503,115 @@ unset($order); // break the reference
         
         // Activate selected button
         document.querySelector(`.tab-btn[onclick="showTab('${tabId}')"]`).classList.add('active');
+    }
+    
+    // PDF generation function
+    function generatePDF(button, orderId, items, subtotal, deliveryFee, total, orderDate) {
+        // Show loading state
+        const originalText = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+        button.disabled = true;
+        
+        setTimeout(() => {
+            const { jsPDF } = window.jspdf;
+            
+            // Create a PDF
+            const pdf = new jsPDF('p', 'mm', 'a5');
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            const centerX = pageWidth / 2;
+            
+            // Add content to PDF
+            pdf.setFontSize(22);
+            pdf.setFont('helvetica', 'bold');
+            pdf.setTextColor(0, 0, 0);
+            pdf.text('FASTFOOD EXPRESS', centerX, 15, null, null, 'center');
+            
+            pdf.setFontSize(14);
+            pdf.setTextColor(0, 0, 0);
+            pdf.setFont('helvetica', 'normal');
+            pdf.text('PAYMENT RECEIPT', centerX, 22, null, null, 'center');
+
+            // Draw line
+            pdf.setLineWidth(0.5);
+            pdf.setDrawColor(0, 0, 0);
+            pdf.line(20, 32, pageWidth - 20, 32);
+            
+            // Add details
+            pdf.setFontSize(10);
+            pdf.setTextColor(0, 0, 0);
+            pdf.text(`Order ID: #${orderId}`, 20, 40);
+            pdf.text(`Date & Time: ${orderDate}`, 20, 45);
+            pdf.text('Payment Status: Completed', 20, 50);
+            
+            // Order items table
+            const itemRows = [];
+            
+            // Add items
+            items.forEach(item => {
+                itemRows.push([
+                    `${item.name} x ${item.quantity}`,
+                    `RM ${(item.price * item.quantity).toFixed(2)}`
+                ]);
+            });
+            
+            // Add delivery fee
+            itemRows.push(['Delivery Fee', `RM ${parseFloat(deliveryFee).toFixed(2)}`]);
+            
+            // Add items header
+            pdf.setFont('helvetica', 'bold');
+            pdf.text('Item', 20, 65);
+            pdf.text('Amount', pageWidth - 20, 65, null, null, 'right');
+            
+            // Add items
+            let yPos = 70;
+            pdf.setFont('helvetica', 'normal');
+            itemRows.forEach(row => {
+                pdf.text(row[0], 20, yPos);
+                pdf.text(row[1], pageWidth - 20, yPos, null, null, 'right');
+                yPos += 5;
+            });
+            
+            // Subtotal
+            pdf.setFont('helvetica', 'bold');
+            pdf.text('Subtotal:', 20, yPos + 5);
+            pdf.text(`RM ${parseFloat(subtotal).toFixed(2)}`, pageWidth - 20, yPos + 5, null, null, 'right');
+            
+            // Total amount
+            pdf.setLineWidth(0.2);
+            pdf.line(20, yPos + 10, pageWidth - 20, yPos + 10);
+            pdf.setFontSize(12);
+            pdf.text('Total Amount:', 20, yPos + 15);
+            pdf.setTextColor(211, 47, 47); // Red color for total
+            pdf.text(`RM ${parseFloat(total).toFixed(2)}`, pageWidth - 20, yPos + 15, null, null, 'right');
+            
+            // Footer
+            const pageHeight = pdf.internal.pageSize.getHeight();
+            const footerY = pageHeight - 20;
+            
+            pdf.setFontSize(10);
+            pdf.setTextColor(0, 0, 0);
+            pdf.text('Thank you for choosing FastFood Express!', centerX, footerY, null, null, 'center');
+            pdf.setFont('helvetica', 'bold');
+            pdf.setTextColor(211, 47, 47); // Red color
+            pdf.text('We appreciate your business', centerX, footerY + 5, null, null, 'center');
+            pdf.setFont('helvetica', 'normal');
+            pdf.setTextColor(100, 100, 100);
+            pdf.text(`FastFood Express © ${new Date().getFullYear()}`, centerX, footerY + 10, null, null, 'center');
+            
+            // Save the PDF
+            pdf.save(`receipt_${orderId}.pdf`);
+            
+            // Show notification
+            const notification = document.getElementById('notification');
+            notification.classList.add('show');
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+            
+            // Restore button state
+            button.innerHTML = originalText;
+            button.disabled = false;
+        }, 1000);
     }
 </script>
 </body>
