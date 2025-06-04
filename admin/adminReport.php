@@ -78,7 +78,7 @@ $customerCount = $stmt->fetch();
 
 // Handle PDF generation
 if (isset($_GET['download_pdf'])) {
-    require_once('C:/xampp/htdocs/dashboard/fastfood/TCPDF-main/TCPDF-main/tcpdf.php');
+    require_once('C:/xampp/htdocs/dashboard/fastfood/FYP-coding/TCPDF-main/tcpdf.php');
     
     // Create new PDF document
     $pdf = new TCPDF(PDF_PAGE_ORIENTATION, PDF_UNIT, PDF_PAGE_FORMAT, true, 'UTF-8', false);
