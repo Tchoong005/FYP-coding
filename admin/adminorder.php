@@ -387,8 +387,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_status'])) {
                             echo "<select name='status' class='status-select' onchange='this.form.submit()'>";
                             echo "<option value='pending'" . ($row['order_status'] == 'pending' ? ' selected' : '') . ">Pending</option>";
                             echo "<option value='preparing'" . ($row['order_status'] == 'preparing' ? ' selected' : '') . ">Preparing</option>";
-                            echo "<option value='delivery'" . ($row['order_status'] == 'delivery' ? ' selected' : '') . ">Delivery</option>";
+                            echo "<option value='deliverd'" . ($row['order_status'] == 'deliverd' ? ' selected' : '') . ">Deliverd</option>";
+                            echo "<option value='on_delivery'" . ($row['order_status'] == 'on_delivery' ? ' selected' : '') . ">On the way</option>";
+                            echo "<option value='ready'" . ($row['order_status'] == 'ready' ? ' selected' : '') . ">Ready</option>";
                             echo "<option value='completed'" . ($row['order_status'] == 'completed' ? ' selected' : '') . ">Completed</option>";
+
                             echo "</select>";
                             echo "<input type='hidden' name='update_status' value='1'>";
                             echo "</form>";
