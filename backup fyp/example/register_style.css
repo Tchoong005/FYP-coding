@@ -1,0 +1,91 @@
+/* register_style.css */
+
+body {
+  background-color: #fff;
+  margin: 0;
+  padding: 0;
+  font-family: Arial, sans-serif;
+}
+
+.register-container {
+  max-width: 500px;
+  margin: 2rem auto;
+  text-align: center;
+  padding: 0 1rem;
+}
+
+.register-container h2 {
+  font-size: 1.8rem;
+  color: #e4002b;
+  margin-bottom: 0.5rem;
+}
+.register-container p.subtitle {
+  color: #777;
+  font-size: 0.95rem;
+  margin-bottom: 2rem;
+}
+
+.form-group {
+  margin-bottom: 1rem;
+  text-align: left;
+}
+.form-group label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 5px;
+  font-size: 0.9rem;
+  color: #333;
+}
+.form-group input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  font-size: 1rem;
+  border-radius: 4px;
+}
+.small-note {
+  font-size: 0.8rem;
+  color: #999;
+  margin-top: 2px;
+}
+
+.checkbox-group {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  font-size: 0.9rem;
+  text-align: left;
+}
+.checkbox-group input {
+  margin-right: 0.5rem;
+}
+
+.recaptcha-box {
+  margin: 1rem 0;
+  color: #777;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.register-btn {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  background-color: #e4002b;
+  color: #fff;
+  font-size: 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background-color 0.3s;
+}
+.register-btn:hover {
+  background-color: #b70021;
+}
+
+/* Error message */
+.error-msg {
+  color: red;
+  margin-bottom: 1rem;
+  text-align: center;
+}

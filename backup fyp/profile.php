@@ -12,7 +12,7 @@ $sql = "SELECT * FROM customers WHERE id='$user_id'";
 $result = mysqli_query($conn, $sql);
 $user = mysqli_fetch_assoc($result);
 
-$show_notice = empty($user['address']) || empty($user['postcode']) || empty($user['city']) || empty($user['state']);
+$show_notice = empty($user['address']) || empty($user['birthday']) || empty($user['postcode']) || empty($user['city']) || empty($user['state']);
 $success = $error = $pass_message = "";
 
 // 更新个人信息
@@ -23,6 +23,7 @@ if (isset($_POST['update_profile'])) {
     $postcode = mysqli_real_escape_string($conn, $_POST['postcode']);
     $city = mysqli_real_escape_string($conn, $_POST['city']);
     $state = mysqli_real_escape_string($conn, $_POST['state']);
+    $birthday = mysqli_real_escape_string($conn, $_POST['birthday']);
 
     if (!preg_match("/^01\d{8,9}$/", $phone)) {
         $error = "Phone number must start with 01 and be 10–11 digits.";
@@ -31,7 +32,7 @@ if (isset($_POST['update_profile'])) {
     }
 
     if (empty($error)) {
-        $update_sql = "UPDATE customers SET username='$username', phone='$phone', address='$address', postcode='$postcode', city='$city', state='$state' WHERE id='$user_id'";
+        $update_sql = "UPDATE customers SET username='$username', phone='$phone', address='$address', postcode='$postcode', city='$city', state='$state', birthday='$birthday' WHERE id='$user_id'";
         if (mysqli_query($conn, $update_sql)) {
             $success = "Profile updated!";
             $show_notice = false;
@@ -192,6 +193,8 @@ function togglePassword(id, element) {
             <input type="text" name="city" value="<?php echo $user['city']; ?>">
             <label>State</label>
             <input type="text" name="state" value="<?php echo $user['state']; ?>">
+            <label>Birthday</label>
+            <input type="date" name="birthday" value="<?php echo $user['birthday']; ?>">
             <button type="submit" name="update_profile">Update Profile</button>
         </form>
     </div>

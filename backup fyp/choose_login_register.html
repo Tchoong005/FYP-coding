@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FastFood Express - Sign In or Register</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+  <style>
+    :root {
+      --primary: #000000;
+      --primary-light: #333333;
+      --secondary: #ffffff;
+      --accent: #d6001c;
+      --text: #222222;
+      --text-light: #666666;
+      --border: #e5e7eb;
+      --shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    
+    body {
+      background-color: #f5f5f5;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      color: var(--text);
+      background: linear-gradient(135deg, #f0f0f0 0%, #e0e0e0 100%);
+    }
+    
+    /* Top navigation bar styles */
+    .topbar {
+      background-color: #111;
+      color: white;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px 30px;
+      flex-wrap: wrap;
+      box-shadow: 0 2px 15px rgba(0,0,0,0.3);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    
+    .topbar .logo {
+      font-size: 24px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .topbar .logo span {
+      color: var(--accent);
+    }
+    
+    .topbar .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+    
+    .topbar a {
+      color: white;
+      text-decoration: none;
+      font-weight: 600;
+      padding: 0 10px;
+      line-height: 1.5;
+      transition: all 0.3s;
+      position: relative;
+    }
+    
+    .topbar a:hover {
+      color: var(--accent);
+    }
+    
+    .cart-icon {
+      position: relative;
+      cursor: pointer;
+      font-size: 20px;
+      padding: 0 10px;
+      line-height: 1.5;
+      user-select: none;
+    }
+    
+    .cart-icon::after {
+      content: attr(data-count);
+      position: absolute;
+      top: -6px;
+      right: -10px;
+      background: var(--accent);
+      color: white;
+      border-radius: 12px;
+      padding: 2px 8px;
+      font-size: 12px;
+      font-weight: bold;
+      min-width: 20px;
+      text-align: center;
+      box-sizing: border-box;
+      display: inline-block;
+    }
+    
+    .active-link {
+      position: relative;
+    }
+    
+    .active-link::after {
+      content: '';
+      position: absolute;
+      bottom: -5px;
+      left: 10px;
+      right: 10px;
+      height: 3px;
+      background: var(--accent);
+      border-radius: 2px;
+    }
+    
+    /* Main content styles */
+    .auth-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-grow: 1;
+      padding: 50px 20px;
+    }
+    
+    .auth-wrapper {
+      display: flex;
+      max-width: 1200px;
+      width: 100%;
+      background: white;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      height: 600px;
+    }
+    
+    .auth-banner {
+      flex: 1;
+      background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+      color: white;
+      padding: 60px 50px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .auth-banner::before {
+      content: "";
+      position: absolute;
+      top: -50px;
+      right: -50px;
+      width: 200px;
+      height: 200px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.05);
+    }
+    
+    .auth-banner::after {
+      content: "";
+      position: absolute;
+      bottom: -80px;
+      left: -30px;
+      width: 250px;
+      height: 250px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.05);
+    }
+    
+    .brand-logo {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 40px;
+    }
+    
+    .brand-logo i {
+      font-size: 36px;
+      color: var(--accent);
+    }
+    
+    .brand-logo h1 {
+      font-size: 32px;
+      font-weight: 800;
+    }
+    
+    .brand-logo span {
+      color: var(--accent);
+    }
+    
+    .auth-banner h2 {
+      font-size: 2.8rem;
+      margin-bottom: 25px;
+      position: relative;
+      z-index: 2;
+      line-height: 1.2;
+    }
+    
+    .auth-banner p {
+      font-size: 1.2rem;
+      margin-bottom: 40px;
+      line-height: 1.7;
+      position: relative;
+      z-index: 2;
+      color: #ccc;
+      max-width: 90%;
+    }
+    
+    .benefits-list {
+      list-style: none;
+      position: relative;
+      z-index: 2;
+    }
+    
+    .benefits-list li {
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      font-size: 1.1rem;
+    }
+    
+    .benefits-list i {
+      background: rgba(214, 0, 28, 0.2);
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent);
+    }
+    
+    .auth-options {
+      flex: 1;
+      padding: 60px 50px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      background: white;
+    }
+    
+    .auth-options h2 {
+      color: var(--primary);
+      font-size: 2.2rem;
+      margin-bottom: 15px;
+      text-align: center;
+      font-weight: 700;
+    }
+    
+    .auth-options p {
+      color: var(--text-light);
+      text-align: center;
+      margin-bottom: 50px;
+      font-size: 1.1rem;
+    }
+    
+    .option-cards {
+      display: flex;
+      gap: 30px;
+      justify-content: center;
+    }
+    
+    .option-card {
+      background: white;
+      border-radius: 15px;
+      padding: 40px 30px;
+      text-align: center;
+      width: 100%;
+      max-width: 300px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+      transition: all 0.4s ease;
+      border: 2px solid #f0f0f0;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .option-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 5px;
+      background: var(--accent);
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform 0.4s ease;
+    }
+    
+    .option-card:hover {
+      transform: translateY(-10px);
+      box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+      border-color: #ddd;
+    }
+    
+    .option-card:hover::before {
+      transform: scaleX(1);
+    }
+    
+    .option-icon {
+      width: 80px;
+      height: 80px;
+      background: rgba(214, 0, 28, 0.1);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 25px;
+      font-size: 30px;
+      color: var(--accent);
+      transition: all 0.3s;
+    }
+    
+    .option-card:hover .option-icon {
+      background: var(--accent);
+      color: white;
+      transform: rotate(10deg) scale(1.05);
+    }
+    
+    .option-card h3 {
+      color: var(--text);
+      margin-bottom: 20px;
+      font-size: 1.6rem;
+      font-weight: 700;
+    }
+    
+    .option-card p {
+      color: var(--text-light);
+      margin-bottom: 30px;
+      font-size: 1rem;
+      line-height: 1.6;
+    }
+    
+    .auth-btn {
+      background: var(--primary);
+      color: white;
+      padding: 14px 30px;
+      border: none;
+      border-radius: 50px;
+      font-weight: bold;
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-size: 1.1rem;
+      display: inline-block;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      position: relative;
+      overflow: hidden;
+      z-index: 1;
+    }
+    
+    .auth-btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 0;
+      height: 100%;
+      background: var(--accent);
+      transition: width 0.4s ease;
+      z-index: -1;
+    }
+    
+    .auth-btn:hover::before {
+      width: 100%;
+    }
+    
+    .auth-btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+    }
+    
+    .guest-option {
+      margin-top: 40px;
+      text-align: center;
+    }
+    
+    .guest-link {
+      color: var(--text);
+      text-decoration: none;
+      font-weight: 600;
+      transition: all 0.3s;
+      position: relative;
+      display: inline-block;
+    }
+    
+    .guest-link::after {
+      content: '';
+      position: absolute;
+      bottom: -2px;
+      left: 0;
+      width: 100%;
+      height: 2px;
+      background: var(--accent);
+      transform: scaleX(0);
+      transition: transform 0.3s ease;
+    }
+    
+    .guest-link:hover {
+      color: var(--accent);
+    }
+    
+    .guest-link:hover::after {
+      transform: scaleX(1);
+    }
+    
+    /* Footer styles */
+    .footer {
+            background-color: #eee;
+            text-align: center;
+            padding: 20px;
+            font-size: 14px;
+            margin-top: 40px;
+        }
+    
+    .dropdown {
+      position: relative;
+      display: inline-block;
+    }
+    
+    .dropbtn {
+      background-color: transparent;
+      color: white;
+      font-weight: bold;
+      padding: 0 10px;
+      line-height: 1.5;
+      font-size: inherit;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: color 0.3s;
+    }
+    
+    .dropbtn:hover {
+      color: var(--accent);
+    }
+    
+    .dropdown-content {
+      display: none;
+      position: absolute;
+      background-color: #333;
+      min-width: 180px;
+      box-shadow: 0px 8px 16px rgba(0,0,0,0.2);
+      z-index: 1;
+      border-radius: 4px;
+      overflow: hidden;
+      top: 100%;
+      left: 0;
+    }
+    
+    .dropdown-content a {
+      color: white;
+      padding: 12px 16px;
+      text-decoration: none;
+      display: block;
+      font-size: 14px;
+      border-bottom: 1px solid #444;
+      transition: background-color 0.3s;
+    }
+    
+    .dropdown-content a:hover {
+      background-color: var(--accent);
+    }
+    
+    .dropdown:hover .dropdown-content {
+      display: block;
+    }
+    
+    .dropdown-icon {
+      font-size: 14px;
+      transition: transform 0.3s;
+    }
+    
+    .dropdown:hover .dropdown-icon {
+      transform: rotate(180deg);
+    }
+    
+    @media (max-width: 900px) {
+      .auth-wrapper {
+        flex-direction: column;
+        height: auto;
+      }
+      
+      .auth-banner {
+        padding: 40px 30px;
+      }
+      
+      .auth-options {
+        padding: 40px 20px;
+      }
+    }
+    
+    @media (max-width: 768px) {
+      .topbar {
+        padding: 12px 15px;
+      }
+      
+      .nav-links {
+        gap: 10px;
+      }
+      
+      .option-cards {
+        flex-direction: column;
+        align-items: center;
+      }
+      
+      .option-card {
+        width: 100%;
+        max-width: 400px;
+      }
+      
+      .auth-banner h2 {
+        font-size: 2.2rem;
+      }
+      
+      .footer-content {
+        flex-direction: column;
+        text-align: center;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Top Navigation Bar -->
+<div class="topbar">
+  <div class="logo"><i class="fas fa-hamburger"></i> Fast<span>Food</span> Express</div>
+  <div class="nav-links">
+    <a href="index_user.html">Home</a>
+    
+    <div class="dropdown">
+      <button class="dropbtn">Orders <span class="dropdown-icon">▼</span></button>
+      <div class="dropdown-content">
+        <a href="product_guest.php">Products</a>
+        <a href="#" class="require-login" data-page="Order Trace">Order Trace</a>
+        <a href="#" class="require-login" data-page="Order History">Order History</a>
+      </div>
+    </div>
+    
+    <a href="about_guest.html">About</a>
+    <a href="contact_guest.html">Contact</a>
+    <a href="#" class="active-link">Login</a>
+    <div class="cart-icon" data-count="0" id="guest-cart">
+      <i class="fas fa-shopping-cart"></i>
+    </div>
+  </div>
+</div>
+
+<!-- Main Content -->
+<div class="auth-container">
+  <div class="auth-wrapper">
+    <div class="auth-banner">
+      <div class="brand-logo">
+        <i class="fas fa-hamburger"></i>
+        <h1>FAST<span>FOOD</span> EXPRESS</h1>
+      </div>
+      <h2>Join Our Food Community</h2>
+      <p>Sign in or create an account to unlock premium features and personalized experiences.</p>
+      
+      <ul class="benefits-list">
+        <li><i class="fas fa-bolt"></i> Faster checkout with saved details</li>
+        <li><i class="fas fa-history"></i> Track your order history</li>
+        <li><i class="fas fa-percent"></i> Exclusive discounts & offers</li>
+        <li><i class="fas fa-heart"></i> Save your favorite meals</li>
+        <li><i class="fas fa-award"></i> Earn rewards with every purchase</li>
+      </ul>
+    </div>
+    
+    <div class="auth-options">
+      <h2>Welcome Back</h2>
+      <p>Choose your account option to continue</p>
+      
+      <div class="option-cards">
+        <div class="option-card">
+          <div class="option-icon">
+            <i class="fas fa-sign-in-alt"></i>
+          </div>
+          <h3>Login</h3>
+          <p>Sign in to your existing account to access your order history and preferences.</p>
+          <a href="login.php" class="auth-btn">Login to Account</a>
+        </div>
+        
+        <div class="option-card">
+          <div class="option-icon">
+            <i class="fas fa-user-plus"></i>
+          </div>
+          <h3>Register</h3>
+          <p>Create a new account to enjoy faster checkout and exclusive offers.</p>
+          <a href="register.php" class="auth-btn">Create Account</a>
+        </div>
+      </div>
+      
+      <div class="guest-option">
+        <p>Continue without an account? <a href="index_user.html" class="guest-link">Browse as Guest</a></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 🔚 Footer -->
+<footer class="footer">
+    &copy; 2025 FastFood Express. All rights reserved.
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+  // 处理需要登录的功能
+  document.querySelectorAll('.require-login').forEach(link => {
+    link.addEventListener('click', function(e) {
+      e.preventDefault();
+      const pageName = this.getAttribute('data-page');
+      
+      Swal.fire({
+        icon: 'warning',
+        title: 'Login Required',
+        html: `You need to login to access the <b>${pageName}</b> feature.`,
+        showCancelButton: true,
+        confirmButtonText: 'Go to Login',
+        cancelButtonText: 'Cancel',
+        confirmButtonColor: '#d6001c'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          window.location.href = 'choose_login_register.html';
+        }
+      });
+    });
+  });
+
+  // 处理购物车点击
+  document.getElementById('guest-cart').addEventListener('click', function(e) {
+    e.preventDefault();
+    
+    Swal.fire({
+      icon: 'info',
+      title: 'Guest Shopping',
+      html: 'Please <b>login</b> to add items to your cart and place orders.',
+      showCancelButton: true,
+      confirmButtonText: 'Login Now',
+      cancelButtonText: 'Continue Browsing',
+      confirmButtonColor: '#d6001c'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        window.location.href = 'choose_login_register.html';
+      }
+    });
+  });
+</script>
+</body>
+</html>

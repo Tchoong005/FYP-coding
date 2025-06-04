@@ -1,0 +1,184 @@
+/* Reset & Base */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Header Container */
+.user-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: white;
+  height: 60px;
+  padding: 0 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+  position: relative;
+  z-index: 1000;
+}
+
+.user-header .left {
+  display: flex;
+  align-items: center;
+}
+
+.menu-icon {
+  font-size: 22px;
+  color: #333;
+  cursor: pointer;
+  margin-right: 15px;
+}
+
+.logo {
+  font-size: 20px;
+  font-weight: bold;
+  color: #e4002b;
+}
+
+/* Right Section: Links */
+.user-header .right {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.icon-link,
+.wallet-info,
+.order-now-btn {
+  display: flex;
+  align-items: center;
+  color: #333;
+  text-decoration: none;
+  font-size: 14px;
+  transition: color 0.3s;
+}
+
+.icon-link:hover,
+.wallet-info:hover {
+  color: #e4002b;
+}
+
+.order-now-btn {
+  padding: 6px 14px;
+  border: 1px solid #e4002b;
+  border-radius: 4px;
+  color: #e4002b;
+  font-weight: 600;
+}
+
+.order-now-btn:hover {
+  background-color: #e4002b;
+  color: #fff;
+}
+
+/* Profile & Wallet */
+.username {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wallet-amount {
+  min-width: 80px;
+}
+
+/* Side Panel Overlay */
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  width: 100vw;
+  background: rgba(0, 0, 0, 0.5);
+  display: none;
+  z-index: 999;
+}
+
+.overlay.show {
+  display: block;
+}
+
+/* Side Panel */
+.side-panel {
+  position: fixed;
+  top: 0;
+  left: -260px; /* Initially hidden to the left */
+  width: 260px;
+  height: 100%;
+  background-color: white;
+  padding: 1rem;
+  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+  transition: left 0.3s ease;
+  z-index: 1000;
+}
+
+.side-panel.open {
+  left: 0; /* Slide in to the right */
+}
+
+.close-btn {
+  font-size: 22px;
+  float: right;
+  cursor: pointer;
+  color: #e4002b;
+}
+
+/* Panel Menu Items */
+.side-panel ul {
+  list-style: none;
+  margin-top: 1.5rem;
+}
+
+.side-panel li {
+  padding: 0.75rem 0;
+  font-size: 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+}
+
+.side-panel .submenu {
+  display: none;
+  margin-left: 1rem;
+}
+
+.side-panel .submenu li {
+  font-size: 14px;
+  color: #666;
+  padding: 0.4rem 0;
+}
+
+/* Icon Rotation */
+.icon.rotate {
+  transform: rotate(90deg);
+  transition: transform 0.2s;
+}
+
+/* Payment Logos */
+.payment-section {
+  margin-top: 2rem;
+  border-top: 1px solid #ddd;
+  padding-top: 1rem;
+}
+
+.payment-section p {
+  font-size: 13px;
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+}
+
+.payment-icons {
+  display: flex;
+  gap: 10px;
+}
+
+.payment-icons img {
+  height: 26px;
+}
