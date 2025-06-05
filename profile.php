@@ -28,6 +28,8 @@ if (isset($_POST['update_profile'])) {
         $error = "Phone number must start with 01 and be 10–11 digits.";
     } elseif (!preg_match("/^\d{5}$/", $postcode)) {
         $error = "Postcode must be exactly 5 digits.";
+    } elseif (empty($state)) {
+        $error = "Please select a state.";
     }
 
     if (empty($error)) {
@@ -42,7 +44,7 @@ if (isset($_POST['update_profile'])) {
     }
 }
 
-// 修改密码（已改为 password_verify 检查）
+// 修改密码
 if (isset($_POST['change_password'])) {
     $old_password = mysqli_real_escape_string($conn, $_POST['old_password']);
     $new_password = mysqli_real_escape_string($conn, $_POST['new_password']);
@@ -72,12 +74,17 @@ if (isset($_POST['change_password'])) {
 }
 ?>
 
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <title>Profile - FastFood Express</title>
+
+<!-- 🔹 加入 Select2 样式和脚本 -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
 <style>
 body {
     font-family: Arial;
@@ -160,6 +167,10 @@ function togglePassword(id, element) {
         element.textContent = "Show";
     }
 }
+// 🔹 初始化 Select2
+$(document).ready(function() {
+    $('#state').select2({ width: '100%' });
+});
 </script>
 </head>
 <body>
@@ -191,7 +202,21 @@ function togglePassword(id, element) {
             <label>City</label>
             <input type="text" name="city" value="<?php echo $user['city']; ?>">
             <label>State</label>
-            <input type="text" name="state" value="<?php echo $user['state']; ?>">
+            <select name="state" id="state" required>
+                <option value="">-- Please select state --</option>
+                <?php
+                $states = [
+                    "Johor", "Kedah", "Kelantan", "Melaka", "Negeri Sembilan", 
+                    "Pahang", "Penang", "Perak", "Perlis", "Sabah", 
+                    "Sarawak", "Selangor", "Terengganu", 
+                    "Kuala Lumpur", "Labuan", "Putrajaya"
+                ];
+                foreach ($states as $state_option) {
+                    $selected = ($user['state'] === $state_option) ? "selected" : "";
+                    echo "<option value=\"$state_option\" $selected>$state_option</option>";
+                }
+                ?>
+            </select>
             <button type="submit" name="update_profile">Update Profile</button>
         </form>
     </div>
