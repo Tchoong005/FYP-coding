@@ -2,55 +2,69 @@
 session_start();
 require_once 'db_connection.php';
 
+// Configure mysqli to throw exceptions
+mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+
 // Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Add new category
-    if (isset($_POST['add_category'])) {
-        $name = $_POST['name'];
-        $display_name = $_POST['display_name'];
-        $description = $_POST['description'];
-        
-        $stmt = $conn->prepare("INSERT INTO categories (name, display_name, description) VALUES (?, ?, ?)");
-        $stmt->bind_param("sss", $name, $display_name, $description);
-        
-        if ($stmt->execute()) {
-            $_SESSION['success'] = "Category added successfully!";
-        } else {
-            $_SESSION['error'] = "Error adding category: " . $conn->error;
+    try {
+        // Add new category
+        if (isset($_POST['add_category'])) {
+            $name = $_POST['name'];
+            $display_name = $_POST['display_name'];
+            $description = $_POST['description'];
+            
+            // Check if category already exists
+            $check = $conn->prepare("SELECT id FROM categories WHERE name = ?");
+            $check->bind_param("s", $name);
+            $check->execute();
+            $check->store_result();
+            
+            if ($check->num_rows > 0) {
+                $_SESSION['error'] = "A category with this name already exists.";
+            } else {
+                $stmt = $conn->prepare("INSERT INTO categories (name, display_name, description) VALUES (?, ?, ?)");
+                $stmt->bind_param("sss", $name, $display_name, $description);
+                
+                if ($stmt->execute()) {
+                    $_SESSION['success'] = "Category added successfully!";
+                }
+                $stmt->close();
+            }
+            $check->close();
         }
-        $stmt->close();
-    }
-    
-    // Update category
-    if (isset($_POST['update_category'])) {
-        $id = $_POST['id'];
-        $name = $_POST['name'];
-        $display_name = $_POST['display_name'];
-        $description = $_POST['description'];
         
-        $stmt = $conn->prepare("UPDATE categories SET name=?, display_name=?, description=? WHERE id=?");
-        $stmt->bind_param("sssi", $name, $display_name, $description, $id);
-        
-        if ($stmt->execute()) {
-            $_SESSION['success'] = "Category updated successfully!";
-        } else {
-            $_SESSION['error'] = "Error updating category: " . $conn->error;
+        // Update category
+        if (isset($_POST['update_category'])) {
+            $id = $_POST['id'];
+            $name = $_POST['name'];
+            $display_name = $_POST['display_name'];
+            $description = $_POST['description'];
+            
+            $stmt = $conn->prepare("UPDATE categories SET name=?, display_name=?, description=? WHERE id=?");
+            $stmt->bind_param("sssi", $name, $display_name, $description, $id);
+            
+            if ($stmt->execute()) {
+                $_SESSION['success'] = "Category updated successfully!";
+            }
+            $stmt->close();
         }
-        $stmt->close();
-    }
-    
-    // Soft delete category
-    if (isset($_POST['hide_category'])) {
-        $id = $_POST['id'];
-        $stmt = $conn->prepare("UPDATE categories SET deleted_at=NOW() WHERE id=?");
-        $stmt->bind_param("i", $id);
         
-        if ($stmt->execute()) {
-            $_SESSION['success'] = "Category deleted successfully!";
-        } else {
-            $_SESSION['error'] = "Error deleting category: " . $conn->error;
+        // Soft delete category
+        if (isset($_POST['hide_category'])) {
+            $id = $_POST['id'];
+            $stmt = $conn->prepare("UPDATE categories SET deleted_at=NOW() WHERE id=?");
+            $stmt->bind_param("i", $id);
+            
+            if ($stmt->execute()) {
+                $_SESSION['success'] = "Category deleted successfully!";
+            }
+            $stmt->close();
         }
-        $stmt->close();
+    } catch (mysqli_sql_exception $e) {
+        $_SESSION['error'] = "Database error: " . $e->getMessage();
+    } catch (Exception $e) {
+        $_SESSION['error'] = "Error: " . $e->getMessage();
     }
     
     header("Location: adminCategories.php");
@@ -69,7 +83,30 @@ $categories = $conn->query("SELECT * FROM categories WHERE deleted_at IS NULL OR
     <title>Category Management - KFG FOOD</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
     <style>
+        /* Your existing CSS styles remain unchanged */
         * {
+            padding: 0;
+            margin: 0;
+            box-sizing: border-box;
+            font-family: 'poppins', sans-serif;
+        }
+
+        .user {
+            position: relative;
+            width: 50px;
+            height: 50px;
+        }
+
+        .user img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 100%;
+            object-fit: cover;
+        }
+
+          * {
             padding: 0;
             margin: 0;
             box-sizing: border-box;
@@ -401,7 +438,7 @@ $categories = $conn->query("SELECT * FROM categories WHERE deleted_at IS NULL OR
     </style>
 </head>
 <body>
-<!-- Include the same topbar and sidebar as your product management page -->
+<!-- Topbar and Sidebar remain unchanged -->
 <div class="top">
     <div class="topbar">
         <div class="logo">
@@ -477,7 +514,6 @@ $categories = $conn->query("SELECT * FROM categories WHERE deleted_at IS NULL OR
             </a>
         </li>
     </ul>
-    
 </div>
 
 <div class="main">
@@ -528,7 +564,7 @@ $categories = $conn->query("SELECT * FROM categories WHERE deleted_at IS NULL OR
                         </button>
                         <form method="POST" style="display: inline;">
                             <input type="hidden" name="id" value="<?php echo $category['id']; ?>">
-                            <button type="submit" name="hide_category" class="btn btn-hide" onclick="return confirm('Are you sure you want to delete this category? This will not delete associated products but will hide them from customers.');">
+                            <button type="submit" name="hide_category" class="btn btn-hide" onclick="return confirm('Are you sure you want to delete this category?');">
                                 <i class="fas fa-trash"></i> Delete
                             </button>
                         </form>
@@ -545,10 +581,11 @@ $categories = $conn->query("SELECT * FROM categories WHERE deleted_at IS NULL OR
     <div class="modal-content">
         <span class="close" onclick="closeAddModal()">&times;</span>
         <h3>Add New Category</h3>
-        <form method="POST">
+        <form method="POST" id="addCategoryForm">
             <div class="form-group">
                 <label for="name">System Name (unique identifier, lowercase, no spaces)</label>
                 <input type="text" id="name" name="name" pattern="[a-z0-9_]+" title="Lowercase letters, numbers, and underscores only" required>
+                <small id="nameError" class="error-message" style="color: red; display: none;">This category name already exists</small>
             </div>
             <div class="form-group">
                 <label for="display_name">Display Name</label>
@@ -618,6 +655,7 @@ $categories = $conn->query("SELECT * FROM categories WHERE deleted_at IS NULL OR
         }
     }
 
+    // User dropdown
     const dropdown = document.getElementById('userDropdown');
     dropdown.addEventListener('click', function (event) {
         event.stopPropagation();
@@ -627,6 +665,33 @@ $categories = $conn->query("SELECT * FROM categories WHERE deleted_at IS NULL OR
     // Close dropdown if clicked outside
     window.addEventListener('click', function () {
         dropdown.classList.remove('show');
+    });
+
+    // Check if category name exists (AJAX)
+    document.getElementById('name').addEventListener('blur', function() {
+        const name = this.value;
+        const errorElement = document.getElementById('nameError');
+        
+        if (name.length > 0) {
+            fetch('check_category.php?name=' + encodeURIComponent(name))
+                .then(response => response.json())
+                .then(data => {
+                    if (data.exists) {
+                        errorElement.style.display = 'block';
+                    } else {
+                        errorElement.style.display = 'none';
+                    }
+                });
+        }
+    });
+
+    // Prevent form submission if name exists
+    document.getElementById('addCategoryForm').addEventListener('submit', function(e) {
+        const errorElement = document.getElementById('nameError');
+        if (errorElement.style.display === 'block') {
+            e.preventDefault();
+            alert('Please choose a different category name');
+        }
     });
 </script>
 </body>
