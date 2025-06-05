@@ -708,7 +708,7 @@ function isCategoryDeleted($conn, $categoryName) {
                 </div>
                 <div class="form-group">
                     <label for="edit_price">Price (RM)</label>
-                    <input type="number" id="edit_price" name="price" step="0.01" min="0" required>
+                    <input type="number" id="edit_price" name="price" step="0.01" min="1" required>
                 </div>
                 <div class="form-group">
                     <label for="edit_category">Category</label>

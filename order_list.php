@@ -549,7 +549,7 @@ h2 {
                 <strong><?php echo esc($product['name']); ?></strong>
                 <span>RM <?php echo number_format($product['price'], 2); ?> x <?php echo $quantity; ?></span>
                 <span><strong>Sauce:</strong> <?php echo esc($sauce ?: '-'); ?></span>
-                <span><strong>Comment:</strong> <?php echo esc($comment ?: '-'); ?></span>
+                <span><strong>Remark:</strong> <?php echo esc($comment ?: '-'); ?></span>
             </div>
         </div>
         <div class="order-actions">
