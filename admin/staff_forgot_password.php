@@ -31,10 +31,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $_SESSION['staff_reset_otp_time'] = time();
 
         // Send OTP email
-        require 'C:/xampp/htdocs/dashboard/fastfood/FYP-coding/PHPMailer/src/PHPMailer.php';
-        require 'C:/xampp/htdocs/dashboard/fastfood/FYP-coding/PHPMailer/src/SMTP.php';
-        require 'C:/xampp/htdocs/dashboard/fastfood/FYP-coding/PHPMailer/src/Exception.php';
+require __DIR__ . '/../PHPMailer/src/PHPMailer.php';
+require __DIR__ . '/../PHPMailer/src/SMTP.php';
+require __DIR__ . '/../PHPMailer/src/Exception.php';
 
+
+        
         $mail = new PHPMailer\PHPMailer\PHPMailer(true);
         try {
             // Server settings

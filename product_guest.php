@@ -538,7 +538,7 @@ if ($result) {
           echo '<div class="category-title" data-aos="fade-right"><i class="fas fa-tag"></i> ' . htmlspecialchars($category) . '</div>';
           echo '<div class="product-grid">';
           foreach ($products as $product) {
-              $button_label = ($product['stock_quantity'] > 0) ? "Add to Cart" : "Out of Stock";
+              $button_label = ($product['stock_quantity'] > 0) ? "Order Now" : "Out of Stock";
               $button_class = ($product['stock_quantity'] > 0) ? "btn require-login" : "btn disabled-btn";
               $stock_indicator = ($product['stock_quantity'] > 0) 
                   ? '<span class="stock-indicator in-stock">In Stock</span>' 

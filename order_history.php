@@ -25,10 +25,20 @@ if (!empty($_SESSION['cart'])) {
 // Get user ID
 $user_id = $_SESSION['user_id'];
 
+// 获取排序参数
+$sort_order = isset($_GET['sort']) ? $_GET['sort'] : 'desc';
+$valid_orders = ['asc', 'desc'];
+if (!in_array($sort_order, $valid_orders)) {
+    $sort_order = 'desc'; // 默认降序
+}
+
+// 获取当前标签
+$current_tab = isset($_GET['tab']) ? $_GET['tab'] : 'all';
+
 // Fetch all orders
 $sql_all = "SELECT * FROM orders 
            WHERE user_id = $user_id 
-           ORDER BY created_at DESC";
+           ORDER BY created_at $sort_order";
 $result_all = mysqli_query($conn, $sql_all);
 
 $all_orders = [];
@@ -40,12 +50,11 @@ if ($result_all) {
     die("Query failed: " . mysqli_error($conn));
 }
 
-// Fetch successful orders (paid and completed/delivered)
+// 修改点1: 移除payment_status条件，只根据订单状态筛选
 $sql_success = "SELECT * FROM orders 
                WHERE user_id = $user_id 
-               AND payment_status = 'paid'
                AND order_status IN ('completed', 'delivered')
-               ORDER BY created_at DESC";
+               ORDER BY created_at $sort_order";
 $result_success = mysqli_query($conn, $sql_success);
 
 $success_orders = [];
@@ -61,7 +70,7 @@ if ($result_success) {
 $sql_canceled = "SELECT * FROM orders 
                 WHERE user_id = $user_id 
                 AND payment_status = 'canceled'
-                ORDER BY created_at DESC";
+                ORDER BY created_at $sort_order";
 $result_canceled = mysqli_query($conn, $sql_canceled);
 
 $canceled_orders = [];
@@ -115,11 +124,7 @@ unset($order); // break the reference
     <title>Order History - FastFood Express</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
-        /* ... (保留所有原有样式) ... */
         :root {
             --primary: #d6001c;
             --primary-dark: #b80018;
@@ -151,7 +156,6 @@ unset($order); // break the reference
             line-height: 1.6;
         }
         
-        /* Topbar - Consistent with other pages */
         .topbar {
             background-color: var(--dark-bg);
             color: white;
@@ -302,7 +306,6 @@ unset($order); // break the reference
             border-radius: 2px;
         }
         
-        /* Order History Page Styles */
         .header-section {
             text-align: center;
             padding: 60px 20px 40px;
@@ -387,7 +390,6 @@ unset($order); // break the reference
             background-color: var(--primary-dark);
         }
         
-        /* Order Tabs */
         .order-tabs {
             display: flex;
             justify-content: center;
@@ -437,7 +439,6 @@ unset($order); // break the reference
             to { opacity: 1; transform: translateY(0); }
         }
         
-        /* Order Cards */
         .order-card {
             background: white;
             border-radius: 12px;
@@ -644,7 +645,6 @@ unset($order); // break the reference
             color: var(--danger);
         }
         
-        /* Status timeline */
         .status-timeline {
             display: flex;
             justify-content: space-between;
@@ -709,7 +709,6 @@ unset($order); // break the reference
             font-weight: bold;
         }
         
-        /* Section headers */
         .section-header {
             display: flex;
             align-items: center;
@@ -729,7 +728,6 @@ unset($order); // break the reference
             font-size: 1.5rem;
         }
         
-        /* Responsive design */
         @media (max-width: 768px) {
             .order-header {
                 flex-direction: column;
@@ -831,7 +829,6 @@ unset($order); // break the reference
             margin-top: 40px;
         }
         
-        /* Status indicators */
         .status-indicator {
             display: inline-block;
             width: 10px;
@@ -863,7 +860,7 @@ unset($order); // break the reference
         .status-indicator.canceled {
             background-color: var(--danger);
         }
-        /* 新增进度条样式 - 与order_trace一致 */
+        
         .progress-tracker {
             padding: 25px;
             background: #f0f7ff;
@@ -952,54 +949,67 @@ unset($order); // break the reference
             font-weight: bold;
         }
         
-        /* 移除的pending状态样式 */
         .status-pending {
             display: none;
         }
         
-        /* PDF 生成按钮 */
-        .pdf-btn {
-            background-color: #d6001c;
-            color: white;
-            border: none;
-            padding: 8px 15px;
-            border-radius: 5px;
-            cursor: pointer;
+        /* 排序控件样式 */
+        .sort-controls {
             display: flex;
-            align-items: center;
-            gap: 5px;
+            justify-content: flex-end;
+            margin: 0 0 20px;
+            gap: 15px;
+        }
+        
+        .sort-btn {
+            background-color: white;
+            border: 1px solid #ddd;
+            padding: 10px 20px;
+            border-radius: 30px;
             font-weight: 500;
-            transition: background-color 0.3s;
-        }
-        
-        .pdf-btn:hover {
-            background-color: #b80018;
-        }
-        
-        /* 通知样式 */
-        .notification {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 15px 25px;
-            border-radius: 8px;
-            background: #4caf50;
-            color: white;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-            transform: translateX(200%);
-            transition: transform 0.4s ease;
-            z-index: 1000;
+            cursor: pointer;
+            transition: all 0.3s;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
         }
         
-        .notification.show {
-            transform: translateX(0);
+        .sort-btn:hover {
+            background-color: #f5f5f5;
+            border-color: #ccc;
         }
         
-        .notification.error {
-            background: var(--danger);
+        .sort-btn.active {
+            background-color: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+        
+        .sort-btn i {
+            font-size: 14px;
+        }
+        
+        .sort-indicator {
+            background: rgba(255,255,255,0.2);
+            border-radius: 10px;
+            padding: 2px 8px;
+            font-size: 12px;
+            margin-left: 5px;
+        }
+        
+        .order-count {
+            background-color: #f0f0f0;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .order-count i {
+            color: var(--primary);
         }
     </style>
 </head>
@@ -1035,28 +1045,44 @@ unset($order); // break the reference
     <p>Review all your orders with FastFood Express</p>
 </div>
 
-<!-- 通知 -->
-<div id="notification" class="notification">
-    <i class="fas fa-check-circle"></i>
-    <span>PDF receipt generated successfully!</span>
-</div>
-
 <div class="container">
-    <!-- 修改标签 - 移除Pending -->
+    <!-- 标签切换 -->
     <div class="order-tabs">
-        <button class="tab-btn active" onclick="showTab('all')">
+        <a href="?tab=all&sort=<?php echo $sort_order; ?>" class="tab-btn <?php echo $current_tab == 'all' ? 'active' : ''; ?>">
             <i class="fas fa-list"></i> All Orders
-        </button>
-        <button class="tab-btn" onclick="showTab('success')">
+        </a>
+        <a href="?tab=success&sort=<?php echo $sort_order; ?>" class="tab-btn <?php echo $current_tab == 'success' ? 'active' : ''; ?>">
             <i class="fas fa-check-circle"></i> Successful
-        </button>
-        <button class="tab-btn" onclick="showTab('canceled')">
+        </a>
+        <a href="?tab=canceled&sort=<?php echo $sort_order; ?>" class="tab-btn <?php echo $current_tab == 'canceled' ? 'active' : ''; ?>">
             <i class="fas fa-times-circle"></i> Canceled
-        </button>
+        </a>
+    </div>
+    
+    <!-- 排序控件 -->
+    <div class="sort-controls">
+        <div class="order-count">
+            <i class="fas fa-shopping-bag"></i>
+            <?php 
+                if ($current_tab == 'all') {
+                    echo count($all_orders) . ' orders';
+                } elseif ($current_tab == 'success') {
+                    echo count($success_orders) . ' orders';
+                } else {
+                    echo count($canceled_orders) . ' orders';
+                }
+            ?>
+        </div>
+        <a href="?tab=<?php echo $current_tab; ?>&sort=asc" class="sort-btn <?php echo $sort_order == 'asc' ? 'active' : ''; ?>">
+            <i class="fas fa-sort-amount-down-alt"></i> Oldest First
+        </a>
+        <a href="?tab=<?php echo $current_tab; ?>&sort=desc" class="sort-btn <?php echo $sort_order == 'desc' ? 'active' : ''; ?>">
+            <i class="fas fa-sort-amount-down"></i> Newest First
+        </a>
     </div>
     
     <!-- All Orders Tab -->
-    <div id="all" class="tab-content active">
+    <div id="all" class="tab-content <?php echo $current_tab == 'all' ? 'active' : ''; ?>">
         <?php if (empty($all_orders)): ?>
             <div class="no-orders" data-aos="fade-up">
                 <i class="fas fa-box-open"></i>
@@ -1081,7 +1107,7 @@ unset($order); // break the reference
                     $steps = [
                         ['icon' => '📝', 'label' => 'Order Placed', 'status' => 'pending'],
                         ['icon' => '👨‍🍳', 'label' => 'Preparing', 'status' => 'preparing'],
-                        ['icon' => '🛎️', 'label' => 'Ready', 'status' => 'ready'],
+                        ['icon' => '🛎️', 'label' => 'Ready for pickup', 'status' => 'ready'],
                         ['icon' => '✅', 'label' => 'Completed', 'status' => 'completed']
                     ];
                 }
@@ -1223,11 +1249,6 @@ unset($order); // break the reference
                         <i class="fas fa-credit-card"></i> Payment Status: 
                         <span><?php echo ucfirst($order['payment_status']); ?></span>
                     </div>
-                    <?php if ($order['payment_status'] == 'paid'): ?>
-                    <button class="pdf-btn" onclick="generatePDF(this, <?php echo $order['id']; ?>, <?php echo htmlspecialchars(json_encode($order['items'])); ?>, <?php echo $order['total_price']; ?>, <?php echo $order['delivery_fee']; ?>, <?php echo $order['final_total']; ?>, '<?php echo date('M j, Y H:i', strtotime($order['created_at'])); ?> (MYT)')">
-                        <i class="fas fa-file-pdf"></i> Generate PDF
-                    </button>
-                    <?php endif; ?>
                 </div>
             </div>
             <?php endforeach; ?>
@@ -1235,7 +1256,7 @@ unset($order); // break the reference
     </div>
     
     <!-- Successful Orders Tab -->
-    <div id="success" class="tab-content">
+    <div id="success" class="tab-content <?php echo $current_tab == 'success' ? 'active' : ''; ?>">
         <?php if (empty($success_orders)): ?>
             <div class="no-orders" data-aos="fade-up">
                 <i class="fas fa-check-circle"></i>
@@ -1270,7 +1291,7 @@ unset($order); // break the reference
                 
                 $status_class = ($order['order_status'] == 'completed') ? 'status-completed' : 'status-delivered';
                 $status_text = ($order['order_status'] == 'completed') ? 'Completed <i class="fas fa-check-circle"></i>' : 'Delivered <i class="fas fa-home"></i>';
-                $payment_class = 'status-paid';
+                $payment_class = 'status-' . str_replace(' ', '-', strtolower($order['payment_status']));
             ?>
             <div class="order-card" data-aos="fade-up">
                 <div class="order-header">
@@ -1353,13 +1374,10 @@ unset($order); // break the reference
                 </div>
                 
                 <div class="order-footer">
-                    <div class="payment-status status-paid">
+                    <div class="payment-status <?php echo $payment_class; ?>">
                         <i class="fas fa-credit-card"></i> Payment Status: 
-                        <span>Paid</span>
+                        <span><?php echo ucfirst($order['payment_status']); ?></span>
                     </div>
-                    <button class="pdf-btn" onclick="generatePDF(this, <?php echo $order['id']; ?>, <?php echo htmlspecialchars(json_encode($order['items'])); ?>, <?php echo $order['total_price']; ?>, <?php echo $order['delivery_fee']; ?>, <?php echo $order['final_total']; ?>, '<?php echo date('M j, Y H:i', strtotime($order['created_at'])); ?> (MYT)')">
-                        <i class="fas fa-file-pdf"></i> Generate PDF
-                    </button>
                 </div>
             </div>
             <?php endforeach; ?>
@@ -1367,7 +1385,7 @@ unset($order); // break the reference
     </div>
     
     <!-- Canceled Orders Tab -->
-    <div id="canceled" class="tab-content">
+    <div id="canceled" class="tab-content <?php echo $current_tab == 'canceled' ? 'active' : ''; ?>">
         <?php if (empty($canceled_orders)): ?>
             <div class="no-orders" data-aos="fade-up">
                 <i class="fas fa-ban"></i>
@@ -1485,134 +1503,6 @@ unset($order); // break the reference
             }
         });
     });
-    
-    // Tab switching functionality
-    function showTab(tabId) {
-        // Hide all tab contents
-        document.querySelectorAll('.tab-content').forEach(tab => {
-            tab.classList.remove('active');
-        });
-        
-        // Deactivate all tab buttons
-        document.querySelectorAll('.tab-btn').forEach(btn => {
-            btn.classList.remove('active');
-        });
-        
-        // Show selected tab
-        document.getElementById(tabId).classList.add('active');
-        
-        // Activate selected button
-        document.querySelector(`.tab-btn[onclick="showTab('${tabId}')"]`).classList.add('active');
-    }
-    
-    // PDF generation function
-    function generatePDF(button, orderId, items, subtotal, deliveryFee, total, orderDate) {
-        // Show loading state
-        const originalText = button.innerHTML;
-        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
-        button.disabled = true;
-        
-        setTimeout(() => {
-            const { jsPDF } = window.jspdf;
-            
-            // Create a PDF
-            const pdf = new jsPDF('p', 'mm', 'a5');
-            const pageWidth = pdf.internal.pageSize.getWidth();
-            const centerX = pageWidth / 2;
-            
-            // Add content to PDF
-            pdf.setFontSize(22);
-            pdf.setFont('helvetica', 'bold');
-            pdf.setTextColor(0, 0, 0);
-            pdf.text('FASTFOOD EXPRESS', centerX, 15, null, null, 'center');
-            
-            pdf.setFontSize(14);
-            pdf.setTextColor(0, 0, 0);
-            pdf.setFont('helvetica', 'normal');
-            pdf.text('PAYMENT RECEIPT', centerX, 22, null, null, 'center');
-
-            // Draw line
-            pdf.setLineWidth(0.5);
-            pdf.setDrawColor(0, 0, 0);
-            pdf.line(20, 32, pageWidth - 20, 32);
-            
-            // Add details
-            pdf.setFontSize(10);
-            pdf.setTextColor(0, 0, 0);
-            pdf.text(`Order ID: #${orderId}`, 20, 40);
-            pdf.text(`Date & Time: ${orderDate}`, 20, 45);
-            pdf.text('Payment Status: Completed', 20, 50);
-            
-            // Order items table
-            const itemRows = [];
-            
-            // Add items
-            items.forEach(item => {
-                itemRows.push([
-                    `${item.name} x ${item.quantity}`,
-                    `RM ${(item.price * item.quantity).toFixed(2)}`
-                ]);
-            });
-            
-            // Add delivery fee
-            itemRows.push(['Delivery Fee', `RM ${parseFloat(deliveryFee).toFixed(2)}`]);
-            
-            // Add items header
-            pdf.setFont('helvetica', 'bold');
-            pdf.text('Item', 20, 65);
-            pdf.text('Amount', pageWidth - 20, 65, null, null, 'right');
-            
-            // Add items
-            let yPos = 70;
-            pdf.setFont('helvetica', 'normal');
-            itemRows.forEach(row => {
-                pdf.text(row[0], 20, yPos);
-                pdf.text(row[1], pageWidth - 20, yPos, null, null, 'right');
-                yPos += 5;
-            });
-            
-            // Subtotal
-            pdf.setFont('helvetica', 'bold');
-            pdf.text('Subtotal:', 20, yPos + 5);
-            pdf.text(`RM ${parseFloat(subtotal).toFixed(2)}`, pageWidth - 20, yPos + 5, null, null, 'right');
-            
-            // Total amount
-            pdf.setLineWidth(0.2);
-            pdf.line(20, yPos + 10, pageWidth - 20, yPos + 10);
-            pdf.setFontSize(12);
-            pdf.text('Total Amount:', 20, yPos + 15);
-            pdf.setTextColor(211, 47, 47); // Red color for total
-            pdf.text(`RM ${parseFloat(total).toFixed(2)}`, pageWidth - 20, yPos + 15, null, null, 'right');
-            
-            // Footer
-            const pageHeight = pdf.internal.pageSize.getHeight();
-            const footerY = pageHeight - 20;
-            
-            pdf.setFontSize(10);
-            pdf.setTextColor(0, 0, 0);
-            pdf.text('Thank you for choosing FastFood Express!', centerX, footerY, null, null, 'center');
-            pdf.setFont('helvetica', 'bold');
-            pdf.setTextColor(211, 47, 47); // Red color
-            pdf.text('We appreciate your business', centerX, footerY + 5, null, null, 'center');
-            pdf.setFont('helvetica', 'normal');
-            pdf.setTextColor(100, 100, 100);
-            pdf.text(`FastFood Express © ${new Date().getFullYear()}`, centerX, footerY + 10, null, null, 'center');
-            
-            // Save the PDF
-            pdf.save(`receipt_${orderId}.pdf`);
-            
-            // Show notification
-            const notification = document.getElementById('notification');
-            notification.classList.add('show');
-            setTimeout(() => {
-                notification.classList.remove('show');
-            }, 3000);
-            
-            // Restore button state
-            button.innerHTML = originalText;
-            button.disabled = false;
-        }, 1000);
-    }
 </script>
 </body>
 </html>

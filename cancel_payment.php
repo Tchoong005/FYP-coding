@@ -37,6 +37,11 @@ if ($order_data['payment_status'] !== 'pending') {
 // 更新订单状态为已取消
 $update_sql = "UPDATE orders SET payment_status = 'canceled', order_status = 'canceled' WHERE id = $order_id";
 if (mysqli_query($conn, $update_sql)) {
+    // 新增：清空用户的购物车
+    if (isset($_SESSION['cart'])) {
+        unset($_SESSION['cart']);
+    }
+    
     header('Content-Type: application/json');
     echo json_encode(['success' => true, 'message' => 'Payment canceled successfully']);
     exit();
@@ -45,4 +50,3 @@ if (mysqli_query($conn, $update_sql)) {
     echo json_encode(['success' => false, 'message' => 'Error updating order: ' . mysqli_error($conn)]);
     exit();
 }
-?>

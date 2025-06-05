@@ -15,16 +15,23 @@ if (!isset($_SESSION['cart'])) {
 // Get search keyword
 $search = isset($_GET['search']) ? mysqli_real_escape_string($conn, $_GET['search']) : "";
 
-// Fetch all products (with search)
-$sql = "SELECT * FROM products";
+// 修改后的查询：只获取未删除分类中的未删除产品
+$sql = "SELECT p.* 
+        FROM products p
+        INNER JOIN categories c ON p.category = c.name
+        WHERE c.deleted_at IS NULL 
+        AND p.deleted_at IS NULL";
+
 if (!empty($search)) {
-    $sql .= " WHERE name LIKE '%$search%' OR description LIKE '%$search%' OR category LIKE '%$search%'";
+    $sql .= " AND (p.name LIKE '%$search%' OR p.description LIKE '%$search%' OR p.category LIKE '%$search%')";
 }
+
 $result = mysqli_query($conn, $sql);
 
 $products_by_category = [];
 if ($result) {
     while ($row = mysqli_fetch_assoc($result)) {
+        // 只添加有产品的分类
         $products_by_category[$row['category']][] = $row;
     }
 } else {
@@ -49,6 +56,7 @@ if (!empty($_SESSION['cart'])) {
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+        /* 保持原有样式不变 */
         :root {
             --primary: #d6001c;
             --primary-dark: #b80018;
@@ -528,28 +536,31 @@ if (!empty($_SESSION['cart'])) {
     <?php
     if (!empty($products_by_category)) {
         foreach ($products_by_category as $category => $products) {
-            echo '<div class="category-title" data-aos="fade-right"><i class="fas fa-tag"></i> ' . htmlspecialchars($category) . '</div>';
-            echo '<div class="product-grid">';
-            foreach ($products as $product) {
-                $button_label = ($product['stock_quantity'] > 0) ? "Order Now" : "Out of Stock";
-                $button_class = ($product['stock_quantity'] > 0) ? "btn" : "btn disabled-btn";
-                $button_link = ($product['stock_quantity'] > 0) ? "product_detail.php?id=" . $product['id'] : "#";
-                $stock_indicator = ($product['stock_quantity'] > 0) 
-                    ? '<span class="stock-indicator in-stock">In Stock</span>' 
-                    : '<span class="stock-indicator out-of-stock">Out of Stock</span>';
+            // 确保分类下有产品才显示
+            if (count($products) > 0) {
+                echo '<div class="category-title" data-aos="fade-right"><i class="fas fa-tag"></i> ' . htmlspecialchars($category) . '</div>';
+                echo '<div class="product-grid">';
+                foreach ($products as $product) {
+                    $button_label = ($product['stock_quantity'] > 0) ? "Order Now" : "Out of Stock";
+                    $button_class = ($product['stock_quantity'] > 0) ? "btn" : "btn disabled-btn";
+                    $button_link = ($product['stock_quantity'] > 0) ? "product_detail.php?id=" . $product['id'] : "#";
+                    $stock_indicator = ($product['stock_quantity'] > 0) 
+                        ? '<span class="stock-indicator in-stock">In Stock</span>' 
+                        : '<span class="stock-indicator out-of-stock">Out of Stock</span>';
 
-                echo '
-                    <div class="product-card" data-aos="fade-up">
-                        <div class="product-image">
-                            <img src="' . htmlspecialchars($product['image_url']) . '" alt="' . htmlspecialchars($product['name']) . '">
-                        </div>
-                        <h3>' . htmlspecialchars($product['name']) . $stock_indicator . '</h3>
-                        <p>' . (!empty($product['description']) ? htmlspecialchars($product['description']) : '') . '</p>
-                        <div class="price">RM ' . number_format($product['price'], 2) . '</div>
-                        <a href="' . $button_link . '" class="' . $button_class . '" ' . (($product['stock_quantity'] > 0) ? "" : "onclick='return false;'") . '>' . $button_label . '</a>
-                    </div>';
+                    echo '
+                        <div class="product-card" data-aos="fade-up">
+                            <div class="product-image">
+                                <img src="' . htmlspecialchars($product['image_url']) . '" alt="' . htmlspecialchars($product['name']) . '">
+                            </div>
+                            <h3>' . htmlspecialchars($product['name']) . $stock_indicator . '</h3>
+                            <p>' . (!empty($product['description']) ? htmlspecialchars($product['description']) : '') . '</p>
+                            <div class="price">RM ' . number_format($product['price'], 2) . '</div>
+                            <a href="' . $button_link . '" class="' . $button_class . '" ' . (($product['stock_quantity'] > 0) ? "" : "onclick='return false;'") . '>' . $button_label . '</a>
+                        </div>';
+                }
+                echo '</div>';
             }
-            echo '</div>';
         }
     } else {
         echo '<p style="text-align:center; color:red; padding: 40px; font-size: 18px;">No products found. Please try a different search term.</p>';
