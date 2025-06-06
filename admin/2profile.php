@@ -1,9 +1,6 @@
 <?php
-// Database connection
-$conn = new mysqli('127.0.0.1', 'root', '', 'fyp_fastfood');
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
-}
+session_start();
+require_once 'db_connection.php';
 
 // Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -15,7 +12,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         $stmt = $conn->prepare("INSERT INTO categories (name, display_name, description) VALUES (?, ?, ?)");
         $stmt->bind_param("sss", $name, $display_name, $description);
-        $stmt->execute();
+        
+        if ($stmt->execute()) {
+            $_SESSION['success'] = "Category added successfully!";
+        } else {
+            $_SESSION['error'] = "Error adding category: " . $conn->error;
+        }
         $stmt->close();
     }
     
@@ -28,7 +30,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         $stmt = $conn->prepare("UPDATE categories SET name=?, display_name=?, description=? WHERE id=?");
         $stmt->bind_param("sssi", $name, $display_name, $description, $id);
-        $stmt->execute();
+        
+        if ($stmt->execute()) {
+            $_SESSION['success'] = "Category updated successfully!";
+        } else {
+            $_SESSION['error'] = "Error updating category: " . $conn->error;
+        }
         $stmt->close();
     }
     
@@ -37,9 +44,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $id = $_POST['id'];
         $stmt = $conn->prepare("UPDATE categories SET deleted_at=NOW() WHERE id=?");
         $stmt->bind_param("i", $id);
-        $stmt->execute();
+        
+        if ($stmt->execute()) {
+            $_SESSION['success'] = "Category deleted successfully!";
+        } else {
+            $_SESSION['error'] = "Error deleting category: " . $conn->error;
+        }
         $stmt->close();
     }
+    
+    header("Location: adminCategories.php");
+    exit;
 }
 
 // Fetch all active categories (not deleted)
@@ -365,6 +380,24 @@ $categories = $conn->query("SELECT * FROM categories WHERE deleted_at IS NULL OR
         .deleted-row:hover {
             opacity: 1;
         }
+        .alert {
+            padding: 15px;
+            margin-bottom: 20px;
+            border: 1px solid transparent;
+            border-radius: 4px;
+        }
+
+        .alert-success {
+            background-color: #dff0d8;
+            border-color: #d6e9c6;
+            color: #3c763d;
+        }
+
+        .alert-danger {
+            background-color: #f2dede;
+            border-color: #ebccd1;
+            color: #a94442;
+        }
     </style>
 </head>
 <body>
@@ -451,6 +484,16 @@ $categories = $conn->query("SELECT * FROM categories WHERE deleted_at IS NULL OR
     <div class="card">
         <h3>Category Management</h3>
         
+        <?php if (isset($_SESSION['success'])): ?>
+            <div class="alert alert-success"><?= htmlspecialchars($_SESSION['success']) ?></div>
+            <?php unset($_SESSION['success']); ?>
+        <?php endif; ?>
+        
+        <?php if (isset($_SESSION['error'])): ?>
+            <div class="alert alert-danger"><?= htmlspecialchars($_SESSION['error']) ?></div>
+            <?php unset($_SESSION['error']); ?>
+        <?php endif; ?>
+        
         <button class="btn btn-add" onclick="openAddModal()">
             <i class="fas fa-plus"></i> Add New Category
         </button>
@@ -485,8 +528,8 @@ $categories = $conn->query("SELECT * FROM categories WHERE deleted_at IS NULL OR
                         </button>
                         <form method="POST" style="display: inline;">
                             <input type="hidden" name="id" value="<?php echo $category['id']; ?>">
-                            <button type="submit" name="hide_category" class="btn btn-hide" onclick="return confirm('Are you sure you want to delete this category? This will not delete associated products.');">
-                                <i class=""></i> Delete
+                            <button type="submit" name="hide_category" class="btn btn-hide" onclick="return confirm('Are you sure you want to delete this category? This will not delete associated products but will hide them from customers.');">
+                                <i class="fas fa-trash"></i> Delete
                             </button>
                         </form>
                     </td>
