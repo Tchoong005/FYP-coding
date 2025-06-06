@@ -594,8 +594,8 @@ h2 {
                 </select>
             </div>
 
-            <label for="edit_comment">Comment:</label>
-            <textarea id="edit_comment" name="edit_comment" rows="3" placeholder="Add your comment (optional)"></textarea>
+            <label for="edit_comment">Remark:</label>
+            <textarea id="edit_comment" name="edit_comment" rows="3" placeholder="Add your remark (optional)"></textarea>
 
             <div class="modal-buttons">
                 <button type="button" class="cancel-btn" onclick="closeEditModal()">Cancel</button>

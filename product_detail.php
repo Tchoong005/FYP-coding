@@ -312,6 +312,7 @@ $is_beverage = (strtolower($product['category']) === 'beverages');
             color: var(--text-light);
             font-size: 16px;
             margin: 0 0 20px;
+            line-height: 1.7;
         }
 
         .product-info .price {
@@ -381,6 +382,7 @@ $is_beverage = (strtolower($product['category']) === 'beverages');
             border: 1px solid var(--border);
             border-radius: 10px;
             margin-bottom: 12px;
+            background: white;
         }
 
         .product-info textarea {
@@ -400,17 +402,19 @@ $is_beverage = (strtolower($product['category']) === 'beverages');
             transition: all 0.3s ease;
             width: 100%;
             margin-top: 10px;
+            box-shadow: 0 4px 8px rgba(214, 0, 28, 0.2);
         }
 
         .btn-add-cart:hover {
             background-color: var(--primary-dark);
             transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            box-shadow: 0 6px 12px rgba(214, 0, 28, 0.3);
         }
 
         .btn-add-cart:disabled {
             background-color: #ccc;
             cursor: not-allowed;
+            box-shadow: none;
         }
 
         /* 推荐商品区域 */
@@ -421,6 +425,7 @@ $is_beverage = (strtolower($product['category']) === 'beverages');
             padding: 20px;
             box-shadow: 0 4px 14px rgba(0,0,0,0.08);
             height: fit-content;
+            border: 1px solid #f0f0f0;
         }
 
         .recommendations-title {
@@ -430,6 +435,8 @@ $is_beverage = (strtolower($product['category']) === 'beverages');
             display: flex;
             align-items: center;
             gap: 10px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--primary);
         }
 
         .suggestions-grid {
@@ -623,6 +630,10 @@ $is_beverage = (strtolower($product['category']) === 'beverages');
             .nav-links {
                 gap: 10px;
             }
+            
+            .product-image {
+                height: 300px;
+            }
         }
         
         @media (max-width: 480px) {
@@ -633,7 +644,7 @@ $is_beverage = (strtolower($product['category']) === 'beverages');
                 font-size: 2.2rem;
             }
             .product-image {
-                height: 300px;
+                height: 250px;
             }
         }
 
@@ -684,6 +695,22 @@ $is_beverage = (strtolower($product['category']) === 'beverages');
         .nutrition-label {
             font-size: 12px;
             color: var(--text-light);
+        }
+        
+        .product-actions {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+            font-size: 18px;
+            color: var(--text);
         }
     </style>
 </head>
@@ -748,30 +775,38 @@ $is_beverage = (strtolower($product['category']) === 'beverages');
                     <span><?php echo (int)$product['stock_quantity']; ?></span>
                 </span>
             </div>
+            
+            <!-- 数量选择和备注区域 -->
+            <div class="product-actions">
+                <div class="section-title">
+                    <i class="fas fa-cart-plus"></i> Customize Your Order
+                </div>
+                
+                <label>Quantity:</label>
+                <div class="quantity-control">
+                    <button type="button" class="qty-btn" id="qtyMinus" disabled>-</button>
+                    <input type="text" id="quantity" name="quantity" value="1" readonly />
+                    <button type="button" class="qty-btn" id="qtyPlus">+</button>
+                </div>
 
-            <label>Quantity:</label>
-            <div class="quantity-control">
-                <button type="button" class="qty-btn" id="qtyMinus" disabled>-</button>
-                <input type="text" id="quantity" name="quantity" value="1" readonly />
-                <button type="button" class="qty-btn" id="qtyPlus">+</button>
+                <?php if (!$is_beverage): ?>
+                    <label for="sauce">Choose Sauce:</label>
+                    <select id="sauce" name="sauce" required>
+                        <option value="">-- Select Sauce --</option>
+                        <option value="BBQ">BBQ</option>
+                        <option value="Cheese">Cheese</option>
+                        <option value="Sweet and Sour">Sweet and Sour</option>
+                        <option value="Spicy Mayo">Spicy Mayo</option>
+                    </select>
+                <?php endif; ?>
+
+                <label for="comment">Special Instructions:</label>
+                <textarea id="comment" name="comment" placeholder="Any special requests? (e.g. no onions, extra sauce)"></textarea>
             </div>
-
-            <?php if (!$is_beverage): ?>
-                <label for="sauce">Choose Sauce:</label>
-                <select id="sauce" name="sauce" required>
-                    <option value="">-- Select Sauce --</option>
-                    <option value="BBQ">BBQ</option>
-                    <option value="Cheese">Cheese</option>
-                    <option value="Sweet and Sour">Sweet and Sour</option>
-                    <option value="Spicy Mayo">Spicy Mayo</option>
-                </select>
-            <?php endif; ?>
-
-            <label for="comment">Special Instructions:</label>
-            <textarea id="comment" name="comment" placeholder="Any special requests?"></textarea>
-
+            
             <button class="btn-add-cart" id="addToCartBtn" <?php echo $product['stock_quantity'] <= 0 ? 'disabled' : ''; ?>>
                 <?php echo $product['stock_quantity'] > 0 ? 'Add to Cart' : 'Out of Stock'; ?>
+                <i class="fas fa-shopping-cart ml-2"></i>
             </button>
         </div>
         
@@ -781,7 +816,8 @@ $is_beverage = (strtolower($product['category']) === 'beverages');
             <form id="suggestionsForm">
                 <div class="suggestions-grid">
                     <?php
-                    $suggest_sql = "SELECT * FROM products WHERE id != $product_id AND stock_quantity > 0 ORDER BY RAND() LIMIT 3";
+                    // 添加 deleted_at IS NULL 条件过滤已删除商品
+                    $suggest_sql = "SELECT * FROM products WHERE id != $product_id AND stock_quantity > 0 AND deleted_at IS NULL ORDER BY RAND() LIMIT 3";
                     $suggest_res = mysqli_query($conn, $suggest_sql);
                     if ($suggest_res && mysqli_num_rows($suggest_res) > 0) {
                         while ($suggest = mysqli_fetch_assoc($suggest_res)) {
@@ -833,6 +869,8 @@ $is_beverage = (strtolower($product['category']) === 'beverages');
 </div>
 
 <div class="message-box" id="messageBox"></div>
+
+<div class="footer">© <?php echo date('Y'); ?> FastFood Express. All rights reserved.</div>
 
 <script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
 <script>
@@ -916,8 +954,11 @@ $is_beverage = (strtolower($product['category']) === 'beverages');
         const plusBtn = control.querySelector('.plus');
         const qtyInput = control.querySelector('.suggestion-qty');
         const stock = parseInt(control.dataset.stock);
+        const checkbox = control.closest('.suggestion-checkbox').querySelector('input[type="checkbox"]');
         
         minusBtn.addEventListener('click', () => {
+            if (!checkbox.checked) return;
+            
             let val = parseInt(qtyInput.value);
             if (val > 1) {
                 qtyInput.value = val - 1;
@@ -931,6 +972,8 @@ $is_beverage = (strtolower($product['category']) === 'beverages');
         });
         
         plusBtn.addEventListener('click', () => {
+            if (!checkbox.checked) return;
+            
             let val = parseInt(qtyInput.value);
             if (val < stock) {
                 qtyInput.value = val + 1;
@@ -1035,6 +1078,5 @@ $is_beverage = (strtolower($product['category']) === 'beverages');
         });
     });
 </script>
-<div class="footer">© <?php echo date('Y'); ?> FastFood Express. All rights reserved.</div>
 </body>
 </html>

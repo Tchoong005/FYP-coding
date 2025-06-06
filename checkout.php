@@ -37,7 +37,7 @@ if (empty($cart)) {
 }
 
 // 使用预处理语句获取用户信息
-$user_sql = "SELECT username, phone, address FROM customers WHERE id = ? LIMIT 1";
+$user_sql = "SELECT username, phone, address, postcode, city, state FROM customers WHERE id = ? LIMIT 1";
 $user_stmt = $conn->prepare($user_sql);
 $user_stmt->bind_param("i", $user_id);
 $user_stmt->execute();
@@ -47,7 +47,8 @@ $user_stmt->close();
 
 // 检查用户信息是否完整
 $user_info_complete = true;
-if (empty($user_data['username']) || empty($user_data['phone']) || empty($user_data['address'])) {
+if (empty($user_data['username']) || empty($user_data['phone']) || empty($user_data['address']) || 
+    empty($user_data['postcode']) || empty($user_data['city']) || empty($user_data['state'])) {
     $user_info_complete = false;
 }
 
@@ -99,7 +100,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['checkout_info'] = [
                 'recipient_name' => $_POST['recipient_name'],
                 'recipient_phone' => $_POST['recipient_phone'],
-                'recipient_address' => $_POST['recipient_address']
+                'recipient_address' => $_POST['recipient_address'],
+                'recipient_postcode' => $_POST['recipient_postcode'],
+                'recipient_city' => $_POST['recipient_city'],
+                'recipient_state' => $_POST['recipient_state']
             ];
         }
         
@@ -114,7 +118,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $recipient_name = $_SESSION['checkout_info']['recipient_name'] ?? $user_data['username'] ?? '';
             $recipient_phone = $_SESSION['checkout_info']['recipient_phone'] ?? $user_data['phone'] ?? '';
             $recipient_address = $_SESSION['checkout_info']['recipient_address'] ?? $user_data['address'] ?? '';
+            $recipient_postcode = $_SESSION['checkout_info']['recipient_postcode'] ?? $user_data['postcode'] ?? '';
+            $recipient_city = $_SESSION['checkout_info']['recipient_city'] ?? $user_data['city'] ?? '';
+            $recipient_state = $_SESSION['checkout_info']['recipient_state'] ?? $user_data['state'] ?? '';
             $delivery_method = $_SESSION['delivery_method'] ?? 'delivery';
+
+            // 组合完整地址
+            $full_address = $recipient_address . ', ' . $recipient_postcode . ' ' . $recipient_city . ', ' . $recipient_state;
 
             // 验证收件人信息是否完整
             $info_error = '';
@@ -122,8 +132,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $info_error = "Recipient name is required";
             } elseif (empty($recipient_phone)) {
                 $info_error = "Recipient phone is required";
-            } elseif ($delivery_method === 'delivery' && empty($recipient_address)) {
-                $info_error = "Delivery address is required";
+            } elseif ($delivery_method === 'delivery' && (empty($recipient_address) || empty($recipient_postcode) || empty($recipient_city) || empty($recipient_state))) {
+                $info_error = "All address fields are required for delivery";
             }
             
             if (!empty($info_error)) {
@@ -191,7 +201,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $user_id, 
                         $recipient_name, 
                         $recipient_phone,
-                        $recipient_address, 
+                        $full_address, 
                         $delivery_method, 
                         $total_price, 
                         $delivery_fee, 
@@ -290,6 +300,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $recipient_name = $_SESSION['checkout_info']['recipient_name'] ?? $user_data['username'] ?? '';
 $recipient_phone = $_SESSION['checkout_info']['recipient_phone'] ?? $user_data['phone'] ?? '';
 $recipient_address = $_SESSION['checkout_info']['recipient_address'] ?? $user_data['address'] ?? '';
+$recipient_postcode = $_SESSION['checkout_info']['recipient_postcode'] ?? $user_data['postcode'] ?? '';
+$recipient_city = $_SESSION['checkout_info']['recipient_city'] ?? $user_data['city'] ?? '';
+$recipient_state = $_SESSION['checkout_info']['recipient_state'] ?? $user_data['state'] ?? '';
 $delivery_method = $_SESSION['delivery_method'] ?? 'delivery';
 $payment_method = $_SESSION['payment_method'] ?? 'credit_card';
 
@@ -816,40 +829,6 @@ $final_total = $total_price + $delivery_fee;
             100% { transform: rotate(360deg); }
         }
         
-        /* New styles for payment method info */
-        .payment-info {
-            background-color: #f8f9fa;
-            border-left: 4px solid #d6001c;
-            padding: 15px;
-            margin-top: 15px;
-            border-radius: 4px;
-            font-size: 14px;
-            display: flex;
-            align-items: flex-start;
-            gap: 10px;
-        }
-        
-        .stock-info {
-            background-color: #fffaf0;
-            border: 1px solid #ffd700;
-            padding: 15px;
-            border-radius: 4px;
-            margin: 10px 0;
-            font-size: 14px;
-            display: flex;
-            align-items: flex-start;
-            gap: 10px;
-        }
-        
-        .stock-warning {
-            color: #ff5722;
-            font-weight: bold;
-            margin-top: 5px;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-        
         .btn-auto-fill {
             background: #f0f0f0;
             border: 1px solid #ddd;
@@ -896,6 +875,15 @@ $final_total = $total_price + $delivery_fee;
             color: #666;
         }
         
+        .address-row {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .address-row .form-group {
+            flex: 1;
+        }
+        
         /* Responsive design */
         @media (max-width: 768px) {
             .topbar {
@@ -916,6 +904,11 @@ $final_total = $total_price + $delivery_fee;
             
             .delivery-method {
                 flex-direction: column;
+            }
+            
+            .address-row {
+                flex-direction: column;
+                gap: 0;
             }
         }
         
@@ -964,25 +957,6 @@ $final_total = $total_price + $delivery_fee;
     <div class="left-column">
         <h2>Your Order</h2>
         
-        <?php if ($has_stock_issues): ?>
-            <div class="error">
-                <i class="fas fa-exclamation-triangle"></i>
-                <div>Some items in your cart have insufficient stock. Please review your order.</div>
-            </div>
-        <?php endif; ?>
-        
-        <?php if ($payment_method === 'credit_card'): ?>
-            <div class="stock-info">
-                <i class="fas fa-info-circle"></i> 
-                <div>For credit/debit card payments, stock will be reserved when payment is successful.</div>
-            </div>
-        <?php else: ?>
-            <div class="stock-info">
-                <i class="fas fa-info-circle"></i> 
-                <div>For cash/counter payments, stock will be reduced immediately upon order confirmation.</div>
-            </div>
-        <?php endif; ?>
-        
         <?php foreach ($cart as $item): ?>
             <?php 
             $pid = (int)$item['product_id'];
@@ -1001,12 +975,6 @@ $final_total = $total_price + $delivery_fee;
                             <?php endif; ?>
                             <?php if (!empty($item['comment'])): ?>
                                 <br>Note: <?php echo htmlspecialchars($item['comment']); ?>
-                            <?php endif; ?>
-                            <?php if ($payment_method !== 'credit_card' && $product['stock_quantity'] < $item['quantity']): ?>
-                                <div class="stock-warning">
-                                    <i class="fas fa-exclamation-triangle"></i> 
-                                    Only <?php echo $product['stock_quantity']; ?> available in stock
-                                </div>
                             <?php endif; ?>
                         </div>
                     </div>
@@ -1072,9 +1040,30 @@ $final_total = $total_price + $delivery_fee;
             </div>
             <div class="form-group" id="address-field" 
                 style="<?php echo $delivery_method === 'dine_in' ? 'display: none;' : ''; ?>">
-                <label for="recipient_address">Delivery Address</label>
+                <label for="recipient_address">Street Address</label>
                 <textarea id="recipient_address" name="recipient_address" 
                     <?php echo $delivery_method === 'dine_in' ? '' : 'required'; ?>><?php echo htmlspecialchars($recipient_address); ?></textarea>
+            </div>
+            <div class="address-row" id="address-details" style="<?php echo $delivery_method === 'dine_in' ? 'display: none;' : ''; ?>">
+                <div class="form-group">
+                    <label for="recipient_postcode">Postcode</label>
+                    <input type="text" id="recipient_postcode" name="recipient_postcode" 
+                        value="<?php echo htmlspecialchars($recipient_postcode); ?>" 
+                        <?php echo $delivery_method === 'dine_in' ? '' : 'required'; ?>
+                        pattern="\d{5}" title="5-digit postcode">
+                </div>
+                <div class="form-group">
+                    <label for="recipient_city">City</label>
+                    <input type="text" id="recipient_city" name="recipient_city" 
+                        value="<?php echo htmlspecialchars($recipient_city); ?>" 
+                        <?php echo $delivery_method === 'dine_in' ? '' : 'required'; ?>>
+                </div>
+                <div class="form-group">
+                    <label for="recipient_state">State</label>
+                    <input type="text" id="recipient_state" name="recipient_state" 
+                        value="<?php echo htmlspecialchars($recipient_state); ?>" 
+                        <?php echo $delivery_method === 'dine_in' ? '' : 'required'; ?>>
+                </div>
             </div>
 
             <h3>
@@ -1104,20 +1093,6 @@ $final_total = $total_price + $delivery_fee;
                 <span>Pay at Counter</span>
             </label>
             
-            <!-- Payment method information -->
-            <div id="cash-info" class="payment-info" style="display: none;">
-                <i class="fas fa-info-circle"></i> 
-                <div>You will pay in cash when your order is delivered. Stock will be reduced immediately.</div>
-            </div>
-            <div id="counter-info" class="payment-info" style="display: none;">
-                <i class="fas fa-info-circle"></i> 
-                <div>Please pay at the counter when you arrive. Stock will be reduced immediately.</div>
-            </div>
-            <div id="credit-info" class="payment-info" style="display: none;">
-                <i class="fas fa-info-circle"></i> 
-                <div>You will be redirected to our secure payment gateway. Stock will be reserved after successful payment.</div>
-            </div>
-
             <h3>
                 <i class="fas fa-receipt h3-icon"></i>
                 Order Summary
@@ -1161,17 +1136,17 @@ $final_total = $total_price + $delivery_fee;
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
     $(document).ready(function() {
-        // 显示初始支付方式信息
-        showPaymentInfo('<?php echo $payment_method; ?>');
-        
         // 地址自动填充
         $('#fill-address').click(function() {
             var name = <?php echo json_encode($user_data['username'] ?? ''); ?>;
             var phone = <?php echo json_encode($user_data['phone'] ?? ''); ?>;
             var address = <?php echo json_encode($user_data['address'] ?? ''); ?>;
+            var postcode = <?php echo json_encode($user_data['postcode'] ?? ''); ?>;
+            var city = <?php echo json_encode($user_data['city'] ?? ''); ?>;
+            var state = <?php echo json_encode($user_data['state'] ?? ''); ?>;
             
             // 检查用户信息是否完整
-            if (!name || !phone || !address) {
+            if (!name || !phone || !address || !postcode || !city || !state) {
                 if (confirm('Your profile information is incomplete. Would you like to update your profile now?')) {
                     window.location.href = 'profile.php';
                 }
@@ -1179,6 +1154,9 @@ $final_total = $total_price + $delivery_fee;
                 $('#recipient_name').val(name);
                 $('#recipient_phone').val(phone);
                 $('#recipient_address').val(address);
+                $('#recipient_postcode').val(postcode);
+                $('#recipient_city').val(city);
+                $('#recipient_state').val(state);
             }
         });
         
@@ -1190,10 +1168,18 @@ $final_total = $total_price + $delivery_fee;
             // 切换地址字段显示
             if ($(this).val() === 'delivery') {
                 $('#address-field').show();
+                $('#address-details').show();
                 $('#recipient_address').prop('required', true);
+                $('#recipient_postcode').prop('required', true);
+                $('#recipient_city').prop('required', true);
+                $('#recipient_state').prop('required', true);
             } else {
                 $('#address-field').hide();
+                $('#address-details').hide();
                 $('#recipient_address').prop('required', false);
+                $('#recipient_postcode').prop('required', false);
+                $('#recipient_city').prop('required', false);
+                $('#recipient_state').prop('required', false);
             }
             
             // 更新支付选项
@@ -1241,20 +1227,7 @@ $final_total = $total_price + $delivery_fee;
             $('.payment-option').removeClass('selected');
             $(this).closest('.payment-option').addClass('selected');
             updateSubmitButtonText();
-            showPaymentInfo($(this).val());
         });
-        
-        // 显示支付方式信息
-        function showPaymentInfo(method) {
-            $('.payment-info').hide();
-            if (method === 'cash') {
-                $('#cash-info').show();
-            } else if (method === 'counter') {
-                $('#counter-info').show();
-            } else {
-                $('#credit-info').show();
-            }
-        }
         
         // 根据选择更新提交按钮文本
         function updateSubmitButtonText() {
@@ -1277,6 +1250,22 @@ $final_total = $total_price + $delivery_fee;
                 return;
             }
             
+            // 如果是配送，验证地址字段
+            if ($('input[name="delivery_method"]:checked').val() === 'delivery') {
+                const postcode = $('#recipient_postcode').val();
+                if (!/^\d{5}$/.test(postcode)) {
+                    alert('Please enter a valid 5-digit postcode');
+                    e.preventDefault();
+                    return;
+                }
+                
+                if (!$('#recipient_address').val() || !$('#recipient_city').val() || !$('#recipient_state').val()) {
+                    alert('All address fields are required for delivery');
+                    e.preventDefault();
+                    return;
+                }
+            }
+            
             const paymentMethod = $('input[name="payment_method"]:checked').val();
             const overlay = $('#messageOverlay');
             
@@ -1286,10 +1275,10 @@ $final_total = $total_price + $delivery_fee;
                 $('#messageText').text('You selected Credit/Debit Card payment. Redirecting to our secure payment gateway...');
             } else if (paymentMethod === 'cash') {
                 $('#messageTitle').text('Processing Order');
-                $('#messageText').text('Your order is being processed. You will pay with cash upon delivery. Stock is being updated.');
+                $('#messageText').text('Your order is being processed. You will pay with cash upon delivery.');
             } else if (paymentMethod === 'counter') {
                 $('#messageTitle').text('Processing Order');
-                $('#messageText').text('Your order is being processed. Please pay at the counter when you arrive. Stock is being updated.');
+                $('#messageText').text('Your order is being processed. Please pay at the counter when you arrive.');
             }
             
             overlay.addClass('active');

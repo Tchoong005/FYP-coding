@@ -125,6 +125,7 @@ unset($order); // break the reference
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+        /* 原有CSS保持不变，只添加新样式 */
         :root {
             --primary: #d6001c;
             --primary-dark: #b80018;
@@ -1011,6 +1012,39 @@ unset($order); // break the reference
         .order-count i {
             color: var(--primary);
         }
+        /* 新增收货人信息样式 */
+        .recipient-info {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px dashed #eee;
+        }
+        
+        .recipient-label {
+            font-weight: bold;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        
+        .recipient-name, .recipient-phone, .recipient-address {
+            color: #333;
+            font-weight: 500;
+            margin-bottom: 5px;
+        }
+        
+        .recipient-phone {
+            color: #d6001c;
+        }
+        
+        .recipient-address {
+            color: #555;
+            font-size: 14px;
+            line-height: 1.4;
+            margin-top: 8px;
+            padding: 8px;
+            background: #f9f9f9;
+            border-radius: 6px;
+            border-left: 3px solid var(--primary);
+        }
     </style>
 </head>
 <body>
@@ -1195,6 +1229,18 @@ unset($order); // break the reference
                 <div class="order-details">
                     <div class="order-summary">
                         <h4><i class="fas fa-receipt"></i> Order Summary</h4>
+                        
+                        <!-- 新增收货人信息 -->
+                        <div class="recipient-info">
+                            <div class="recipient-label">Recipient Information:</div>
+                            <div class="recipient-name"><?php echo htmlspecialchars($order['recipient_name']); ?></div>
+                            <div class="recipient-phone"><?php echo htmlspecialchars($order['recipient_phone']); ?></div>
+                            <div class="recipient-address">
+                                <i class="fas fa-map-marker-alt"></i> 
+                                <?php echo htmlspecialchars($order['recipient_address']); ?>
+                            </div>
+                        </div>
+                        
                         <div class="summary-item">
                             <span class="summary-label">Subtotal:</span>
                             <span class="summary-value">RM <?php echo number_format($order['total_price'], 2); ?></span>
@@ -1324,6 +1370,18 @@ unset($order); // break the reference
                 <div class="order-details">
                     <div class="order-summary">
                         <h4><i class="fas fa-receipt"></i> Order Summary</h4>
+                        
+                        <!-- 新增收货人信息 -->
+                        <div class="recipient-info">
+                            <div class="recipient-label">Recipient Information:</div>
+                            <div class="recipient-name"><?php echo htmlspecialchars($order['recipient_name']); ?></div>
+                            <div class="recipient-phone"><?php echo htmlspecialchars($order['recipient_phone']); ?></div>
+                            <div class="recipient-address">
+                                <i class="fas fa-map-marker-alt"></i> 
+                                <?php echo htmlspecialchars($order['delivery_address']); ?>
+                            </div>
+                        </div>
+                        
                         <div class="summary-item">
                             <span class="summary-label">Subtotal:</span>
                             <span class="summary-value">RM <?php echo number_format($order['total_price'], 2); ?></span>
@@ -1418,6 +1476,18 @@ unset($order); // break the reference
                 <div class="order-details">
                     <div class="order-summary">
                         <h4><i class="fas fa-receipt"></i> Order Summary</h4>
+                        
+                        <!-- 新增收货人信息 -->
+                        <div class="recipient-info">
+                            <div class="recipient-label">Recipient Information:</div>
+                            <div class="recipient-name"><?php echo htmlspecialchars($order['recipient_name']); ?></div>
+                            <div class="recipient-phone"><?php echo htmlspecialchars($order['recipient_phone']); ?></div>
+                            <div class="recipient-address">
+                                <i class="fas fa-map-marker-alt"></i> 
+                                <?php echo htmlspecialchars($order['delivery_address']); ?>
+                            </div>
+                        </div>
+                        
                         <div class="summary-item">
                             <span class="summary-label">Subtotal:</span>
                             <span class="summary-value">RM <?php echo number_format($order['total_price'], 2); ?></span>
