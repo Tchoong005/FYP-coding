@@ -2,14 +2,13 @@
 session_start();
 include 'db.php';
 
-// 修复：Guest模式下不检查用户登录状态
 $is_logged_in = !empty($_SESSION['user_id']);
 
 // 获取搜索关键词
 $search = isset($_GET['search']) ? mysqli_real_escape_string($conn, $_GET['search']) : "";
 
-// 查询未删除分类中的未删除产品
-$sql = "SELECT p.* 
+// 查询未删除分类中的未删除产品，并获取分类的display_name
+$sql = "SELECT p.*, c.display_name 
         FROM products p
         INNER JOIN categories c ON p.category = c.name
         WHERE c.deleted_at IS NULL 
@@ -24,7 +23,7 @@ $result = mysqli_query($conn, $sql);
 $products_by_category = [];
 if ($result) {
     while ($row = mysqli_fetch_assoc($result)) {
-        $products_by_category[$row['category']][] = $row;
+        $products_by_category[$row['display_name']][] = $row;
     }
 } else {
     die("Query failed: " . mysqli_error($conn));
@@ -338,18 +337,30 @@ if ($is_logged_in && !empty($_SESSION['cart'])) {
             gap: 10px;
         }
         
+        /* 横向滚动容器样式 */
+        .scroll-container {
+            position: relative;
+            padding: 0 40px;
+            margin-bottom: 50px;
+        }
+        
         .product-grid {
             display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
             gap: 30px;
-            padding: 0 20px;
-            max-width: 1400px;
-            margin: 0 auto;
+            overflow-x: auto;
+            scroll-behavior: smooth;
+            padding: 20px 0;
+            margin: 0 -15px;
+            scrollbar-width: none;
+        }
+        
+        .product-grid::-webkit-scrollbar {
+            display: none;
         }
         
         .product-card {
             width: 260px;
+            flex-shrink: 0;
             background: #fff;
             border-radius: 16px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
@@ -386,6 +397,9 @@ if ($is_logged_in && !empty($_SESSION['cart'])) {
             margin: 10px;
             color: var(--primary);
             font-size: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         
         .product-card p {
@@ -424,7 +438,6 @@ if ($is_logged_in && !empty($_SESSION['cart'])) {
             background-color: var(--primary-dark);
         }
         
-        /* Stock indicator */
         .stock-indicator {
             display: inline-block;
             padding: 3px 8px;
@@ -452,6 +465,66 @@ if ($is_logged_in && !empty($_SESSION['cart'])) {
             text-decoration: none;
         }
         
+        /* 横向滚动导航按钮 */
+        .scroll-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 40px;
+            height: 40px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 10;
+            opacity: 0.7;
+            transition: opacity 0.3s;
+        }
+        
+        .scroll-btn:hover {
+            opacity: 1;
+            background: var(--primary);
+            color: white;
+        }
+        
+        .scroll-left {
+            left: -5px;
+        }
+        
+        .scroll-right {
+            right: -5px;
+        }
+        
+        /* 空状态样式 */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            background-color: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            margin: 0 20px;
+        }
+        
+        .empty-state i {
+            font-size: 60px;
+            color: #ddd;
+            margin-bottom: 20px;
+        }
+        
+        .empty-state h3 {
+            color: var(--text-light);
+            margin-bottom: 15px;
+        }
+        
+        .empty-state p {
+            color: var(--text-light);
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        
         .footer {
             background-color: #eee;
             text-align: center;
@@ -474,13 +547,9 @@ if ($is_logged_in && !empty($_SESSION['cart'])) {
                 width: 70%;
             }
             
-            .product-grid {
-                gap: 15px;
-                padding: 0 10px;
-            }
-            
             .product-card {
                 width: calc(50% - 15px);
+                min-width: 220px;
             }
             
             .header-section h2 {
@@ -489,6 +558,14 @@ if ($is_logged_in && !empty($_SESSION['cart'])) {
             
             .header-section p {
                 font-size: 1rem;
+            }
+            
+            .scroll-container {
+                padding: 0 20px;
+            }
+            
+            .scroll-btn {
+                display: none;
             }
         }
 
@@ -499,6 +576,7 @@ if ($is_logged_in && !empty($_SESSION['cart'])) {
             
             .product-card {
                 width: 100%;
+                min-width: 200px;
             }
             
             .category-title {
@@ -574,28 +652,29 @@ if ($is_logged_in && !empty($_SESSION['cart'])) {
         </form>
     </div>
     
-    <!-- Product List -->
+    <!-- Product List with Horizontal Scrolling -->
     <?php
     if (!empty($products_by_category)) {
         foreach ($products_by_category as $category => $products) {
-            // 确保分类下有产品才显示
             if (count($products) > 0) {
                 echo '<div class="category-title" data-aos="fade-right"><i class="fas fa-tag"></i> ' . htmlspecialchars($category) . '</div>';
-                echo '<div class="product-grid">';
+                
+                echo '<div class="scroll-container">';
+                echo '<div class="product-grid" id="grid-' . htmlspecialchars($category) . '">';
+                
                 foreach ($products as $product) {
                     $button_label = ($product['stock_quantity'] > 0) ? "Order Now" : "Out of Stock";
                     $stock_indicator = ($product['stock_quantity'] > 0) 
                         ? '<span class="stock-indicator in-stock">In Stock</span>' 
                         : '<span class="stock-indicator out-of-stock">Out of Stock</span>';
-                    
-                    echo '
-                        <div class="product-card" data-aos="fade-up">
-                            <div class="product-image">
-                                <img src="' . htmlspecialchars($product['image_url']) . '" alt="' . htmlspecialchars($product['name']) . '">
-                            </div>
-                            <h3>' . htmlspecialchars($product['name']) . $stock_indicator . '</h3>
-                            <p>' . (!empty($product['description']) ? htmlspecialchars($product['description']) : '') . '</p>
-                            <div class="price">RM ' . number_format($product['price'], 2) . '</div>';
+
+                    echo '<div class="product-card" data-aos="fade-up">';
+                    echo '<div class="product-image">';
+                    echo '<img src="' . htmlspecialchars($product['image_url']) . '" alt="' . htmlspecialchars($product['name']) . '">';
+                    echo '</div>';
+                    echo '<h3>' . htmlspecialchars($product['name']) . $stock_indicator . '</h3>';
+                    echo '<p>' . (!empty($product['description']) ? htmlspecialchars($product['description']) : '') . '</p>';
+                    echo '<div class="price">RM ' . number_format($product['price'], 2) . '</div>';
                     
                     if ($is_logged_in) {
                         $button_class = ($product['stock_quantity'] > 0) ? "btn" : "btn disabled-btn";
@@ -609,10 +688,18 @@ if ($is_logged_in && !empty($_SESSION['cart'])) {
                     echo '</div>';
                 }
                 echo '</div>';
+                
+                echo '<button class="scroll-btn scroll-left" onclick="scrollGrid(\'grid-' . htmlspecialchars($category) . '\', -300)"><i class="fas fa-chevron-left"></i></button>';
+                echo '<button class="scroll-btn scroll-right" onclick="scrollGrid(\'grid-' . htmlspecialchars($category) . '\', 300)"><i class="fas fa-chevron-right"></i></button>';
+                echo '</div>';
             }
         }
     } else {
-        echo '<p style="text-align:center; color:red; padding: 40px; font-size: 18px;">No products found. Please try a different search term.</p>';
+        echo '<div class="empty-state">
+                <i class="fas fa-utensils"></i>
+                <h3>No Products Found</h3>
+                <p>We couldn\'t find any products matching your search. Please try a different search term or browse our other categories.</p>
+              </div>';
     }
     ?>
 </div>
@@ -679,6 +766,65 @@ if ($is_logged_in && !empty($_SESSION['cart'])) {
             if (link.getAttribute('href') === currentPage) {
                 link.classList.add('active-link');
             }
+        });
+    });
+    
+    // 横向滚动函数
+    function scrollGrid(gridId, scrollAmount) {
+        const grid = document.getElementById(gridId);
+        if (grid) {
+            grid.scrollBy({
+                left: scrollAmount,
+                behavior: 'smooth'
+            });
+        }
+    }
+    
+    // 添加触摸滑动支持
+    document.querySelectorAll('.product-grid').forEach(grid => {
+        let isDown = false;
+        let startX;
+        let scrollLeft;
+        
+        grid.addEventListener('mousedown', (e) => {
+            isDown = true;
+            startX = e.pageX - grid.offsetLeft;
+            scrollLeft = grid.scrollLeft;
+        });
+        
+        grid.addEventListener('mouseleave', () => {
+            isDown = false;
+        });
+        
+        grid.addEventListener('mouseup', () => {
+            isDown = false;
+        });
+        
+        grid.addEventListener('mousemove', (e) => {
+            if (!isDown) return;
+            e.preventDefault();
+            const x = e.pageX - grid.offsetLeft;
+            const walk = (x - startX) * 2; // 滚动速度
+            grid.scrollLeft = scrollLeft - walk;
+        });
+        
+        // 触摸事件支持
+        grid.addEventListener('touchstart', (e) => {
+            isDown = true;
+            startX = e.touches[0].pageX - grid.offsetLeft;
+            scrollLeft = grid.scrollLeft;
+        });
+        
+        grid.addEventListener('touchend', () => {
+            isDown = false;
+        });
+        
+        grid.addEventListener('touchmove', (e) => {
+            if (!isDown) return;
+            e.preventDefault();
+            const x = e.touches[0].pageX - grid.offsetLeft;
+            const walk = (x - startX) * 2;
+            grid.scrollLeft = scrollLeft - walk;
         });
     });
 </script>
