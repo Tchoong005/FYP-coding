@@ -84,7 +84,8 @@ if ($result_canceled) {
 
 // Function to fetch order items
 function fetch_order_items($conn, $order_id) {
-    $sql_items = "SELECT oi.*, p.name, p.image_url 
+    // 修改点2: 添加sauce和comment字段到查询
+    $sql_items = "SELECT oi.*, p.name, p.image_url, oi.sauce, oi.comment 
                  FROM order_items oi
                  JOIN products p ON oi.product_id = p.id
                  WHERE oi.order_id = $order_id";
@@ -729,6 +730,43 @@ unset($order); // break the reference
             font-size: 1.5rem;
         }
         
+        /* 新增酱料和备注样式 */
+        .item-extras {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px dashed #eee;
+        }
+        
+        .extra-label {
+            font-weight: bold;
+            font-size: 0.85rem;
+            color: #555;
+            display: flex;
+            align-items: center;
+            margin-bottom: 3px;
+        }
+        
+        .extra-label i {
+            margin-right: 5px;
+            font-size: 0.9rem;
+        }
+        
+        .extra-value {
+            font-size: 0.9rem;
+            color: #666;
+            padding-left: 20px;
+            margin-bottom: 5px;
+            line-height: 1.4;
+        }
+        
+        .extra-sauce {
+            color: #e91e63;
+        }
+        
+        .extra-remark {
+            color: #2196f3;
+        }
+        
         @media (max-width: 768px) {
             .order-header {
                 flex-direction: column;
@@ -1230,15 +1268,17 @@ unset($order); // break the reference
                     <div class="order-summary">
                         <h4><i class="fas fa-receipt"></i> Order Summary</h4>
                         
-                        <!-- 新增收货人信息 -->
+                        <!-- 新增收货人信息 - 根据配送方式显示地址 -->
                         <div class="recipient-info">
                             <div class="recipient-label">Recipient Information:</div>
                             <div class="recipient-name"><?php echo htmlspecialchars($order['recipient_name']); ?></div>
                             <div class="recipient-phone"><?php echo htmlspecialchars($order['recipient_phone']); ?></div>
-                            <div class="recipient-address">
-                                <i class="fas fa-map-marker-alt"></i> 
-                                <?php echo htmlspecialchars($order['recipient_address']); ?>
-                            </div>
+                            <?php if ($order['delivery_method'] == 'delivery'): ?>
+                                <div class="recipient-address">
+                                    <i class="fas fa-map-marker-alt"></i> 
+                                    <?php echo htmlspecialchars($order['recipient_address']); ?>
+                                </div>
+                            <?php endif; ?>
                         </div>
                         
                         <div class="summary-item">
@@ -1280,6 +1320,27 @@ unset($order); // break the reference
                                 <div class="item-details">
                                     <div class="item-name"><?php echo htmlspecialchars($item['name']); ?></div>
                                     <div class="item-price">RM <?php echo number_format($item['price'], 2); ?></div>
+                                    
+                                    <!-- 新增酱料和备注信息 -->
+                                    <div class="item-extras">
+                                        <?php if (!empty($item['sauce'])): ?>
+                                            <div class="extra-label extra-sauce">
+                                                <i class="fas fa-mortar-pestle"></i> Sauce:
+                                            </div>
+                                            <div class="extra-value extra-sauce">
+                                                <?php echo htmlspecialchars($item['sauce']); ?>
+                                            </div>
+                                        <?php endif; ?>
+                                        
+                                        <?php if (!empty($item['comment'])): ?>
+                                            <div class="extra-label extra-remark">
+                                                <i class="fas fa-comment-alt"></i> Remark:
+                                            </div>
+                                            <div class="extra-value extra-remark">
+                                                <?php echo htmlspecialchars($item['comment']); ?>
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
                                 </div>
                                 <div class="item-quantity">
                                     Qty: <?php echo $item['quantity']; ?>
@@ -1371,15 +1432,17 @@ unset($order); // break the reference
                     <div class="order-summary">
                         <h4><i class="fas fa-receipt"></i> Order Summary</h4>
                         
-                        <!-- 新增收货人信息 -->
+                        <!-- 新增收货人信息 - 根据配送方式显示地址 -->
                         <div class="recipient-info">
                             <div class="recipient-label">Recipient Information:</div>
                             <div class="recipient-name"><?php echo htmlspecialchars($order['recipient_name']); ?></div>
                             <div class="recipient-phone"><?php echo htmlspecialchars($order['recipient_phone']); ?></div>
-                            <div class="recipient-address">
-                                <i class="fas fa-map-marker-alt"></i> 
-                                <?php echo htmlspecialchars($order['delivery_address']); ?>
-                            </div>
+                            <?php if ($order['delivery_method'] == 'delivery'): ?>
+                                <div class="recipient-address">
+                                    <i class="fas fa-map-marker-alt"></i> 
+                                    <?php echo htmlspecialchars($order['recipient_address']); ?>
+                                </div>
+                            <?php endif; ?>
                         </div>
                         
                         <div class="summary-item">
@@ -1421,6 +1484,27 @@ unset($order); // break the reference
                                 <div class="item-details">
                                     <div class="item-name"><?php echo htmlspecialchars($item['name']); ?></div>
                                     <div class="item-price">RM <?php echo number_format($item['price'], 2); ?></div>
+                                    
+                                    <!-- 新增酱料和备注信息 -->
+                                    <div class="item-extras">
+                                        <?php if (!empty($item['sauce'])): ?>
+                                            <div class="extra-label extra-sauce">
+                                                <i class="fas fa-mortar-pestle"></i> Sauce:
+                                            </div>
+                                            <div class="extra-value extra-sauce">
+                                                <?php echo htmlspecialchars($item['sauce']); ?>
+                                            </div>
+                                        <?php endif; ?>
+                                        
+                                        <?php if (!empty($item['comment'])): ?>
+                                            <div class="extra-label extra-remark">
+                                                <i class="fas fa-comment-alt"></i> Remark:
+                                            </div>
+                                            <div class="extra-value extra-remark">
+                                                <?php echo htmlspecialchars($item['comment']); ?>
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
                                 </div>
                                 <div class="item-quantity">
                                     Qty: <?php echo $item['quantity']; ?>
@@ -1477,15 +1561,17 @@ unset($order); // break the reference
                     <div class="order-summary">
                         <h4><i class="fas fa-receipt"></i> Order Summary</h4>
                         
-                        <!-- 新增收货人信息 -->
+                        <!-- 新增收货人信息 - 根据配送方式显示地址 -->
                         <div class="recipient-info">
                             <div class="recipient-label">Recipient Information:</div>
                             <div class="recipient-name"><?php echo htmlspecialchars($order['recipient_name']); ?></div>
                             <div class="recipient-phone"><?php echo htmlspecialchars($order['recipient_phone']); ?></div>
-                            <div class="recipient-address">
-                                <i class="fas fa-map-marker-alt"></i> 
-                                <?php echo htmlspecialchars($order['delivery_address']); ?>
-                            </div>
+                            <?php if ($order['delivery_method'] == 'delivery'): ?>
+                                <div class="recipient-address">
+                                    <i class="fas fa-map-marker-alt"></i> 
+                                    <?php echo htmlspecialchars($order['recipient_address']); ?>
+                                </div>
+                            <?php endif; ?>
                         </div>
                         
                         <div class="summary-item">
@@ -1527,6 +1613,27 @@ unset($order); // break the reference
                                 <div class="item-details">
                                     <div class="item-name"><?php echo htmlspecialchars($item['name']); ?></div>
                                     <div class="item-price">RM <?php echo number_format($item['price'], 2); ?></div>
+                                    
+                                    <!-- 新增酱料和备注信息 -->
+                                    <div class="item-extras">
+                                        <?php if (!empty($item['sauce'])): ?>
+                                            <div class="extra-label extra-sauce">
+                                                <i class="fas fa-mortar-pestle"></i> Sauce:
+                                            </div>
+                                            <div class="extra-value extra-sauce">
+                                                <?php echo htmlspecialchars($item['sauce']); ?>
+                                            </div>
+                                        <?php endif; ?>
+                                        
+                                        <?php if (!empty($item['comment'])): ?>
+                                            <div class="extra-label extra-remark">
+                                                <i class="fas fa-comment-alt"></i> Remark:
+                                            </div>
+                                            <div class="extra-value extra-remark">
+                                                <?php echo htmlspecialchars($item['comment']); ?>
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
                                 </div>
                                 <div class="item-quantity">
                                     Qty: <?php echo $item['quantity']; ?>

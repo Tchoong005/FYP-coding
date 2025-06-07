@@ -123,8 +123,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $recipient_state = $_SESSION['checkout_info']['recipient_state'] ?? $user_data['state'] ?? '';
             $delivery_method = $_SESSION['delivery_method'] ?? 'delivery';
 
-            // 组合完整地址
-            $full_address = $recipient_address . ', ' . $recipient_postcode . ' ' . $recipient_city . ', ' . $recipient_state;
+            // 对于堂食订单，不存储地址信息
+            $full_address = '';
+            if ($delivery_method === 'delivery') {
+                $full_address = $recipient_address . ', ' . $recipient_postcode . ' ' . $recipient_city . ', ' . $recipient_state;
+            }
 
             // 验证收件人信息是否完整
             $info_error = '';
@@ -974,7 +977,7 @@ $final_total = $total_price + $delivery_fee;
                                 <br>Sauce: <?php echo htmlspecialchars($item['sauce']); ?>
                             <?php endif; ?>
                             <?php if (!empty($item['comment'])): ?>
-                                <br>Note: <?php echo htmlspecialchars($item['comment']); ?>
+                                <br>Remark: <?php echo htmlspecialchars($item['comment']); ?>
                             <?php endif; ?>
                         </div>
                     </div>

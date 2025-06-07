@@ -888,6 +888,25 @@ if (!empty($_SESSION['cart'])) {
             margin-top: 8px;
             font-size: 1.1rem;
         }
+
+        /* 新增酱料和备注样式 */
+        .item-sauce {
+            background-color: #fff9e6;
+            padding: 5px 8px;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            margin-top: 8px;
+            display: inline-block;
+        }
+        
+        .item-remark {
+            background-color: #e6f7ff;
+            padding: 5px 8px;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            margin-top: 8px;
+            display: block;
+        }
         
         .modal-footer {
             display: flex;
@@ -1183,6 +1202,21 @@ if (!empty($_SESSION['cart'])) {
                                             <div class="item-name"><?php echo htmlspecialchars($item['name']); ?></div>
                                             <div class="item-quantity">Quantity: <?php echo $item['quantity']; ?></div>
                                             <div class="item-price">Price: RM <?php echo number_format($item['price'], 2); ?></div>
+                                            
+                                            <!-- 新增酱料显示 -->
+                                            <?php if (!empty($item['sauce'])): ?>
+                                                <div class="item-sauce">
+                                                    <i class="fas fa-mortar-pestle"></i> Sauce: <?php echo htmlspecialchars($item['sauce']); ?>
+                                                </div>
+                                            <?php endif; ?>
+                                            
+                                            <!-- 新增备注显示（显示为Remark） -->
+                                            <?php if (!empty($item['comment'])): ?>
+                                                <div class="item-remark">
+                                                    <i class="fas fa-comment-alt"></i> Remark: <?php echo htmlspecialchars($item['comment']); ?>
+                                                </div>
+                                            <?php endif; ?>
+                                            
                                             <div class="item-total">Total: RM <?php echo number_format($item['price'] * $item['quantity'], 2); ?></div>
                                         </div>
                                     </div>

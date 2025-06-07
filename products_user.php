@@ -15,8 +15,8 @@ if (!isset($_SESSION['cart'])) {
 // Get search keyword
 $search = isset($_GET['search']) ? mysqli_real_escape_string($conn, $_GET['search']) : "";
 
-// 修改后的查询：只获取未删除分类中的未删除产品
-$sql = "SELECT p.* 
+// 修改后的查询：获取产品和分类的显示名称
+$sql = "SELECT p.*, c.display_name 
         FROM products p
         INNER JOIN categories c ON p.category = c.name
         WHERE c.deleted_at IS NULL 
@@ -29,9 +29,12 @@ if (!empty($search)) {
 $result = mysqli_query($conn, $sql);
 
 $products_by_category = [];
+$category_display_names = [];
 if ($result) {
     while ($row = mysqli_fetch_assoc($result)) {
-        // 只添加有产品的分类
+        // 使用分类名称作为键，存储显示名称
+        $category_display_names[$row['category']] = $row['display_name'];
+        // 按分类分组产品
         $products_by_category[$row['category']][] = $row;
     }
 } else {
@@ -56,7 +59,6 @@ if (!empty($_SESSION['cart'])) {
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* 保持原有样式不变 */
         :root {
             --primary: #d6001c;
             --primary-dark: #b80018;
@@ -84,7 +86,6 @@ if (!empty($_SESSION['cart'])) {
             line-height: 1.6;
         }
         
-        /* 统一顶部导航栏样式 - 与order_trace.php相同 */
         .topbar {
             background-color: var(--dark-bg);
             color: white;
@@ -235,7 +236,6 @@ if (!empty($_SESSION['cart'])) {
             border-radius: 2px;
         }
         
-        /* 产品页面特有样式 */
         .header-section {
             text-align: center;
             padding: 60px 20px 40px;
@@ -310,6 +310,7 @@ if (!empty($_SESSION['cart'])) {
             padding: 0 20px 40px;
         }
         
+        /* 修改：移除分类标题下的横线 */
         .category-title {
             font-size: 28px;
             color: var(--primary);
@@ -319,20 +320,33 @@ if (!empty($_SESSION['cart'])) {
             display: flex;
             align-items: center;
             gap: 10px;
+            /* 移除了 border-bottom */
+        }
+        
+        /* 修改：创建横向滚动容器 */
+        .scroll-container {
+            position: relative;
+            padding: 0 40px; /* 为导航按钮留出空间 */
+            margin-bottom: 40px;
         }
         
         .product-grid {
             display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
             gap: 30px;
-            padding: 0 20px;
-            max-width: 1400px;
-            margin: 0 auto;
+            overflow-x: auto;
+            scroll-behavior: smooth;
+            padding: 20px 0;
+            margin: 0 -15px;
+            scrollbar-width: none; /* 隐藏Firefox的滚动条 */
+        }
+        
+        .product-grid::-webkit-scrollbar {
+            display: none; /* 隐藏Chrome/Safari的滚动条 */
         }
         
         .product-card {
             width: 260px;
+            flex-shrink: 0;
             background: #fff;
             border-radius: 16px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
@@ -369,6 +383,9 @@ if (!empty($_SESSION['cart'])) {
             margin: 10px;
             color: var(--primary);
             font-size: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         
         .product-card p {
@@ -407,7 +424,6 @@ if (!empty($_SESSION['cart'])) {
             background-color: var(--primary-dark);
         }
         
-        /* Stock indicator */
         .stock-indicator {
             display: inline-block;
             padding: 3px 8px;
@@ -443,6 +459,47 @@ if (!empty($_SESSION['cart'])) {
             margin-top: 40px;
         }
         
+        .no-products {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-light);
+            font-size: 18px;
+            width: 100%;
+        }
+        
+        /* 添加：横向滚动导航按钮 */
+        .scroll-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 40px;
+            height: 40px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 10;
+            opacity: 0.7;
+            transition: opacity 0.3s;
+        }
+        
+        .scroll-btn:hover {
+            opacity: 1;
+            background: var(--primary);
+            color: white;
+        }
+        
+        .scroll-left {
+            left: -5px;
+        }
+        
+        .scroll-right {
+            right: -5px;
+        }
+        
         /* Responsive design */
         @media (max-width: 768px) {
             .topbar {
@@ -459,11 +516,11 @@ if (!empty($_SESSION['cart'])) {
             
             .product-grid {
                 gap: 15px;
-                padding: 0 10px;
             }
             
             .product-card {
                 width: calc(50% - 15px);
+                min-width: 220px;
             }
             
             .header-section h2 {
@@ -472,6 +529,14 @@ if (!empty($_SESSION['cart'])) {
             
             .header-section p {
                 font-size: 1rem;
+            }
+            
+            .scroll-container {
+                padding: 0 20px;
+            }
+            
+            .scroll-btn {
+                display: none; /* 在移动设备上隐藏导航按钮 */
             }
         }
 
@@ -482,6 +547,7 @@ if (!empty($_SESSION['cart'])) {
             
             .product-card {
                 width: 100%;
+                min-width: 200px;
             }
             
             .category-title {
@@ -493,7 +559,7 @@ if (!empty($_SESSION['cart'])) {
 </head>
 <body>
 
-<!-- 🔝 Topbar - 与order_trace.php相同 -->
+<!-- 🔝 Topbar -->
 <div class="topbar">
     <div class="logo"><i class="fas fa-hamburger"></i> Fast<span>Food</span> Express</div>
     <div class="nav-links">
@@ -538,8 +604,14 @@ if (!empty($_SESSION['cart'])) {
         foreach ($products_by_category as $category => $products) {
             // 确保分类下有产品才显示
             if (count($products) > 0) {
-                echo '<div class="category-title" data-aos="fade-right"><i class="fas fa-tag"></i> ' . htmlspecialchars($category) . '</div>';
-                echo '<div class="product-grid">';
+                // 使用display_name作为分类标题
+                $display_name = isset($category_display_names[$category]) ? $category_display_names[$category] : $category;
+                echo '<div class="category-title" data-aos="fade-right"><i class="fas fa-tag"></i> ' . htmlspecialchars($display_name) . '</div>';
+                
+                // 为每个分类添加横向滚动容器
+                echo '<div class="scroll-container">';
+                echo '<div class="product-grid" id="grid-' . htmlspecialchars($category) . '">';
+                
                 foreach ($products as $product) {
                     $button_label = ($product['stock_quantity'] > 0) ? "Order Now" : "Out of Stock";
                     $button_class = ($product['stock_quantity'] > 0) ? "btn" : "btn disabled-btn";
@@ -560,10 +632,16 @@ if (!empty($_SESSION['cart'])) {
                         </div>';
                 }
                 echo '</div>';
+                
+                // 添加导航按钮
+                echo '<button class="scroll-btn scroll-left" onclick="scrollGrid(\'grid-' . htmlspecialchars($category) . '\', -300)"><i class="fas fa-chevron-left"></i></button>';
+                echo '<button class="scroll-btn scroll-right" onclick="scrollGrid(\'grid-' . htmlspecialchars($category) . '\', 300)"><i class="fas fa-chevron-right"></i></button>';
+                
+                echo '</div>'; // 关闭滚动容器
             }
         }
     } else {
-        echo '<p style="text-align:center; color:red; padding: 40px; font-size: 18px;">No products found. Please try a different search term.</p>';
+        echo '<p class="no-products">No products found. Please try a different search term.</p>';
     }
     ?>
 </div>
@@ -590,6 +668,65 @@ if (!empty($_SESSION['cart'])) {
             if (link.getAttribute('href') === currentPage) {
                 link.classList.add('active-link');
             }
+        });
+    });
+    
+    // 横向滚动函数
+    function scrollGrid(gridId, scrollAmount) {
+        const grid = document.getElementById(gridId);
+        if (grid) {
+            grid.scrollBy({
+                left: scrollAmount,
+                behavior: 'smooth'
+            });
+        }
+    }
+    
+    // 添加触摸滑动支持
+    document.querySelectorAll('.product-grid').forEach(grid => {
+        let isDown = false;
+        let startX;
+        let scrollLeft;
+        
+        grid.addEventListener('mousedown', (e) => {
+            isDown = true;
+            startX = e.pageX - grid.offsetLeft;
+            scrollLeft = grid.scrollLeft;
+        });
+        
+        grid.addEventListener('mouseleave', () => {
+            isDown = false;
+        });
+        
+        grid.addEventListener('mouseup', () => {
+            isDown = false;
+        });
+        
+        grid.addEventListener('mousemove', (e) => {
+            if (!isDown) return;
+            e.preventDefault();
+            const x = e.pageX - grid.offsetLeft;
+            const walk = (x - startX) * 2; // 滚动速度
+            grid.scrollLeft = scrollLeft - walk;
+        });
+        
+        // 触摸事件支持
+        grid.addEventListener('touchstart', (e) => {
+            isDown = true;
+            startX = e.touches[0].pageX - grid.offsetLeft;
+            scrollLeft = grid.scrollLeft;
+        });
+        
+        grid.addEventListener('touchend', () => {
+            isDown = false;
+        });
+        
+        grid.addEventListener('touchmove', (e) => {
+            if (!isDown) return;
+            e.preventDefault();
+            const x = e.touches[0].pageX - grid.offsetLeft;
+            const walk = (x - startX) * 2;
+            grid.scrollLeft = scrollLeft - walk;
         });
     });
 </script>

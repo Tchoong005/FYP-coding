@@ -82,6 +82,11 @@ if (isset($_SESSION['cart'])) {
         }
     }
 }
+
+// 确定订单类型和显示文本
+$order_type = ($order['delivery_method'] === 'dine_in') ? 'dine_in' : 'delivery';
+$order_type_title = ($order_type === 'dine_in') ? 'Dine In Information' : 'Delivery Information';
+$order_type_icon = ($order_type === 'dine_in') ? 'fa-utensils' : 'fa-truck';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -343,6 +348,9 @@ if (isset($_SESSION['cart'])) {
       font-weight: 600;
       font-size: 18px;
       color: var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
     
     .order-item {
@@ -597,44 +605,6 @@ if (isset($_SESSION['cart'])) {
       border: 1px solid var(--success);
     }
     
-    /* 安全指示器 */
-    .security-indicator {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 15px;
-      margin: 20px 0;
-      padding: 15px;
-      background: #f8f9fa;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-    }
-    
-    .security-item {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 5px;
-    }
-    
-    .security-icon {
-      width: 50px;
-      height: 50px;
-      background: #e6f7ff;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 20px;
-      color: var(--info);
-    }
-    
-    .security-text {
-      font-size: 12px;
-      text-align: center;
-      color: var(--text-light);
-    }
-    
     /* 取消提示框 */
     .cancel-notification {
       position: fixed;
@@ -815,10 +785,6 @@ if (isset($_SESSION['cart'])) {
       .nav-links {
         gap: 10px;
       }
-      
-      .security-indicator {
-        flex-wrap: wrap;
-      }
     }
   </style>
 </head>
@@ -892,28 +858,6 @@ if (isset($_SESSION['cart'])) {
           <p>Enter your card information to complete the order</p>
         </div>
       <?php endif; ?>
-      
-      <!-- 安全指示器 -->
-      <div class="security-indicator">
-        <div class="security-item">
-          <div class="security-icon">
-            <i class="fas fa-lock"></i>
-          </div>
-          <div class="security-text">256-bit Encryption</div>
-        </div>
-        <div class="security-item">
-          <div class="security-icon">
-            <i class="fas fa-shield-alt"></i>
-          </div>
-          <div class="security-text">PCI DSS Compliant</div>
-        </div>
-        <div class="security-item">
-          <div class="security-icon">
-            <i class="fas fa-user-shield"></i>
-          </div>
-          <div class="security-text">Fraud Protection</div>
-        </div>
-      </div>
       
       <?php if (!$payment_canceled): ?>
         <form id="payment-form">
@@ -1007,26 +951,35 @@ if (isset($_SESSION['cart'])) {
         </div>
       </div>
       
+      <!-- 动态显示订单类型信息 -->
       <div class="order-info">
-        <h3>Delivery Information</h3>
+        <h3>
+          <i class="fas <?php echo $order_type_icon; ?>"></i>
+          <?php echo $order_type_title; ?>
+        </h3>
         <div class="order-detail-row">
           <div class="detail-label">Order ID:</div>
           <div class="detail-value">#<?php echo $order_id; ?></div>
         </div>
         <div class="order-detail-row">
-          <div class="detail-label">Recipient:</div>
+          <div class="detail-label">Name:</div>
           <div class="detail-value"><?php echo htmlspecialchars($order['recipient_name']); ?></div>
         </div>
         <div class="order-detail-row">
           <div class="detail-label">Phone:</div>
           <div class="detail-value"><?php echo htmlspecialchars($order['recipient_phone']); ?></div>
         </div>
+        
+        <?php if ($order_type === 'delivery'): ?>
+          <!-- 配送信息 -->
+          <div class="order-detail-row">
+            <div class="detail-label">Address:</div>
+            <div class="detail-value"><?php echo htmlspecialchars($order['recipient_address']); ?></div>
+          </div>
+        <?php endif; ?>
+        
         <div class="order-detail-row">
-          <div class="detail-label">Address:</div>
-          <div class="detail-value"><?php echo htmlspecialchars($order['recipient_address']); ?></div>
-        </div>
-        <div class="order-detail-row">
-          <div class="detail-label">Delivery:</div>
+          <div class="detail-label">Method:</div>
           <div class="detail-value"><?php echo ucfirst(str_replace('_', ' ', $order['delivery_method'])); ?></div>
         </div>
         <div class="order-detail-row">

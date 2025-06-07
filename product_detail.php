@@ -33,7 +33,8 @@ if (!isset($_GET['id'])) {
 }
 $product_id = (int)$_GET['id'];
 
-$sql = "SELECT * FROM products WHERE id = $product_id LIMIT 1";
+// 添加 deleted_at IS NULL 条件
+$sql = "SELECT * FROM products WHERE id = $product_id AND deleted_at IS NULL LIMIT 1";
 $res = mysqli_query($conn, $sql);
 if (!$res || mysqli_num_rows($res) == 0) {
     echo "Product not found.";
@@ -41,7 +42,7 @@ if (!$res || mysqli_num_rows($res) == 0) {
 }
 $product = mysqli_fetch_assoc($res);
 
-// 判断当前产品是否是饮料类
+// 使用 strtolower 确保大小写不敏感
 $is_beverage = (strtolower($product['category']) === 'beverages');
 ?>
 <!DOCTYPE html>
