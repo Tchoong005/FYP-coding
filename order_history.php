@@ -35,9 +35,10 @@ if (!in_array($sort_order, $valid_orders)) {
 // 获取当前标签
 $current_tab = isset($_GET['tab']) ? $_GET['tab'] : 'all';
 
-// Fetch all orders
+// Fetch all valid orders (is_valid=1)
 $sql_all = "SELECT * FROM orders 
            WHERE user_id = $user_id 
+           AND is_valid = 1
            ORDER BY created_at $sort_order";
 $result_all = mysqli_query($conn, $sql_all);
 
@@ -50,9 +51,10 @@ if ($result_all) {
     die("Query failed: " . mysqli_error($conn));
 }
 
-// 修改点1: 移除payment_status条件，只根据订单状态筛选
+// 获取成功订单 (is_valid=1)
 $sql_success = "SELECT * FROM orders 
                WHERE user_id = $user_id 
+               AND is_valid = 1
                AND order_status IN ('completed', 'delivered')
                ORDER BY created_at $sort_order";
 $result_success = mysqli_query($conn, $sql_success);
@@ -66,25 +68,8 @@ if ($result_success) {
     die("Query failed: " . mysqli_error($conn));
 }
 
-// Fetch canceled orders
-$sql_canceled = "SELECT * FROM orders 
-                WHERE user_id = $user_id 
-                AND payment_status = 'canceled'
-                ORDER BY created_at $sort_order";
-$result_canceled = mysqli_query($conn, $sql_canceled);
-
-$canceled_orders = [];
-if ($result_canceled) {
-    while ($row = mysqli_fetch_assoc($result_canceled)) {
-        $canceled_orders[] = $row;
-    }
-} else {
-    die("Query failed: " . mysqli_error($conn));
-}
-
 // Function to fetch order items
 function fetch_order_items($conn, $order_id) {
-    // 修改点2: 添加sauce和comment字段到查询
     $sql_items = "SELECT oi.*, p.name, p.image_url, oi.sauce, oi.comment 
                  FROM order_items oi
                  JOIN products p ON oi.product_id = p.id
@@ -111,12 +96,6 @@ foreach ($success_orders as &$order) {
     $order['items'] = fetch_order_items($conn, $order['id']);
 }
 unset($order); // break the reference
-
-// Add items to canceled orders
-foreach ($canceled_orders as &$order) {
-    $order['items'] = fetch_order_items($conn, $order['id']);
-}
-unset($order); // break the reference
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -126,7 +105,7 @@ unset($order); // break the reference
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* 原有CSS保持不变，只添加新样式 */
+        /* 原有CSS保持不变 */
         :root {
             --primary: #d6001c;
             --primary-dark: #b80018;
@@ -1126,9 +1105,6 @@ unset($order); // break the reference
         <a href="?tab=success&sort=<?php echo $sort_order; ?>" class="tab-btn <?php echo $current_tab == 'success' ? 'active' : ''; ?>">
             <i class="fas fa-check-circle"></i> Successful
         </a>
-        <a href="?tab=canceled&sort=<?php echo $sort_order; ?>" class="tab-btn <?php echo $current_tab == 'canceled' ? 'active' : ''; ?>">
-            <i class="fas fa-times-circle"></i> Canceled
-        </a>
     </div>
     
     <!-- 排序控件 -->
@@ -1138,10 +1114,8 @@ unset($order); // break the reference
             <?php 
                 if ($current_tab == 'all') {
                     echo count($all_orders) . ' orders';
-                } elseif ($current_tab == 'success') {
-                    echo count($success_orders) . ' orders';
                 } else {
-                    echo count($canceled_orders) . ' orders';
+                    echo count($success_orders) . ' orders';
                 }
             ?>
         </div>
@@ -1219,13 +1193,8 @@ unset($order); // break the reference
                         $status_text = 'Delivered <i class="fas fa-home"></i>';
                         break;
                     default:
-                        if ($order['payment_status'] == 'canceled') {
-                            $status_class = 'status-canceled';
-                            $status_text = 'Canceled <i class="fas fa-ban"></i>';
-                        } else {
-                            $status_class = 'status-pending';
-                            $status_text = 'Processing <i class="fas fa-cog"></i>';
-                        }
+                        $status_class = 'status-pending';
+                        $status_text = 'Processing <i class="fas fa-cog"></i>';
                 }
                 
                 $payment_class = 'status-' . str_replace(' ', '-', strtolower($order['payment_status']));
@@ -1243,7 +1212,6 @@ unset($order); // break the reference
                 </div>
                 
                 <!-- 使用新的进度条样式 -->
-                <?php if ($order['payment_status'] != 'canceled' && $order['order_status'] != 'canceled'): ?>
                 <div class="progress-tracker">
                     <div class="tracker-title">
                         <i class="fas fa-shipping-fast"></i> Order Progress
@@ -1258,11 +1226,6 @@ unset($order); // break the reference
                         <?php endforeach; ?>
                     </div>
                 </div>
-                <?php else: ?>
-                <div class="progress-tracker" style="text-align: center; background: #ffebee; color: #f44336;">
-                    <i class="fas fa-ban"></i> This order has been canceled.
-                </div>
-                <?php endif; ?>
                 
                 <div class="order-details">
                     <div class="order-summary">
@@ -1519,135 +1482,6 @@ unset($order); // break the reference
                     <div class="payment-status <?php echo $payment_class; ?>">
                         <i class="fas fa-credit-card"></i> Payment Status: 
                         <span><?php echo ucfirst($order['payment_status']); ?></span>
-                    </div>
-                </div>
-            </div>
-            <?php endforeach; ?>
-        <?php endif; ?>
-    </div>
-    
-    <!-- Canceled Orders Tab -->
-    <div id="canceled" class="tab-content <?php echo $current_tab == 'canceled' ? 'active' : ''; ?>">
-        <?php if (empty($canceled_orders)): ?>
-            <div class="no-orders" data-aos="fade-up">
-                <i class="fas fa-ban"></i>
-                <h3>No Canceled Orders</h3>
-                <p>You haven't canceled any orders. That's great!</p>
-            </div>
-        <?php else: ?>
-            <?php foreach ($canceled_orders as $order): 
-                $status_class = 'status-canceled';
-                $status_text = 'Canceled <i class="fas fa-ban"></i>';
-                $payment_class = 'status-canceled';
-            ?>
-            <div class="order-card" data-aos="fade-up">
-                <div class="order-header">
-                    <div class="order-header-left">
-                        <h3>Order #<?php echo $order['id']; ?></h3>
-                        <p><i class="far fa-calendar"></i> <?php echo date('F j, Y g:i A', strtotime($order['created_at'])); ?></p>
-                    </div>
-                    <div class="order-status <?php echo $status_class; ?>">
-                        <span class="status-indicator canceled"></span>
-                        <?php echo $status_text; ?>
-                    </div>
-                </div>
-                
-                <!-- 取消订单显示特殊提示 -->
-                <div class="progress-tracker" style="text-align: center; background: #ffebee; color: #f44336;">
-                    <i class="fas fa-ban"></i> This order has been canceled.
-                </div>
-                
-                <div class="order-details">
-                    <div class="order-summary">
-                        <h4><i class="fas fa-receipt"></i> Order Summary</h4>
-                        
-                        <!-- 新增收货人信息 - 根据配送方式显示地址 -->
-                        <div class="recipient-info">
-                            <div class="recipient-label">Recipient Information:</div>
-                            <div class="recipient-name"><?php echo htmlspecialchars($order['recipient_name']); ?></div>
-                            <div class="recipient-phone"><?php echo htmlspecialchars($order['recipient_phone']); ?></div>
-                            <?php if ($order['delivery_method'] == 'delivery'): ?>
-                                <div class="recipient-address">
-                                    <i class="fas fa-map-marker-alt"></i> 
-                                    <?php echo htmlspecialchars($order['recipient_address']); ?>
-                                </div>
-                            <?php endif; ?>
-                        </div>
-                        
-                        <div class="summary-item">
-                            <span class="summary-label">Subtotal:</span>
-                            <span class="summary-value">RM <?php echo number_format($order['total_price'], 2); ?></span>
-                        </div>
-                        <div class="summary-item">
-                            <span class="summary-label">Delivery Fee:</span>
-                            <span class="summary-value">RM <?php echo number_format($order['delivery_fee'], 2); ?></span>
-                        </div>
-                        <div class="summary-item total-row">
-                            <span class="summary-label">Total Amount:</span>
-                            <span class="summary-value">RM <?php echo number_format($order['final_total'], 2); ?></span>
-                        </div>
-                        <div class="summary-item">
-                            <span class="summary-label">Payment Method:</span>
-                            <span class="summary-value"><?php 
-                                if ($order['payment_method'] == 'credit_card') echo 'Credit Card';
-                                elseif ($order['payment_method'] == 'cash') echo 'Cash';
-                                else echo 'Counter Payment';
-                            ?></span>
-                        </div>
-                        <div class="summary-item">
-                            <span class="summary-label">Delivery Method:</span>
-                            <span class="summary-value"><?php 
-                                echo ($order['delivery_method'] == 'delivery') ? 'Delivery' : 'Dine In';
-                            ?></span>
-                        </div>
-                    </div>
-                    
-                    <div class="order-items">
-                        <h4><i class="fas fa-utensils"></i> Order Items</h4>
-                        <div class="item-list">
-                            <?php foreach ($order['items'] as $item): ?>
-                            <div class="item-card">
-                                <div class="item-image">
-                                    <img src="<?php echo htmlspecialchars($item['image_url']); ?>" alt="<?php echo htmlspecialchars($item['name']); ?>">
-                                </div>
-                                <div class="item-details">
-                                    <div class="item-name"><?php echo htmlspecialchars($item['name']); ?></div>
-                                    <div class="item-price">RM <?php echo number_format($item['price'], 2); ?></div>
-                                    
-                                    <!-- 新增酱料和备注信息 -->
-                                    <div class="item-extras">
-                                        <?php if (!empty($item['sauce'])): ?>
-                                            <div class="extra-label extra-sauce">
-                                                <i class="fas fa-mortar-pestle"></i> Sauce:
-                                            </div>
-                                            <div class="extra-value extra-sauce">
-                                                <?php echo htmlspecialchars($item['sauce']); ?>
-                                            </div>
-                                        <?php endif; ?>
-                                        
-                                        <?php if (!empty($item['comment'])): ?>
-                                            <div class="extra-label extra-remark">
-                                                <i class="fas fa-comment-alt"></i> Remark:
-                                            </div>
-                                            <div class="extra-value extra-remark">
-                                                <?php echo htmlspecialchars($item['comment']); ?>
-                                            </div>
-                                        <?php endif; ?>
-                                    </div>
-                                </div>
-                                <div class="item-quantity">
-                                    Qty: <?php echo $item['quantity']; ?>
-                                </div>
-                            </div>
-                            <?php endforeach; ?>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="order-footer">
-                    <div class="payment-status status-canceled">
-                        <i class="fas fa-credit-card"></i> Payment Status: 
-                        <span>Canceled</span>
                     </div>
                 </div>
             </div>

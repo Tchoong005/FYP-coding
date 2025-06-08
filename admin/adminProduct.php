@@ -9,26 +9,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $name = trim($_POST['name']);
         $description = trim($_POST['description']);
         $price = (float)$_POST['price'];
-        $category = $_POST['category'];
+        $category_id = (int)$_POST['category_id'];
         $stock = (int)$_POST['stock_quantity'];
         $image_url = trim($_POST['image_url']);
         
-        // Validate product name uniqueness
+        // Validate product name uniqueness (check all products including deleted)
         if (!isProductNameUnique($conn, $name)) {
-            $_SESSION['error'] = "A product named '$name' already exists.";
+            $_SESSION['error'] = "A product named '$name' already exists (including deleted items).";
             header("Location: adminProduct.php");
             exit;
         }
         
         // Validate category is not deleted
-        if (isCategoryDeleted($conn, $category)) {
+        if (isCategoryDeleted($conn, $category_id)) {
             $_SESSION['error'] = "Selected category is not available.";
             header("Location: adminProduct.php");
             exit;
         }
         
-        $stmt = $conn->prepare("INSERT INTO products (name, description, price, category, stock_quantity, image_url) VALUES (?, ?, ?, ?, ?, ?)");
-        $stmt->bind_param("ssdsis", $name, $description, $price, $category, $stock, $image_url);
+        $stmt = $conn->prepare("INSERT INTO products (name, description, price, category_id, stock_quantity, image_url) VALUES (?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("ssdiis", $name, $description, $price, $category_id, $stock, $image_url);
         
         if ($stmt->execute()) {
             $_SESSION['success'] = "Product added successfully!";
@@ -44,26 +44,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $name = trim($_POST['name']);
         $description = trim($_POST['description']);
         $price = (float)$_POST['price'];
-        $category = $_POST['category'];
+        $category_id = (int)$_POST['category_id'];
         $stock = (int)$_POST['stock_quantity'];
         $image_url = trim($_POST['image_url']);
         
-        // Validate product name uniqueness (excluding current product)
+        // Validate product name uniqueness (check all products including deleted, excluding current product)
         if (!isProductNameUnique($conn, $name, $id)) {
-            $_SESSION['error'] = "Another product named '$name' already exists.";
+            $_SESSION['error'] = "Another product named '$name' already exists (including deleted items).";
             header("Location: adminProduct.php?action=edit&id=$id");
             exit;
         }
         
         // Validate category is not deleted
-        if (isCategoryDeleted($conn, $category)) {
+        if (isCategoryDeleted($conn, $category_id)) {
             $_SESSION['error'] = "Selected category is not available.";
             header("Location: adminProduct.php?action=edit&id=$id");
             exit;
         }
         
-        $stmt = $conn->prepare("UPDATE products SET name=?, description=?, price=?, category=?, stock_quantity=?, image_url=? WHERE id=?");
-        $stmt->bind_param("ssdsisi", $name, $description, $price, $category, $stock, $image_url, $id);
+        $stmt = $conn->prepare("UPDATE products SET name=?, description=?, price=?, category_id=?, stock_quantity=?, image_url=? WHERE id=?");
+        $stmt->bind_param("ssdiisi", $name, $description, $price, $category_id, $stock, $image_url, $id);
         
         if ($stmt->execute()) {
             $_SESSION['success'] = "Product updated successfully!";
@@ -93,32 +93,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Fetch all active products with active categories only
 $products = $conn->query("
-    SELECT p.*, c.display_name as category_display 
+    SELECT p.*, c.name as category_name, c.display_name as category_display 
     FROM products p
-    JOIN categories c ON p.category = c.name
+    JOIN categories c ON p.category_id = c.id
     WHERE p.deleted_at IS NULL AND c.deleted_at IS NULL
     ORDER BY c.display_name, p.name
 ");
 
-// Helper function to check product name uniqueness
+// Helper function to check product name uniqueness (check all products including deleted)
 function isProductNameUnique($conn, $name, $currentId = null) {
-    $stmt = $conn->prepare("SELECT id FROM products WHERE name = ? AND deleted_at IS NULL");
-    $stmt->bind_param("s", $name);
+    $sql = "SELECT id FROM products WHERE name = ?";
+    $types = "s";
+    $params = array($name);
+    
+    if ($currentId !== null) {
+        $sql .= " AND id != ?";
+        $types .= "i";
+        $params[] = $currentId;
+    }
+    
+    $stmt = $conn->prepare($sql);
+    if (count($params) > 1) {
+        $stmt->bind_param($types, $params[0], $params[1]);
+    } else {
+        $stmt->bind_param($types, $params[0]);
+    }
+    
     $stmt->execute();
     $result = $stmt->get_result();
     
-    if ($result->num_rows > 0) {
-        $row = $result->fetch_assoc();
-        // Allow the same product to keep its name during update
-        return ($currentId && $row['id'] == $currentId);
-    }
-    return true;
+    return $result->num_rows === 0;
 }
 
 // Helper function to check if category is deleted
-function isCategoryDeleted($conn, $categoryName) {
-    $stmt = $conn->prepare("SELECT deleted_at FROM categories WHERE name = ?");
-    $stmt->bind_param("s", $categoryName);
+function isCategoryDeleted($conn, $categoryId) {
+    $stmt = $conn->prepare("SELECT deleted_at FROM categories WHERE id = ?");
+    $stmt->bind_param("i", $categoryId);
     $stmt->execute();
     $result = $stmt->get_result();
     
@@ -138,13 +148,11 @@ function isCategoryDeleted($conn, $categoryName) {
     <title>Product Management - KFG FOOD</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
     <style>
-* {
+        * {
             padding: 0;
             margin: 0;
             box-sizing: border-box;
             font-family: 'poppins', sans-serif;
-
-
         }
 
         .user {
@@ -203,7 +211,6 @@ function isCategoryDeleted($conn, $categoryName) {
             cursor: pointer;
         }
 
-
         .list {
             position: fixed;
             top: 60px;
@@ -211,18 +218,15 @@ function isCategoryDeleted($conn, $categoryName) {
             height: 100%;
             background: rgba(220, 73, 73, 0.897);
             overflow-x: hidden;
-
         }
 
         .list ul {
             margin-top: 20px;
-
         }
 
         .list ul li {
             width: 100%;
             list-style: none;
-
         }
 
         .list ul li a {
@@ -232,23 +236,17 @@ function isCategoryDeleted($conn, $categoryName) {
             height: 60px;
             display: flex;
             align-items: center;
-
-
         }
 
         .list ul li a i {
-
             min-width: 60px;
             font-size: 24px;
             text-align: center;
-
         }
 
         .list ul li:hover {
             background: rgb(227, 125, 125);
         }
-
-
 
         .main {
             position: absolute;
@@ -256,9 +254,7 @@ function isCategoryDeleted($conn, $categoryName) {
             width: calc(100%-260px);
             left: 260px;
             min-height: calc(100%-60px);
-
         }
-
 
         .user-dropdown {
             position: relative;
@@ -487,6 +483,13 @@ function isCategoryDeleted($conn, $categoryName) {
             border-color: #ebccd1;
             color: #a94442;
         }
+        
+        .error-message {
+            color: #e74c3c;
+            font-size: 14px;
+            margin-top: 5px;
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -571,7 +574,7 @@ function isCategoryDeleted($conn, $categoryName) {
 
     <div class="main">
         <div class="card">
-            <h3>Product Management</h3>
+            <h3 class="modal-title">Product Management</h3>
             
             <?php if (isset($_SESSION['success'])): ?>
                 <div class="alert alert-success"><?= htmlspecialchars($_SESSION['success']) ?></div>
@@ -583,13 +586,15 @@ function isCategoryDeleted($conn, $categoryName) {
                 <?php unset($_SESSION['error']); ?>
             <?php endif; ?>
             
-            <button class="btn btn-add" onclick="openAddModal()">
-                <i class="fas fa-plus"></i> Add New Product
-            </button>
-            
-            <a href="adminDeletedProducts.php" class="btn btn-restore">
-                <i class="fas fa-trash-restore"></i> View Deleted Products
-            </a>
+            <div class="action-buttons">
+                <button class="btn btn-add" onclick="openAddModal()">
+                    <i class="fas fa-plus"></i> Add New Product
+                </button>
+                
+                <a href="adminDeletedProducts.php" class="btn btn-restore">
+                    <i class="fas fa-trash-restore"></i> View Deleted Products
+                </a>
+            </div>
             
             <table>
                 <thead>
@@ -617,7 +622,7 @@ function isCategoryDeleted($conn, $categoryName) {
                         <td><?= htmlspecialchars($product['description']) ?></td>
                         <td><?= number_format($product['price'], 2) ?></td>
                         <td>
-                            <span class="category-badge <?= htmlspecialchars($product['category']) ?>">
+                            <span class="category-badge <?= htmlspecialchars($product['category_name']) ?>">
                                 <?= htmlspecialchars($product['category_display']) ?>
                             </span>
                         </td>
@@ -628,7 +633,7 @@ function isCategoryDeleted($conn, $categoryName) {
                                 '<?= addslashes($product['name']) ?>',
                                 '<?= addslashes($product['description']) ?>',
                                 <?= $product['price'] ?>,
-                                '<?= $product['category'] ?>',
+                                <?= $product['category_id'] ?>,
                                 <?= $product['stock_quantity'] ?>,
                                 '<?= addslashes($product['image_url']) ?>'
                             )">
@@ -652,12 +657,12 @@ function isCategoryDeleted($conn, $categoryName) {
     <div id="addModal" class="modal">
         <div class="modal-content">
             <span class="close" onclick="closeAddModal()">&times;</span>
-            <h3>Add New Product</h3>
+            <h3 class="modal-title">Add New Product</h3>
             <form method="POST" id="addProductForm">
                 <div class="form-group">
                     <label for="name">Product Name</label>
                     <input type="text" id="name" name="name" required>
-                    <small id="name-error" class="error-message" style="color: red; display: none;"></small>
+                    <small id="name-error" class="error-message" style="display: none;"></small>
                 </div>
                 <div class="form-group">
                     <label for="description">Description</label>
@@ -665,15 +670,15 @@ function isCategoryDeleted($conn, $categoryName) {
                 </div>
                 <div class="form-group">
                     <label for="price">Price (RM)</label>
-                    <input type="number" id="price" name="price" step="0.01" min="0" required>
+                    <input type="number" id="price" name="price" step="0.01" min="1" required>
                 </div>
                 <div class="form-group">
-                    <label for="category">Category</label>
-                    <select id="category" name="category" required>
+                    <label for="category_id">Category</label>
+                    <select id="category_id" name="category_id" required>
                         <?php 
-                        $categories = $conn->query("SELECT name, display_name FROM categories WHERE deleted_at IS NULL ORDER BY display_name");
+                        $categories = $conn->query("SELECT id, display_name FROM categories WHERE deleted_at IS NULL ORDER BY display_name");
                         while($cat = $categories->fetch_assoc()): ?>
-                            <option value="<?= htmlspecialchars($cat['name']) ?>"><?= htmlspecialchars($cat['display_name']) ?></option>
+                            <option value="<?= htmlspecialchars($cat['id']) ?>"><?= htmlspecialchars($cat['display_name']) ?></option>
                         <?php endwhile; ?>
                     </select>
                 </div>
@@ -685,7 +690,10 @@ function isCategoryDeleted($conn, $categoryName) {
                     <label for="image_url">Image URL</label>
                     <input type="text" id="image_url" name="image_url" placeholder="https://example.com/image.jpg">
                 </div>
-                <button type="submit" name="add_product" class="btn btn-add">Add Product</button>
+                <div class="form-actions">
+                    <button type="submit" name="add_product" class="btn btn-add">Add Product</button>
+                    <button type="button" class="btn btn-hide" onclick="closeAddModal()">Cancel</button>
+                </div>
             </form>
         </div>
     </div>
@@ -694,13 +702,13 @@ function isCategoryDeleted($conn, $categoryName) {
     <div id="editModal" class="modal">
         <div class="modal-content">
             <span class="close" onclick="closeEditModal()">&times;</span>
-            <h3>Edit Product</h3>
+            <h3 class="modal-title">Edit Product</h3>
             <form method="POST" id="editProductForm">
                 <input type="hidden" id="edit_id" name="id">
                 <div class="form-group">
                     <label for="edit_name">Product Name</label>
                     <input type="text" id="edit_name" name="name" required>
-                    <small id="edit-name-error" class="error-message" style="color: red; display: none;"></small>
+                    <small id="edit-name-error" class="error-message" style="display: none;"></small>
                 </div>
                 <div class="form-group">
                     <label for="edit_description">Description</label>
@@ -711,12 +719,12 @@ function isCategoryDeleted($conn, $categoryName) {
                     <input type="number" id="edit_price" name="price" step="0.01" min="1" required>
                 </div>
                 <div class="form-group">
-                    <label for="edit_category">Category</label>
-                    <select id="edit_category" name="category" required>
+                    <label for="edit_category_id">Category</label>
+                    <select id="edit_category_id" name="category_id" required>
                         <?php 
-                        $categories = $conn->query("SELECT name, display_name FROM categories WHERE deleted_at IS NULL ORDER BY display_name");
+                        $categories = $conn->query("SELECT id, display_name FROM categories WHERE deleted_at IS NULL ORDER BY display_name");
                         while($cat = $categories->fetch_assoc()): ?>
-                            <option value="<?= htmlspecialchars($cat['name']) ?>"><?= htmlspecialchars($cat['display_name']) ?></option>
+                            <option value="<?= htmlspecialchars($cat['id']) ?>"><?= htmlspecialchars($cat['display_name']) ?></option>
                         <?php endwhile; ?>
                     </select>
                 </div>
@@ -728,7 +736,10 @@ function isCategoryDeleted($conn, $categoryName) {
                     <label for="edit_image_url">Image URL</label>
                     <input type="text" id="edit_image_url" name="image_url" placeholder="https://example.com/image.jpg">
                 </div>
-                <button type="submit" name="update_product" class="btn btn-edit">Update Product</button>
+                <div class="form-actions">
+                    <button type="submit" name="update_product" class="btn btn-edit">Update Product</button>
+                    <button type="button" class="btn btn-hide" onclick="closeEditModal()">Cancel</button>
+                </div>
             </form>
         </div>
     </div>
@@ -737,76 +748,29 @@ function isCategoryDeleted($conn, $categoryName) {
         // Modal functions
         function openAddModal() {
             document.getElementById('addModal').style.display = 'block';
+            document.getElementById('name').focus();
         }
 
         function closeAddModal() {
             document.getElementById('addModal').style.display = 'none';
         }
 
-        function openEditModal(id, name, description, price, category, stock, image_url) {
+        function openEditModal(id, name, description, price, category_id, stock, image_url) {
             document.getElementById('edit_id').value = id;
             document.getElementById('edit_name').value = name;
             document.getElementById('edit_description').value = description;
             document.getElementById('edit_price').value = price;
-            document.getElementById('edit_category').value = category;
+            document.getElementById('edit_category_id').value = category_id;
             document.getElementById('edit_stock_quantity').value = stock;
             document.getElementById('edit_image_url').value = image_url;
             
             document.getElementById('editModal').style.display = 'block';
+            document.getElementById('edit_name').focus();
         }
 
         function closeEditModal() {
             document.getElementById('editModal').style.display = 'none';
         }
-
-        // Name validation
-        function checkProductName(name, currentId = null) {
-            return fetch('check_product_name.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, currentId })
-            })
-            .then(response => response.json());
-        }
-
-        // Add product name validation
-        document.getElementById('name').addEventListener('blur', function() {
-            const name = this.value.trim();
-            const errorElement = document.getElementById('name-error');
-            
-            if (name) {
-                checkProductName(name)
-                    .then(data => {
-                        if (!data.available) {
-                            errorElement.textContent = 'This product name already exists! ' + 
-                                (data.suggestions.length ? 'Suggestions: ' + data.suggestions.join(', ') : '');
-                            errorElement.style.display = 'block';
-                        } else {
-                            errorElement.style.display = 'none';
-                        }
-                    });
-            }
-        });
-
-        // Edit product name validation
-        document.getElementById('edit_name').addEventListener('blur', function() {
-            const name = this.value.trim();
-            const productId = document.getElementById('edit_id').value;
-            const errorElement = document.getElementById('edit-name-error');
-            
-            if (name && productId) {
-                checkProductName(name, productId)
-                    .then(data => {
-                        if (!data.available) {
-                            errorElement.textContent = 'This product name already exists! ' + 
-                                (data.suggestions.length ? 'Suggestions: ' + data.suggestions.join(', ') : '');
-                            errorElement.style.display = 'block';
-                        } else {
-                            errorElement.style.display = 'none';
-                        }
-                    });
-            }
-        });
 
         // Close modals when clicking outside
         window.onclick = function(event) {

@@ -28,8 +28,8 @@ $todayData = $stmt->fetch();
 $stmt = $pdo->query("SELECT COUNT(*) as count FROM products WHERE deleted_at IS NULL");
 $productsData = $stmt->fetch();
 
-// Get active customers count
-$stmt = $pdo->query("SELECT COUNT(*) as count FROM customers");
+// MODIFIED: Get active customers count (only unbanned)
+$stmt = $pdo->query("SELECT COUNT(*) as count FROM customers WHERE is_banned = 0"); // 只统计未被封禁的客户
 $customersData = $stmt->fetch();
 
 // Get recent orders

@@ -2,41 +2,42 @@
 session_start();
 include 'db.php';
 
-// 启用错误报告
+// Enable error reporting
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
-// 添加CSRF保护
+// Add CSRF protection
 if (!isset($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
 date_default_timezone_set('Asia/Kuala_Lumpur');
 
-// 检查用户是否登录
+// Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
     exit;
 }
 
-// 初始化会话数据
+// Initialize session data
 $_SESSION['delivery_method'] = $_SESSION['delivery_method'] ?? 'delivery';
 $_SESSION['payment_method'] = $_SESSION['payment_method'] ?? 'credit_card';
 $_SESSION['checkout_info'] = $_SESSION['checkout_info'] ?? [];
 
-// 初始化变量
+// Initialize variables
 $user_id = (int)$_SESSION['user_id'];
 $cart = $_SESSION['cart'] ?? [];
 $error = '';
 $success = '';
+$show_message = false;
 
-// 如果购物车为空则重定向
+// Redirect if cart is empty
 if (empty($cart)) {
     header("Location: order_list.php");
     exit;
 }
 
-// 使用预处理语句获取用户信息
+// Get user info using prepared statement
 $user_sql = "SELECT username, phone, address, postcode, city, state FROM customers WHERE id = ? LIMIT 1";
 $user_stmt = $conn->prepare($user_sql);
 $user_stmt->bind_param("i", $user_id);
@@ -45,14 +46,14 @@ $user_result = $user_stmt->get_result();
 $user_data = $user_result->fetch_assoc();
 $user_stmt->close();
 
-// 检查用户信息是否完整
+// Check if user info is complete
 $user_info_complete = true;
 if (empty($user_data['username']) || empty($user_data['phone']) || empty($user_data['address']) || 
     empty($user_data['postcode']) || empty($user_data['city']) || empty($user_data['state'])) {
     $user_info_complete = false;
 }
 
-// 计算总价和获取产品信息
+// Calculate total price and get product info
 $total_price = 0;
 $product_info = [];
 $has_stock_issues = false;
@@ -75,27 +76,28 @@ foreach ($cart as $item) {
     }
     $total_price += $product_info[$pid]['price'] * $item['quantity'];
     
-    // 检查库存问题
+    // Check stock issues
     if ($product_info[$pid]['stock_quantity'] < $item['quantity']) {
         $has_stock_issues = true;
     }
 }
 
-// 处理表单提交
+// Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // 验证CSRF令牌
+    // Validate CSRF token
     if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
-        $error = "Invalid CSRF token";
+        $error = "Invalid CSRF token. Please try submitting the form again.";
+        $show_message = true;
     } else {
-        // 提交后重新生成CSRF令牌
+        // Regenerate CSRF token after successful verification
         $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
         
-        // 更新配送方式
+        // Update delivery method
         if (isset($_POST['delivery_method'])) {
             $_SESSION['delivery_method'] = $_POST['delivery_method'];
         }
         
-        // 更新收件人信息
+        // Update recipient info
         if (isset($_POST['recipient_name'])) {
             $_SESSION['checkout_info'] = [
                 'recipient_name' => $_POST['recipient_name'],
@@ -107,14 +109,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ];
         }
         
-        // 处理订单提交
+        // Handle order submission
         if (isset($_POST['submit_payment'])) {
-            // 获取支付方式
+            // Get payment method
             $payment_method = isset($_POST['payment_method']) 
                 ? $_POST['payment_method'] 
                 : ($_SESSION['payment_method'] ?? 'credit_card');
             
-            // 获取收件人信息
+            // Get recipient info
             $recipient_name = $_SESSION['checkout_info']['recipient_name'] ?? $user_data['username'] ?? '';
             $recipient_phone = $_SESSION['checkout_info']['recipient_phone'] ?? $user_data['phone'] ?? '';
             $recipient_address = $_SESSION['checkout_info']['recipient_address'] ?? $user_data['address'] ?? '';
@@ -123,13 +125,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $recipient_state = $_SESSION['checkout_info']['recipient_state'] ?? $user_data['state'] ?? '';
             $delivery_method = $_SESSION['delivery_method'] ?? 'delivery';
 
-            // 对于堂食订单，不存储地址信息
+            // For dine-in orders, don't store address info
             $full_address = '';
             if ($delivery_method === 'delivery') {
                 $full_address = $recipient_address . ', ' . $recipient_postcode . ' ' . $recipient_city . ', ' . $recipient_state;
             }
 
-            // 验证收件人信息是否完整
+            // Validate recipient info
             $info_error = '';
             if (empty($recipient_name)) {
                 $info_error = "Recipient name is required";
@@ -141,12 +143,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             if (!empty($info_error)) {
                 $error = $info_error;
+                $show_message = true;
             } else {
-                // 开始事务
+                // Begin transaction
                 mysqli_begin_transaction($conn);
 
                 try {
-                    // 检查库存是否充足（所有支付方式都需要检查）
+                    // Check stock availability (for all payment methods)
                     $insufficient_stock = [];
                     foreach ($cart as $item) {
                         $pid = (int)$item['product_id'];
@@ -175,7 +178,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         throw new Exception("Insufficient stock: " . implode(", ", $insufficient_stock));
                     }
 
-                    // 创建订单
+                    // Create order
                     $now = date('Y-m-d H:i:s');
                     $delivery_fee = ($delivery_method === 'delivery') ? 6.00 : 0.00;
                     $final_total = $total_price + $delivery_fee;
@@ -189,18 +192,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     
                     $order_status = 'pending';
                     
-                    // 使用预处理语句创建订单
+                    // Set is_valid based on payment method and CSRF validation
+                    // For credit card, set to 0 until payment completes
+                    $is_valid = ($payment_method === 'credit_card') ? 0 : 1;
+                    
+                    // Create order using prepared statement
                     $sql_order = "INSERT INTO orders (user_id, recipient_name, recipient_phone, recipient_address, 
                                   delivery_method, total_price, delivery_fee, final_total, payment_method, 
-                                  payment_status, order_status, created_at)
-                                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                                  payment_status, order_status, created_at, is_valid)
+                                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
                     $stmt = $conn->prepare($sql_order);
                     if (!$stmt) {
                         throw new Exception("Prepare failed: " . $conn->error);
                     }
                     
-                    $stmt->bind_param("issssddsssss", 
+                    $stmt->bind_param("issssddsssssi", 
                         $user_id, 
                         $recipient_name, 
                         $recipient_phone,
@@ -212,7 +219,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $payment_method, 
                         $payment_status, 
                         $order_status, 
-                        $now
+                        $now,
+                        $is_valid
                     );
                     
                     if (!$stmt->execute()) {
@@ -222,7 +230,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $order_id = $conn->insert_id;
                     $stmt->close();
 
-                    // 添加订单项
+                    // Add order items
                     foreach ($cart as $item) {
                         $pid = (int)$item['product_id'];
                         if (!isset($product_info[$pid])) {
@@ -257,7 +265,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         }
                         $stmt_item->close();
                         
-                        // 关键修改：仅当非信用卡支付时才减少库存
+                        // Only reduce stock for non-credit card payments
                         if ($payment_method !== 'credit_card') {
                             $sql_update = "UPDATE products SET stock_quantity = stock_quantity - ? WHERE id = ?";
                             $stmt_update = $conn->prepare($sql_update);
@@ -273,17 +281,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         }
                     }
 
-                    // 提交事务
+                    // Commit transaction
                     mysqli_commit($conn);
                     
-                    // 根据支付方式重定向
+                    // Redirect based on payment method
                     if ($payment_method === 'credit_card') {
-                        // 保留购物车直到支付成功
+                        // Save order ID for payment process
                         $_SESSION['current_order_id'] = $order_id;
                         header("Location: payment.php?order_id=".$order_id);
                         exit;
                     } else {
-                        // 非信用卡支付清除购物车并重定向到成功页面
+                        // Clear cart for non-credit card payments
                         unset($_SESSION['cart']);
                         header("Location: index_user.php?order_success=".$order_id);
                         exit;
@@ -292,6 +300,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 } catch (Exception $e) {
                     mysqli_rollback($conn);
                     $error = "Order processing failed: " . $e->getMessage();
+                    $show_message = true;
                     error_log("Order Error: " . $e->getMessage() . "\nSQL Error: " . ($conn->error ?? ''));
                 }
             }
@@ -299,7 +308,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// 获取当前结账信息
+// Get current checkout info
 $recipient_name = $_SESSION['checkout_info']['recipient_name'] ?? $user_data['username'] ?? '';
 $recipient_phone = $_SESSION['checkout_info']['recipient_phone'] ?? $user_data['phone'] ?? '';
 $recipient_address = $_SESSION['checkout_info']['recipient_address'] ?? $user_data['address'] ?? '';
@@ -309,10 +318,10 @@ $recipient_state = $_SESSION['checkout_info']['recipient_state'] ?? $user_data['
 $delivery_method = $_SESSION['delivery_method'] ?? 'delivery';
 $payment_method = $_SESSION['payment_method'] ?? 'credit_card';
 
-// 计算购物车数量
+// Calculate cart count
 $cart_count = array_sum(array_column($cart, 'quantity'));
 
-// 计算总额
+// Calculate totals
 $delivery_fee = ($delivery_method === 'delivery') ? 6.00 : 0.00;
 $final_total = $total_price + $delivery_fee;
 ?>
@@ -352,7 +361,6 @@ $final_total = $total_price + $delivery_fee;
             line-height: 1.6;
         }
 
-        /* 🔝 顶部导航栏 */
         .topbar {
             background-color: var(--dark-bg);
             color: white;
@@ -503,7 +511,6 @@ $final_total = $total_price + $delivery_fee;
             border-radius: 2px;
         }
 
-        /* 结账页面特有样式 */
         main {
             max-width: 1200px; 
             margin: 30px auto; 
@@ -751,6 +758,8 @@ $final_total = $total_price + $delivery_fee;
             display: flex;
             align-items: center;
             gap: 10px;
+            position: relative;
+            padding-right: 40px;
         }
         
         .success {
@@ -762,6 +771,17 @@ $final_total = $total_price + $delivery_fee;
             display: flex;
             align-items: center;
             gap: 10px;
+            position: relative;
+            padding-right: 40px;
+        }
+        
+        .close-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            cursor: pointer;
+            font-size: 20px;
+            font-weight: bold;
         }
         
         .footer {
@@ -773,7 +793,6 @@ $final_total = $total_price + $delivery_fee;
             color: #666;
         }
         
-        /* Message overlay styles */
         .message-overlay {
             position: fixed;
             top: 0;
@@ -887,7 +906,6 @@ $final_total = $total_price + $delivery_fee;
             flex: 1;
         }
         
-        /* Responsive design */
         @media (max-width: 768px) {
             .topbar {
                 padding: 12px 15px;
@@ -923,7 +941,7 @@ $final_total = $total_price + $delivery_fee;
     </style>
 </head>
 <body>
-<!-- 🔝 顶部导航栏 -->
+<!-- 🔝 Top Navigation -->
 <div class="topbar">
     <div class="logo"><i class="fas fa-hamburger"></i> Fast<span>Food</span> Express</div>
     <div class="nav-links">
@@ -992,10 +1010,11 @@ $final_total = $total_price + $delivery_fee;
     <div class="right-column">
         <h2>Payment Details</h2>
         
-        <?php if (!empty($error)): ?>
-            <div class="error">
+        <?php if (!empty($error) && $show_message): ?>
+            <div class="error" id="errorMessage">
                 <i class="fas fa-exclamation-circle"></i>
                 <div><?php echo htmlspecialchars($error); ?></div>
+                <span class="close-btn">&times;</span>
             </div>
         <?php endif; ?>
 
@@ -1139,7 +1158,7 @@ $final_total = $total_price + $delivery_fee;
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
     $(document).ready(function() {
-        // 地址自动填充
+        // Auto-fill address
         $('#fill-address').click(function() {
             var name = <?php echo json_encode($user_data['username'] ?? ''); ?>;
             var phone = <?php echo json_encode($user_data['phone'] ?? ''); ?>;
@@ -1148,7 +1167,7 @@ $final_total = $total_price + $delivery_fee;
             var city = <?php echo json_encode($user_data['city'] ?? ''); ?>;
             var state = <?php echo json_encode($user_data['state'] ?? ''); ?>;
             
-            // 检查用户信息是否完整
+            // Check if user info is complete
             if (!name || !phone || !address || !postcode || !city || !state) {
                 if (confirm('Your profile information is incomplete. Would you like to update your profile now?')) {
                     window.location.href = 'profile.php';
@@ -1163,12 +1182,12 @@ $final_total = $total_price + $delivery_fee;
             }
         });
         
-        // 更新配送方式和UI
+        // Update delivery method and UI
         $('input[name="delivery_method"]').change(function() {
             $('.delivery-option').removeClass('selected');
             $(this).closest('.delivery-option').addClass('selected');
             
-            // 切换地址字段显示
+            // Toggle address fields display
             if ($(this).val() === 'delivery') {
                 $('#address-field').show();
                 $('#address-details').show();
@@ -1185,33 +1204,33 @@ $final_total = $total_price + $delivery_fee;
                 $('#recipient_state').prop('required', false);
             }
             
-            // 更新支付选项
+            // Update payment options
             $('.payment-option').removeClass('selected disabled');
             $('.payment-option input').prop('disabled', false);
             
             if ($(this).val() === 'delivery') {
-                // 配送时禁用"pay at counter"
+                // Disable "pay at counter" for delivery
                 $('.payment-option:has(input[value="counter"])').addClass('disabled')
                     .find('input').prop('disabled', true);
                     
-                // 如果当前选中柜台支付，则自动选择第一个可用支付方式
+                // If currently selected counter pay, auto-select first available payment method
                 if ($('input[name="payment_method"]:checked').val() === 'counter') {
                     $('input[name="payment_method"][value="credit_card"]').prop('checked', true).trigger('change');
                     $('.payment-option:has(input[value="credit_card"])').addClass('selected');
                 }
             } else {
-                // 堂食时禁用"cash on delivery"
+                // Disable "cash on delivery" for dine-in
                 $('.payment-option:has(input[value="cash"])').addClass('disabled')
                     .find('input').prop('disabled', true);
                     
-                // 如果当前选中现金支付，则自动选择第一个可用支付方式
+                // If currently selected cash payment, auto-select first available payment method
                 if ($('input[name="payment_method"]:checked').val() === 'cash') {
                     $('input[name="payment_method"][value="credit_card"]').prop('checked', true).trigger('change');
                     $('.payment-option:has(input[value="credit_card"])').addClass('selected');
                 }
             }
             
-            // 更新总计显示
+            // Update total display
             const subtotal = <?php echo $total_price; ?>;
             const deliveryFee = $(this).val() === 'delivery' ? 6.00 : 0.00;
             $('#delivery-fee-row span:last-child').text(
@@ -1221,18 +1240,18 @@ $final_total = $total_price + $delivery_fee;
                 'RM ' + (subtotal + deliveryFee).toFixed(2)
             );
             
-            // 更新按钮文本
+            // Update button text
             updateSubmitButtonText();
         });
         
-        // 支付方式选择
+        // Payment method selection
         $('input[name="payment_method"]').change(function() {
             $('.payment-option').removeClass('selected');
             $(this).closest('.payment-option').addClass('selected');
             updateSubmitButtonText();
         });
         
-        // 根据选择更新提交按钮文本
+        // Update submit button text based on selection
         function updateSubmitButtonText() {
             const paymentMethod = $('input[name="payment_method"]:checked').val();
             
@@ -1243,9 +1262,9 @@ $final_total = $total_price + $delivery_fee;
             }
         }
         
-        // 处理表单提交
+        // Handle form submission
         $('#paymentForm').on('submit', function(e) {
-            // 验证电话号码格式
+            // Validate phone format
             const phone = $('#recipient_phone').val();
             if (!/^\d{10,15}$/.test(phone)) {
                 alert('Please enter a valid 10-15 digit phone number');
@@ -1253,7 +1272,7 @@ $final_total = $total_price + $delivery_fee;
                 return;
             }
             
-            // 如果是配送，验证地址字段
+            // For delivery, validate address fields
             if ($('input[name="delivery_method"]:checked').val() === 'delivery') {
                 const postcode = $('#recipient_postcode').val();
                 if (!/^\d{5}$/.test(postcode)) {
@@ -1272,7 +1291,7 @@ $final_total = $total_price + $delivery_fee;
             const paymentMethod = $('input[name="payment_method"]:checked').val();
             const overlay = $('#messageOverlay');
             
-            // 显示适当的消息
+            // Show appropriate message
             if (paymentMethod === 'credit_card') {
                 $('#messageTitle').text('Redirecting to Payment');
                 $('#messageText').text('You selected Credit/Debit Card payment. Redirecting to our secure payment gateway...');
@@ -1286,21 +1305,31 @@ $final_total = $total_price + $delivery_fee;
             
             overlay.addClass('active');
             
-            // 确保支付方式包含在表单数据中
+            // Ensure payment method is included in form data
             if (!$('input[name="payment_method"]').is(':checked')) {
                 $(this).append('<input type="hidden" name="payment_method" value="' + 
                     ($('input[name="payment_method"]').first().val()) + '">');
             }
             
-            // 如果是信用卡支付，临时清除购物车显示
+            // If credit card payment, temporarily clear cart display
             if (paymentMethod === 'credit_card') {
                 $('.cart-icon').attr('data-count', '0');
             }
             
-            // 提交表单
+            // Submit form
             setTimeout(() => {
                 this.submit();
             }, 1500);
+        });
+        
+        // Auto-hide messages after 3 seconds
+        setTimeout(function() {
+            $('.error, .success').fadeOut('slow');
+        }, 3000);
+
+        // Close button for messages
+        $(document).on('click', '.close-btn', function() {
+            $(this).closest('.error, .success').fadeOut('slow');
         });
     });
 </script>

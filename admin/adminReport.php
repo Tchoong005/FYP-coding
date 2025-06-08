@@ -45,7 +45,7 @@ $stmt = $pdo->prepare("
     SELECT c.display_name, SUM(oi.price * oi.quantity) as total 
     FROM order_items oi
     JOIN products p ON oi.product_id = p.id
-    JOIN categories c ON p.category = c.name
+    JOIN categories c ON p.category_id = c.id  -- FIXED HERE
     JOIN orders o ON oi.order_id = o.id
     WHERE YEAR(o.created_at) = ? AND MONTH(o.created_at) = ?
     GROUP BY c.display_name

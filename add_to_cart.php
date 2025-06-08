@@ -27,12 +27,24 @@ if ($quantity < 1) {
     exit;
 }
 
-// 检查产品是否存在，并验证酱料要求
-$sql = "SELECT category FROM products WHERE id = $product_id LIMIT 1";
+// 检查主产品库存
+$sql = "SELECT p.*, c.name AS category_name 
+        FROM products p 
+        JOIN categories c ON p.category_id = c.id 
+        WHERE p.id = $product_id AND p.deleted_at IS NULL LIMIT 1";
 $res = mysqli_query($conn, $sql);
 if ($res && mysqli_num_rows($res) > 0) {
     $row = mysqli_fetch_assoc($res);
-    if (strtolower($row['category']) !== 'beverages' && !$sauce) {
+    $category_name = strtolower($row['category_name']);
+    
+    // 检查库存
+    if ($row['stock_quantity'] < $quantity) {
+        echo json_encode(['success' => false, 'message' => 'Not enough stock for this product']);
+        exit;
+    }
+    
+    // 非饮料类商品必须选择酱料
+    if ($category_name !== 'beverages' && empty($sauce)) {
         echo json_encode(['success' => false, 'message' => 'Sauce is required for this product']);
         exit;
     }
@@ -41,12 +53,32 @@ if ($res && mysqli_num_rows($res) > 0) {
     exit;
 }
 
+// 检查推荐商品库存
+foreach ($recommendations as $rec) {
+    $rid = (int)$rec['id'];
+    $rqty = max(1, (int)$rec['quantity']);
+    if ($rid < 1) continue;
+
+    $rec_sql = "SELECT * FROM products WHERE id = $rid AND deleted_at IS NULL LIMIT 1";
+    $rec_res = mysqli_query($conn, $rec_sql);
+    if ($rec_res && mysqli_num_rows($rec_res) > 0) {
+        $rec_row = mysqli_fetch_assoc($rec_res);
+        if ($rec_row['stock_quantity'] < $rqty) {
+            echo json_encode(['success' => false, 'message' => 'Not enough stock for recommended product']);
+            exit;
+        }
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Recommended product not found']);
+        exit;
+    }
+}
+
 // 初始化购物车结构
 if (!isset($_SESSION['cart'])) {
     $_SESSION['cart'] = [];
 }
 
-// ===== ✅ 添加主商品到购物车（使用 md5 构造唯一 key） =====
+// ===== ✅ 添加主商品到购物车 =====
 $key_data = [
     'product_id' => $product_id,
     'sauce' => $sauce,
@@ -65,7 +97,7 @@ if (isset($_SESSION['cart'][$main_item_key])) {
     ];
 }
 
-// ===== ✅ 添加推荐商品（推荐项不区分酱料与备注） =====
+// ===== ✅ 添加推荐商品 =====
 foreach ($recommendations as $rec) {
     $rid = (int)$rec['id'];
     $rqty = max(1, (int)$rec['quantity']);
@@ -91,4 +123,3 @@ foreach ($_SESSION['cart'] as $item) {
 }
 
 echo json_encode(['success' => true, 'cart_count' => $total_count]);
-?>

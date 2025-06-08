@@ -19,6 +19,8 @@ $error = '';
 $order_items = [];
 $order_time = '';
 $payment_processed = false;
+$delivery_fee = 0.00; // 初始化为0
+$delivery_method = 'dine_in'; // 默认值
 
 // 修正快递费为6.00
 define('DELIVERY_FEE', 6.00);
@@ -52,6 +54,8 @@ if ($pid && $order_id) {
             
             $order_items = getOrderItems($order_id);
             $order_time = getOrderTime($order_id);
+            $delivery_method = getDeliveryMethod($order_id); // 获取配送方式
+            $delivery_fee = ($delivery_method === 'delivery') ? DELIVERY_FEE : 0.00; // 设置快递费
         } else {
             $status = $pi->status;
             $error = 'Payment not completed: ' . $status;
@@ -84,7 +88,7 @@ function getPaymentStatus($order_id) {
 function updatePaymentStatus($order_id, $status) {
     include 'db.php';
     
-    $stmt = $conn->prepare("UPDATE orders SET payment_status = ? WHERE id = ?");
+    $stmt = $conn->prepare("UPDATE orders SET payment_status = ?, is_valid = 1 WHERE id = ?");
     $stmt->bind_param("si", $status, $order_id);
     
     if ($stmt->execute()) {
@@ -96,6 +100,24 @@ function updatePaymentStatus($order_id, $status) {
     
     $stmt->close();
     $conn->close();
+}
+
+function getDeliveryMethod($order_id) {
+    include 'db.php';
+    
+    $stmt = $conn->prepare("SELECT delivery_method FROM orders WHERE id = ?");
+    $stmt->bind_param("i", $order_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    if ($row = $result->fetch_assoc()) {
+        return $row['delivery_method'];
+    }
+    
+    $stmt->close();
+    $conn->close();
+    
+    return 'dine_in'; // 默认返回堂食
 }
 
 function getOrderTime($order_id) {
@@ -888,11 +910,6 @@ function getOrderItems($order_id) {
           </div>
         </div>
         <div class="payment-body">
-          <div class="status-notice">
-            <i class="fas fa-info-circle"></i>
-            <span>Your payment has been processed successfully. Inventory has been updated.</span>
-          </div>
-          
           <?php if (isset($cart_cleared) && $cart_cleared): ?>
             <div class="cart-cleared-notice">
               <i class="fas fa-shopping-cart"></i>
@@ -927,7 +944,6 @@ function getOrderItems($order_id) {
             foreach ($order_items as $item) {
                 $subtotal += $item['price'] * $item['quantity'];
             }
-            $delivery_fee = DELIVERY_FEE;
             $total = $subtotal + $delivery_fee;
           ?>
             <div class="order-items">
@@ -940,11 +956,13 @@ function getOrderItems($order_id) {
                 </div>
               <?php endforeach; ?>
               
-              <!-- 添加快递费行 -->
-              <div class="delivery-fee-row">
-                <div class="delivery-fee-label">Delivery Fee</div>
-                <div class="delivery-fee-value">RM <?php echo number_format($delivery_fee, 2); ?></div>
-              </div>
+              <?php if ($delivery_method === 'delivery'): ?>
+                <!-- 显示快递费 -->
+                <div class="delivery-fee-row">
+                  <div class="delivery-fee-label">Delivery Fee</div>
+                  <div class="delivery-fee-value">RM <?php echo number_format($delivery_fee, 2); ?></div>
+                </div>
+              <?php endif; ?>
               
               <div class="subtotal-row">
                 <div class="subtotal-label">Subtotal:</div>
@@ -1057,11 +1075,13 @@ function getOrderItems($order_id) {
           </div>
         <?php endforeach; ?>
         
-        <!-- 添加快递费到PDF -->
-        <div class="receipt-item">
-          <span>Delivery Fee</span>
-          <span>RM <?php echo number_format(DELIVERY_FEE, 2); ?></span>
-        </div>
+        <?php if ($delivery_method === 'delivery'): ?>
+          <!-- 添加快递费到PDF -->
+          <div class="receipt-item">
+            <span>Delivery Fee</span>
+            <span>RM <?php echo number_format($delivery_fee, 2); ?></span>
+          </div>
+        <?php endif; ?>
         
         <div class="receipt-item" style="font-weight: 600; border-bottom: none; padding-top: 10px;">
           <span>Subtotal</span>
@@ -1142,8 +1162,10 @@ function getOrderItems($order_id) {
               ?>
             ];
             
-            // Add delivery fee row
-            items.push(['Delivery Fee', 'RM <?php echo number_format(DELIVERY_FEE, 2); ?>']);
+            <?php if ($delivery_method === 'delivery'): ?>
+              // Add delivery fee row
+              items.push(['Delivery Fee', 'RM <?php echo number_format($delivery_fee, 2); ?>']);
+            <?php endif; ?>
             
             // Add items header
             pdf.setFont('helvetica', 'bold');

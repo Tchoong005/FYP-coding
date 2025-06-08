@@ -33,8 +33,11 @@ if (!isset($_GET['id'])) {
 }
 $product_id = (int)$_GET['id'];
 
-// 添加 deleted_at IS NULL 条件
-$sql = "SELECT * FROM products WHERE id = $product_id AND deleted_at IS NULL LIMIT 1";
+// 修改后的查询 - 使用JOIN获取类别名称
+$sql = "SELECT p.*, c.name AS category_name 
+        FROM products p 
+        JOIN categories c ON p.category_id = c.id 
+        WHERE p.id = $product_id AND p.deleted_at IS NULL LIMIT 1";
 $res = mysqli_query($conn, $sql);
 if (!$res || mysqli_num_rows($res) == 0) {
     echo "Product not found.";
@@ -42,8 +45,14 @@ if (!$res || mysqli_num_rows($res) == 0) {
 }
 $product = mysqli_fetch_assoc($res);
 
-// 使用 strtolower 确保大小写不敏感
-$is_beverage = (strtolower($product['category']) === 'beverages');
+// 改进的饮料类别检测 - 通过数据库查询确定是否是饮料类别
+$is_beverage = false;
+$category_check_sql = "SELECT id FROM categories WHERE LOWER(name) = 'beverages' LIMIT 1";
+$category_check_res = mysqli_query($conn, $category_check_sql);
+if ($category_check_res && mysqli_num_rows($category_check_res) > 0) {
+    $beverage_category = mysqli_fetch_assoc($category_check_res);
+    $is_beverage = ($product['category_id'] == $beverage_category['id']);
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -817,8 +826,13 @@ $is_beverage = (strtolower($product['category']) === 'beverages');
             <form id="suggestionsForm">
                 <div class="suggestions-grid">
                     <?php
-                    // 添加 deleted_at IS NULL 条件过滤已删除商品
-                    $suggest_sql = "SELECT * FROM products WHERE id != $product_id AND stock_quantity > 0 AND deleted_at IS NULL ORDER BY RAND() LIMIT 3";
+                    // 修改后的推荐查询
+                    $suggest_sql = "SELECT p.* 
+                                    FROM products p 
+                                    WHERE p.id != $product_id 
+                                      AND p.stock_quantity > 0 
+                                      AND p.deleted_at IS NULL 
+                                    ORDER BY RAND() LIMIT 3";
                     $suggest_res = mysqli_query($conn, $suggest_sql);
                     if ($suggest_res && mysqli_num_rows($suggest_res) > 0) {
                         while ($suggest = mysqli_fetch_assoc($suggest_res)) {
@@ -1069,7 +1083,7 @@ $is_beverage = (strtolower($product['category']) === 'beverages');
                 // 延迟跳转
                 setTimeout(() => {
                     window.location.href = 'products_user.php';
-                }, 1500);
+                }, 1000);
             } else {
                 showMessage(res.message || 'Failed to add to cart.', 'error');
             }

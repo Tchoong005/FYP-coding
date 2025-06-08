@@ -23,9 +23,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Fetch all deleted products with category display names
 $products = $conn->query("
-    SELECT p.*, c.display_name as category_display 
+    SELECT p.*, c.name as category_name, c.display_name as category_display 
     FROM products p
-    JOIN categories c ON p.category = c.name
+    JOIN categories c ON p.category_id = c.id
     WHERE p.deleted_at IS NOT NULL
     ORDER BY p.deleted_at DESC
 ");
@@ -468,7 +468,7 @@ $products = $conn->query("
                         <td><?= htmlspecialchars($product['description']) ?></td>
                         <td><?= number_format($product['price'], 2) ?></td>
                         <td>
-                            <span class="category-badge <?= htmlspecialchars($product['category']) ?>">
+                            <span class="category-badge <?= htmlspecialchars($product['category_name']) ?>">
                                 <?= htmlspecialchars($product['category_display']) ?>
                             </span>
                         </td>

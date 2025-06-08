@@ -15,15 +15,15 @@ if (!isset($_SESSION['cart'])) {
 // Get search keyword
 $search = isset($_GET['search']) ? mysqli_real_escape_string($conn, $_GET['search']) : "";
 
-// 修改后的查询：获取产品和分类的显示名称
-$sql = "SELECT p.*, c.display_name 
+// 修正后的查询：使用 category_id 进行 JOIN
+$sql = "SELECT p.*, c.display_name, c.name as category_name 
         FROM products p
-        INNER JOIN categories c ON p.category = c.name
+        INNER JOIN categories c ON p.category_id = c.id
         WHERE c.deleted_at IS NULL 
         AND p.deleted_at IS NULL";
 
 if (!empty($search)) {
-    $sql .= " AND (p.name LIKE '%$search%' OR p.description LIKE '%$search%' OR p.category LIKE '%$search%')";
+    $sql .= " AND (p.name LIKE '%$search%' OR p.description LIKE '%$search%' OR c.name LIKE '%$search%' OR c.display_name LIKE '%$search%')";
 }
 
 $result = mysqli_query($conn, $sql);
@@ -33,9 +33,9 @@ $category_display_names = [];
 if ($result) {
     while ($row = mysqli_fetch_assoc($result)) {
         // 使用分类名称作为键，存储显示名称
-        $category_display_names[$row['category']] = $row['display_name'];
+        $category_display_names[$row['category_name']] = $row['display_name'];
         // 按分类分组产品
-        $products_by_category[$row['category']][] = $row;
+        $products_by_category[$row['category_name']][] = $row;
     }
 } else {
     die("Query failed: " . mysqli_error($conn));

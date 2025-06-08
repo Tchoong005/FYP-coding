@@ -26,7 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['csrf_token']) && hash
         $valid_statuses = ['completed', 'cancelled'];
         if (in_array($new_status, $valid_statuses)) {
             // Check if order is in a state that allows user update
-            $check_sql = "SELECT order_status, delivery_method FROM orders WHERE id = ? AND user_id = ?";
+            $check_sql = "SELECT order_status, delivery_method FROM orders WHERE id = ? AND user_id = ? AND is_valid = 1";
             $check_stmt = mysqli_prepare($conn, $check_sql);
             mysqli_stmt_bind_param($check_stmt, "ii", $order_id, $user_id);
             mysqli_stmt_execute($check_stmt);
@@ -40,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['csrf_token']) && hash
                 : ['ready'];
             
             if (in_array($current_status, $allowed_current_statuses)) {
-                $update_sql = "UPDATE orders SET order_status = ? WHERE id = ? AND user_id = ?";
+                $update_sql = "UPDATE orders SET order_status = ? WHERE id = ? AND user_id = ? AND is_valid = 1";
                 $stmt = mysqli_prepare($conn, $update_sql);
                 mysqli_stmt_bind_param($stmt, "sii", $new_status, $order_id, $user_id);
                 mysqli_stmt_execute($stmt);
@@ -56,10 +56,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['csrf_token']) && hash
 }
 
 // Fetch active orders for the current user (excluding cancelled, completed and delivered)
+// 添加了 is_valid=1 条件
 $sql = "SELECT * FROM orders 
         WHERE user_id = $user_id 
-        AND order_status NOT IN ('cancelled', 'completed', 'delivered', 'canceled')  -- 排除已取消和已完成订单
+        AND order_status NOT IN ('cancelled', 'completed', 'delivered', 'canceled')  
         AND delivery_method = '$order_type'
+        AND is_valid = 1  -- 只显示有效订单
         ORDER BY created_at DESC";
 $result = mysqli_query($conn, $sql);
 
@@ -1203,14 +1205,14 @@ if (!empty($_SESSION['cart'])) {
                                             <div class="item-quantity">Quantity: <?php echo $item['quantity']; ?></div>
                                             <div class="item-price">Price: RM <?php echo number_format($item['price'], 2); ?></div>
                                             
-                                            <!-- 新增酱料显示 -->
+                                            <!-- 酱料显示 -->
                                             <?php if (!empty($item['sauce'])): ?>
                                                 <div class="item-sauce">
                                                     <i class="fas fa-mortar-pestle"></i> Sauce: <?php echo htmlspecialchars($item['sauce']); ?>
                                                 </div>
                                             <?php endif; ?>
                                             
-                                            <!-- 新增备注显示（显示为Remark） -->
+                                            <!-- 备注显示 -->
                                             <?php if (!empty($item['comment'])): ?>
                                                 <div class="item-remark">
                                                     <i class="fas fa-comment-alt"></i> Remark: <?php echo htmlspecialchars($item['comment']); ?>

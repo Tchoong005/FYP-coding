@@ -237,6 +237,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_status'])) {
             font-weight: 600;
         }
 
+        .status-canceled {
+            color: #f44336;
+            font-weight: 600;
+        }
+
         .action-btn {
             padding: 6px 12px;
             border: none;
@@ -293,10 +298,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_status'])) {
         .delivery-method {
             text-transform: capitalize;
         }
-        .status-canceled {
-    color: #f44336;
-    font-weight: 600;
-}
     </style>
 </head>
 
@@ -399,7 +400,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_status'])) {
                 </thead>
                 <tbody>
                     <?php
-                    $sql = "SELECT * FROM orders ORDER BY created_at DESC";
+                    // 只查询 is_valid = 1 的有效订单
+                    $sql = "SELECT * FROM orders WHERE is_valid = 1 ORDER BY created_at DESC";
                     $result = $conn->query($sql);
                     
                     if ($result->num_rows > 0) {
@@ -408,8 +410,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_status'])) {
                             $status_display = ucwords(str_replace('_', ' ', $row['order_status']));
                             $status_class = 'status-' . $row['order_status'];
                             
-                            // Check if order is completed/delivered
-                            $is_final = ($row['order_status'] == 'completed' || $row['order_status'] == 'delivered'|| $row['order_status'] == 'canceled');
+                            // 检查订单是否处于最终状态（管理员不能操作取消状态）
+                            $is_final = in_array($row['order_status'], ['completed', 'delivered', 'canceled']);
                             
                             echo "<tr>";
                             echo "<td>#" . $row['id'] . "</td>";
@@ -429,7 +431,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_status'])) {
                                 echo "<input type='hidden' name='update_status' value='1'>";
                                 echo "<select name='status' class='status-select' onchange='this.form.submit()'>";
                                 
-                                // Different options based on delivery method
+                                // 根据配送方式显示不同的状态选项（移除了canceled选项）
                                 if ($row['delivery_method'] == 'delivery') {
                                     $options = [
                                         'pending' => 'Pending',

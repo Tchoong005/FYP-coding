@@ -531,8 +531,10 @@ h2 {
             $sauce = $item['sauce'] ?? '';
             $comment = $item['comment'] ?? '';
 
-            // 查询商品信息和分类判断是否饮料
-            $sql = "SELECT name, price, image_url, category FROM products WHERE id = $pid LIMIT 1";
+            // 查询商品信息和分类ID
+            $sql = "SELECT p.name, p.price, p.image_url, p.category_id 
+                    FROM products p 
+                    WHERE p.id = $pid LIMIT 1";
             $res = mysqli_query($conn, $sql);
             $product = mysqli_fetch_assoc($res);
             if (!$product) continue;
@@ -540,7 +542,8 @@ h2 {
             $subtotal = $product['price'] * $quantity;
             $total += $subtotal;
 
-            $is_beverage = strtolower($product['category']) === 'beverages' ? true : false;
+            // 使用category_id判断是否为饮料 (ID=1)
+            $is_beverage = $product['category_id'] == 1;
     ?>
     <div class="order-item" data-key="<?php echo esc($key); ?>" data-is-beverage="<?php echo $is_beverage ? '1' : '0'; ?>">
         <div class="order-info">
@@ -585,7 +588,7 @@ h2 {
             
             <div id="sauce-container">
                 <label for="edit_sauce">Choose Sauce:</label>
-                <select id="edit_sauce" required>
+                <select id="edit_sauce" name="edit_sauce">
                     <option value="">-- Select Sauce --</option>
                     <option value="BBQ">BBQ</option>
                     <option value="Cheese">Cheese</option>
@@ -616,46 +619,21 @@ function editItem(key, sauce, comment) {
     const orderItem = document.querySelector(`.order-item[data-key="${key}"]`);
     if (!orderItem) return alert('Item not found');
 
-    // Fix: Check if data-is-beverage is '1' (true) or '0' (false)
+    // 使用 data-is-beverage 属性判断是否为饮料
     const isBeverage = orderItem.getAttribute('data-is-beverage') === '1';
-    const form = document.querySelector('#editModal form');
     const sauceContainer = document.querySelector('#sauce-container');
     const sauceSelect = document.getElementById('edit_sauce');
-    const sauceLabel = sauceContainer.querySelector('label');
 
     document.getElementById('edit_key').value = key;
     document.getElementById('edit_comment').value = comment;
 
     if (isBeverage) {
-        // For beverage items, completely hide sauce selection
+        // 饮料类隐藏酱料选择
         sauceContainer.style.display = 'none';
-        sauceSelect.removeAttribute('name');
-        sauceSelect.removeAttribute('required');
-        
-        // Remove any existing hidden sauce input
-        const existingHidden = form.querySelector('input[name="edit_sauce"][type="hidden"]');
-        if (existingHidden) {
-            form.removeChild(existingHidden);
-        }
-        
-        // Add new empty hidden input for sauce
-        const hiddenInput = document.createElement('input');
-        hiddenInput.type = 'hidden';
-        hiddenInput.name = 'edit_sauce';
-        hiddenInput.value = '';
-        form.appendChild(hiddenInput);
     } else {
-        // For non-beverage items, show sauce selection
+        // 非饮料类显示酱料选择
         sauceContainer.style.display = 'block';
-        sauceSelect.setAttribute('name', 'edit_sauce');
-        sauceSelect.setAttribute('required', 'required');
         sauceSelect.value = sauce;
-        
-        // Remove hidden sauce input if exists
-        const existingHidden = form.querySelector('input[name="edit_sauce"][type="hidden"]');
-        if (existingHidden) {
-            form.removeChild(existingHidden);
-        }
     }
 
     document.getElementById('editModal').style.display = 'flex';
@@ -665,26 +643,8 @@ function closeEditModal() {
     document.getElementById('editModal').style.display = 'none';
 }
 
-function submitEditForm() {
-    const form = document.querySelector('#editModal form');
-    const isBeverage = document.querySelector('.order-item[data-key="' + document.getElementById('edit_key').value + '"]')
-        .getAttribute('data-is-beverage') === 'true';
-    
-    if (isBeverage) {
-        // For beverages, we need to add a hidden field with empty sauce
-        const hiddenInput = document.createElement('input');
-        hiddenInput.type = 'hidden';
-        hiddenInput.name = 'edit_sauce';
-        hiddenInput.value = '';
-        form.appendChild(hiddenInput);
-    }
-    
-    return true; // Allow form submission
-}
-
 // Checkout AJAX handler
 document.getElementById('checkoutBtn')?.addEventListener('click', function() {
-    // 直接跳转到结账页面，不发送AJAX请求
     window.location.href = 'checkout.php';
 });
 
