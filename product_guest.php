@@ -2,40 +2,46 @@
 session_start();
 include 'db.php';
 
-$is_logged_in = !empty($_SESSION['user_id']);
+// 强制销毁任何现有的会话，确保用户处于未登录状态
+session_destroy();
+$_SESSION = array();
+
+// 设置访客状态
+$is_logged_in = false;
+$cart_count = 0; // 购物车数量强制为0
 
 // 获取搜索关键词
 $search = isset($_GET['search']) ? mysqli_real_escape_string($conn, $_GET['search']) : "";
 
-// 查询未删除分类中的未删除产品，并获取分类的display_name
-$sql = "SELECT p.*, c.display_name 
+// 修正后的查询：使用 category_id 进行 JOIN
+$sql = "SELECT p.*, c.display_name, c.name as category_name 
         FROM products p
-        INNER JOIN categories c ON p.category = c.name
+        INNER JOIN categories c ON p.category_id = c.id
         WHERE c.deleted_at IS NULL 
         AND p.deleted_at IS NULL";
 
 if (!empty($search)) {
-    $sql .= " AND (p.name LIKE '%$search%' OR p.description LIKE '%$search%' OR p.category LIKE '%$search%')";
+    $sql .= " AND (p.name LIKE '%$search%' OR p.description LIKE '%$search%' OR c.name LIKE '%$search%' OR c.display_name LIKE '%$search%')";
 }
 
 $result = mysqli_query($conn, $sql);
 
 $products_by_category = [];
+$category_display_names = [];
 if ($result) {
     while ($row = mysqli_fetch_assoc($result)) {
-        $products_by_category[$row['display_name']][] = $row;
+        $category_display_names[$row['category_name']] = $row['display_name'];
+        $products_by_category[$row['category_name']][] = $row;
     }
 } else {
     die("Query failed: " . mysqli_error($conn));
 }
 
-// 计算购物车商品数量（仅登录用户）
+// 计算购物车商品数量
 $cart_count = 0;
 if ($is_logged_in && !empty($_SESSION['cart'])) {
     foreach ($_SESSION['cart'] as $item) {
-        if (isset($item['quantity'])) {
-            $cart_count += (int)$item['quantity'];
-        }
+        $cart_count += (int)($item['quantity'] ?? 0);
     }
 }
 ?>
@@ -43,7 +49,7 @@ if ($is_logged_in && !empty($_SESSION['cart'])) {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Menu - FastFood Express</title>
+    <title><?php echo $is_logged_in ? 'Order Now' : 'Browse Menu'; ?> - FastFood Express</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
@@ -380,6 +386,10 @@ if ($is_logged_in && !empty($_SESSION['cart'])) {
             width: 100%;
             height: 160px;
             overflow: hidden;
+            background: linear-gradient(45deg, #f8f9fa, #e9ecef);
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         
         .product-card img {
@@ -498,33 +508,6 @@ if ($is_logged_in && !empty($_SESSION['cart'])) {
             right: -5px;
         }
         
-        /* 空状态样式 */
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            background-color: white;
-            border-radius: 16px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            margin: 0 20px;
-        }
-        
-        .empty-state i {
-            font-size: 60px;
-            color: #ddd;
-            margin-bottom: 20px;
-        }
-        
-        .empty-state h3 {
-            color: var(--text-light);
-            margin-bottom: 15px;
-        }
-        
-        .empty-state p {
-            color: var(--text-light);
-            max-width: 500px;
-            margin: 0 auto;
-        }
-        
         .footer {
             background-color: #eee;
             text-align: center;
@@ -590,7 +573,7 @@ if ($is_logged_in && !empty($_SESSION['cart'])) {
 
 <!-- Guest Notice -->
 <div class="guest-notice">
-    <p>You're browsing as a guest. <a href="choose_login_register.html">Sign in</a> for a personalized experience!</p>
+    <p>You're browsing as a guest. <a href="#" onclick="showLoginPrompt('Personalized Experience')">Sign in</a> for a personalized experience!</p>
 </div>
 
 <!-- Top Navigation Bar -->
@@ -657,7 +640,8 @@ if ($is_logged_in && !empty($_SESSION['cart'])) {
     if (!empty($products_by_category)) {
         foreach ($products_by_category as $category => $products) {
             if (count($products) > 0) {
-                echo '<div class="category-title" data-aos="fade-right"><i class="fas fa-tag"></i> ' . htmlspecialchars($category) . '</div>';
+                $display_name = $category_display_names[$category] ?? $category;
+                echo '<div class="category-title" data-aos="fade-right"><i class="fas fa-tag"></i> ' . htmlspecialchars($display_name) . '</div>';
                 
                 echo '<div class="scroll-container">';
                 echo '<div class="product-grid" id="grid-' . htmlspecialchars($category) . '">';
@@ -695,11 +679,7 @@ if ($is_logged_in && !empty($_SESSION['cart'])) {
             }
         }
     } else {
-        echo '<div class="empty-state">
-                <i class="fas fa-utensils"></i>
-                <h3>No Products Found</h3>
-                <p>We couldn\'t find any products matching your search. Please try a different search term or browse our other categories.</p>
-              </div>';
+        echo '<p class="no-products">No products found. Please try a different search term.</p>';
     }
     ?>
 </div>
@@ -734,7 +714,7 @@ if ($is_logged_in && !empty($_SESSION['cart'])) {
                 confirmButtonColor: '#d6001c'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    window.location.href = 'choose_login_register.html';
+                    window.location.href = 'login.php';
                 }
             });
         });
@@ -752,7 +732,7 @@ if ($is_logged_in && !empty($_SESSION['cart'])) {
             confirmButtonColor: '#d6001c'
         }).then((result) => {
             if (result.isConfirmed) {
-                window.location.href = 'choose_login_register.html';
+                window.location.href = 'login.php';
             }
         });
     }
@@ -804,7 +784,7 @@ if ($is_logged_in && !empty($_SESSION['cart'])) {
             if (!isDown) return;
             e.preventDefault();
             const x = e.pageX - grid.offsetLeft;
-            const walk = (x - startX) * 2; // 滚动速度
+            const walk = (x - startX) * 2;
             grid.scrollLeft = scrollLeft - walk;
         });
         
