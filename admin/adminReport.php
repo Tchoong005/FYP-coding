@@ -32,7 +32,10 @@ for ($i = 1; $i <= $daysInMonth; $i++) {
     $date = date('Y-m-d', strtotime("$selectedMonth-$i"));
     $dates[] = date('j M', strtotime($date));
     
-    $stmt = $pdo->prepare("SELECT COALESCE(SUM(final_total), 0) as total FROM orders WHERE DATE(created_at) = ?");
+    $stmt = $pdo->prepare("SELECT COALESCE(SUM(final_total), 0) as total 
+                          FROM orders 
+                          WHERE DATE(created_at) = ? 
+                            AND is_valid = 1");
     $stmt->execute([$date]);
     $result = $stmt->fetch();
     $salesData[] = $result['total'];
@@ -47,7 +50,7 @@ $stmt = $pdo->prepare("
     JOIN products p ON oi.product_id = p.id
     JOIN categories c ON p.category_id = c.id  -- FIXED HERE
     JOIN orders o ON oi.order_id = o.id
-    WHERE YEAR(o.created_at) = ? AND MONTH(o.created_at) = ?
+    WHERE YEAR(o.created_at) = ? AND MONTH(o.created_at) = ? AND o.is_valid = 1
     GROUP BY c.display_name
 ");
 $stmt->execute([$year, $month]);
@@ -60,7 +63,7 @@ while ($row = $stmt->fetch()) {
 $stmt = $pdo->prepare("
     SELECT o.id, o.recipient_name, o.final_total, o.order_status, o.created_at 
     FROM orders o 
-    WHERE YEAR(o.created_at) = ? AND MONTH(o.created_at) = ?
+    WHERE YEAR(o.created_at) = ? AND MONTH(o.created_at) = ? AND o.is_valid = 1
     ORDER BY o.created_at DESC 
     LIMIT 10
 ");
@@ -68,11 +71,19 @@ $stmt->execute([$year, $month]);
 $recentOrders = $stmt->fetchAll();
 
 // Get total metrics for the selected month
-$stmt = $pdo->prepare("SELECT COUNT(*) as order_count, SUM(final_total) as total_revenue FROM orders WHERE YEAR(created_at) = ? AND MONTH(created_at) = ?");
+$stmt = $pdo->prepare("SELECT COUNT(*) as order_count, COALESCE(SUM(final_total), 0) as total_revenue 
+                      FROM orders 
+                      WHERE YEAR(created_at) = ? 
+                        AND MONTH(created_at) = ? 
+                        AND is_valid = 1");
 $stmt->execute([$year, $month]);
 $totals = $stmt->fetch();
 
-$stmt = $pdo->prepare("SELECT COUNT(DISTINCT user_id) as customer_count FROM orders WHERE YEAR(created_at) = ? AND MONTH(created_at) = ?");
+$stmt = $pdo->prepare("SELECT COUNT(DISTINCT user_id) as customer_count 
+                      FROM orders 
+                      WHERE YEAR(created_at) = ? 
+                        AND MONTH(created_at) = ? 
+                        AND is_valid = 1");
 $stmt->execute([$year, $month]);
 $customerCount = $stmt->fetch();
 
