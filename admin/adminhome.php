@@ -20,7 +20,7 @@ try {
 
 // Get today's orders count and revenue
 $today = date('Y-m-d');
-$stmt = $pdo->prepare("SELECT COUNT(*) as count, SUM(final_total) as revenue FROM orders WHERE DATE(created_at) = ?");
+$stmt = $pdo->prepare("SELECT COUNT(*) as count, SUM(final_total) as revenue FROM orders WHERE DATE(created_at) = ? AND is_valid = 1");
 $stmt->execute([$today]);
 $todayData = $stmt->fetch();
 
@@ -33,8 +33,9 @@ $stmt = $pdo->query("SELECT COUNT(*) as count FROM customers WHERE is_banned = 0
 $customersData = $stmt->fetch();
 
 // Get recent orders
-$stmt = $pdo->query("SELECT o.id, o.recipient_name, o.final_total, o.order_status, o.created_at 
-                     FROM orders o 
+$stmt = $pdo->query("SELECT o.id, o.recipient_name, o.final_total, o.order_status, o.created_at, o.is_valid 
+                     FROM orders o
+                     WHERE o.is_valid = 1 
                      ORDER BY o.created_at DESC 
                      LIMIT 5");
 $recentOrders = $stmt->fetchAll();
