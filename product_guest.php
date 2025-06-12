@@ -714,7 +714,7 @@ if ($is_logged_in && !empty($_SESSION['cart'])) {
                 confirmButtonColor: '#d6001c'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    window.location.href = 'login.php';
+                    window.location.href = 'choose_login_register.html';
                 }
             });
         });
@@ -732,7 +732,7 @@ if ($is_logged_in && !empty($_SESSION['cart'])) {
             confirmButtonColor: '#d6001c'
         }).then((result) => {
             if (result.isConfirmed) {
-                window.location.href = 'login.php';
+                window.location.href = 'choose_login_register.html';
             }
         });
     }

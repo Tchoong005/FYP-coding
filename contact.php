@@ -555,7 +555,7 @@ if (isset($_SESSION['cart'])) {
   <!-- Hero Section -->
   <div class="contact-hero" data-aos="fade-down">
     <h1>Contact Us</h1>
-    <p>We're here to help and answer any questions you might have. We look forward to hearing from you!</p>
+    <p>We'd love to hear from you! Reach out through any of the following channels. 🍟</p>
   </div>
 
   <!-- Contact Information Section -->
