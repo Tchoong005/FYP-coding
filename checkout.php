@@ -1082,9 +1082,21 @@ $final_total = $total_price + $delivery_fee;
                 </div>
                 <div class="form-group">
                     <label for="recipient_state">State</label>
-                    <input type="text" id="recipient_state" name="recipient_state" 
-                        value="<?php echo htmlspecialchars($recipient_state); ?>" 
-                        <?php echo $delivery_method === 'dine_in' ? '' : 'required'; ?>>
+                    <select name="recipient_state" id="recipient_state" <?php echo $delivery_method === 'dine_in' ? '' : 'required'; ?>>
+                        <option value="">-- Please select state --</option>
+                        <?php
+                        $states = [
+                            "Johor", "Kedah", "Kelantan", "Melaka", "Negeri Sembilan", 
+                            "Pahang", "Pulau Pinang", "Perak", "Perlis", "Sabah", 
+                            "Sarawak", "Selangor", "Terengganu", 
+                            "Kuala Lumpur", "Labuan", "Putrajaya"
+                        ];
+                        foreach ($states as $state_option) {
+                            $selected = ($recipient_state === $state_option) ? "selected" : "";
+                            echo "<option value=\"$state_option\" $selected>$state_option</option>";
+                        }
+                        ?>
+                    </select>
                 </div>
             </div>
 

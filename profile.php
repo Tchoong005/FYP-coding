@@ -207,7 +207,7 @@ $(document).ready(function() {
                 <?php
                 $states = [
                     "Johor", "Kedah", "Kelantan", "Melaka", "Negeri Sembilan", 
-                    "Pahang", "Penang", "Perak", "Perlis", "Sabah", 
+                    "Pahang", "Pulau Pinang", "Perak", "Perlis", "Sabah", 
                     "Sarawak", "Selangor", "Terengganu", 
                     "Kuala Lumpur", "Labuan", "Putrajaya"
                 ];
