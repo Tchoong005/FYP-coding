@@ -6,11 +6,15 @@ include 'db.php';
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
-// Add CSRF protection
+// 修改点1：确保session已正确启动后再生成CSRF令牌
+if (empty($_SESSION)) {
+    session_regenerate_id(true); // 防止会话固定攻击
+}
+
+// 修改点2：只在令牌不存在时生成新令牌
 if (!isset($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
-
 date_default_timezone_set('Asia/Kuala_Lumpur');
 
 // Check if user is logged in
