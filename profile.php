@@ -24,7 +24,6 @@ if (isset($_POST['update_profile'])) {
     $city = mysqli_real_escape_string($conn, $_POST['city']);
     $state = mysqli_real_escape_string($conn, $_POST['state']);
 
-    // 验证规则
     if (!preg_match("/^01\d{8,9}$/", $phone)) {
         $error = "Phone number must start with 01 and be 10–11 digits.";
     } elseif (!preg_match("/^\d{5}$/", $postcode)) {
@@ -33,33 +32,33 @@ if (isset($_POST['update_profile'])) {
         $error = "Please select a state.";
     }
 
-    // 新增：检查用户名是否已被其他用户使用
+    // 添加用户名唯一性检查
     if (empty($error)) {
         $check_sql = "SELECT id FROM customers WHERE username = '$username' AND id != '$user_id'";
         $check_result = mysqli_query($conn, $check_sql);
         if (mysqli_num_rows($check_result) > 0) {
-            $error = "Username '$username' is already taken. Please choose a different one.";
+            $error = "Username '$username' has been used. Please choose a different one.";
         }
     }
 
     if (empty($error)) {
         $update_sql = "UPDATE customers SET username='$username', phone='$phone', address='$address', postcode='$postcode', city='$city', state='$state' WHERE id='$user_id'";
         if (mysqli_query($conn, $update_sql)) {
-            $success = "Profile updated successfully!";
+            $success = "Profile updated!";
             $show_notice = false;
             $user = array_merge($user, $_POST);
         } else {
-            // 捕获数据库错误（包括唯一键冲突）
+            // 捕获数据库错误（特别是唯一键冲突）
             if (strpos(mysqli_error($conn), "Duplicate entry") !== false) {
-                $error = "Username '$username' is already taken. Please choose a different one.";
+                $error = "Username '$username' has been used. Please choose a different one.";
             } else {
-                $error = "Update failed: " . mysqli_error($conn);
+                $error = "Update failed!";
             }
         }
     }
 }
 
-// 修改密码
+// 修改密码（保持不变）
 if (isset($_POST['change_password'])) {
     $old_password = mysqli_real_escape_string($conn, $_POST['old_password']);
     $new_password = mysqli_real_escape_string($conn, $_POST['new_password']);
@@ -94,9 +93,12 @@ if (isset($_POST['change_password'])) {
 <head>
 <meta charset="UTF-8">
 <title>Profile - FastFood Express</title>
+
+<!-- 🔹 加入 Select2 样式和脚本 -->
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
 <style>
 body {
     font-family: Arial;
@@ -104,7 +106,6 @@ body {
     padding: 0;
     opacity: 0;
     animation: fadeIn 1s forwards;
-    background: #f5f5f5;
 }
 @keyframes fadeIn { to { opacity: 1; } }
 .sidebar {
@@ -115,24 +116,13 @@ body {
     height: 100vh;
     padding: 20px;
     box-sizing: border-box;
-    position: fixed;
 }
-.sidebar h2 { 
-    color: #ffd700; 
-    text-align: center;
-    margin-bottom: 20px;
-}
+.sidebar h2 { color: #ffd700; }
 .sidebar a {
     display: block;
     color: white;
-    margin: 15px 0;
+    margin: 10px 0;
     text-decoration: none;
-    padding: 8px 12px;
-    border-radius: 4px;
-    transition: background 0.3s;
-}
-.sidebar a:hover {
-    background: rgba(255, 255, 255, 0.2);
 }
 .container {
     margin-left: 220px;
@@ -140,23 +130,13 @@ body {
 }
 h2 {
     color: #d6001c;
-    margin-top: 0;
-    padding-bottom: 10px;
-    border-bottom: 1px solid #eee;
 }
 input, button, select {
     width: 100%;
-    padding: 12px;
-    margin: 10px 0;
+    padding: 10px;
+    margin: 8px 0;
     border-radius: 5px;
-    border: 1px solid #ddd;
-    font-size: 16px;
-    box-sizing: border-box;
-}
-input:focus, select:focus {
-    border-color: #d6001c;
-    outline: none;
-    box-shadow: 0 0 0 2px rgba(214, 0, 28, 0.1);
+    border: 1px solid #ccc;
 }
 .tab {
     display: none;
@@ -166,33 +146,14 @@ input:focus, select:focus {
 }
 .notice {
     background: #ffe0e0;
-    padding: 15px;
+    padding: 10px;
     border-radius: 5px;
     color: #d6001c;
     text-align: center;
-    margin-bottom: 20px;
-    border-left: 4px solid #d6001c;
 }
 .success, .error, .pass-message {
-    padding: 15px;
-    border-radius: 5px;
-    margin-bottom: 20px;
     text-align: center;
-    font-weight: bold;
-}
-.success {
-    background: #e8f7ef;
-    color: #28a745;
-    border-left: 4px solid #28a745;
-}
-.error {
-    background: #fce8e8;
-    color: #dc3545;
-    border-left: 4px solid #dc3545;
-}
-.pass-message {
-    background: #e8f4ff;
-    border-left: 4px solid #007bff;
+    margin-bottom: 10px;
 }
 .toggle-password {
     position: absolute;
@@ -200,41 +161,8 @@ input:focus, select:focus {
     top: 50%;
     transform: translateY(-50%);
     cursor: pointer;
-    font-size: 14px;
-    color: #777;
-    background: #f9f9f9;
-    padding: 4px 8px;
-    border-radius: 4px;
-    border: 1px solid #ddd;
-}
-.toggle-password:hover {
-    background: #eee;
-}
-.password-container {
-    position: relative;
-}
-button {
-    background: #d6001c;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    padding: 12px;
-    font-size: 16px;
-    font-weight: bold;
-    cursor: pointer;
-    transition: background 0.3s;
-}
-button:hover {
-    background: #b50017;
-}
-.form-group {
-    margin-bottom: 15px;
-}
-label {
-    display: block;
-    margin-bottom: 5px;
-    font-weight: bold;
-    color: #555;
+    font-size: 12px;
+    color: #d6001c;
 }
 </style>
 <script>
@@ -253,6 +181,7 @@ function togglePassword(id, element) {
         element.textContent = "Show";
     }
 }
+// 🔹 初始化 Select2
 $(document).ready(function() {
     $('#state').select2({ width: '100%' });
 });
@@ -274,55 +203,34 @@ $(document).ready(function() {
         <?php if ($success) echo "<div class='success'>$success</div>"; ?>
         <?php if ($error) echo "<div class='error'>$error</div>"; ?>
         <form method="post">
-            <div class="form-group">
-                <label>Email</label>
-                <input type="email" value="<?php echo $user['email']; ?>" readonly>
-            </div>
-            
-            <div class="form-group">
-                <label>Name</label>
-                <input type="text" name="username" value="<?php echo $user['username']; ?>" required>
-            </div>
-            
-            <div class="form-group">
-                <label>Phone</label>
-                <input type="text" name="phone" value="<?php echo $user['phone']; ?>" required>
-            </div>
-            
-            <div class="form-group">
-                <label>Address</label>
-                <input type="text" name="address" value="<?php echo $user['address']; ?>">
-            </div>
-            
-            <div class="form-group">
-                <label>Postcode</label>
-                <input type="text" name="postcode" value="<?php echo $user['postcode']; ?>">
-            </div>
-            
-            <div class="form-group">
-                <label>City</label>
-                <input type="text" name="city" value="<?php echo $user['city']; ?>">
-            </div>
-            
-            <div class="form-group">
-                <label>State</label>
-                <select name="state" id="state" required>
-                    <option value="">-- Please select state --</option>
-                    <?php
-                    $states = [
-                        "Johor", "Kedah", "Kelantan", "Melaka", "Negeri Sembilan", 
-                        "Pahang", "Pulau Pinang", "Perak", "Perlis", "Sabah", 
-                        "Sarawak", "Selangor", "Terengganu", 
-                        "Kuala Lumpur", "Labuan", "Putrajaya"
-                    ];
-                    foreach ($states as $state_option) {
-                        $selected = ($user['state'] === $state_option) ? "selected" : "";
-                        echo "<option value=\"$state_option\" $selected>$state_option</option>";
-                    }
-                    ?>
-                </select>
-            </div>
-            
+            <label>Email</label>
+            <input type="email" value="<?php echo $user['email']; ?>" readonly>
+            <label>Name</label>
+            <input type="text" name="username" value="<?php echo $user['username']; ?>" required>
+            <label>Phone</label>
+            <input type="text" name="phone" value="<?php echo $user['phone']; ?>" required>
+            <label>Address</label>
+            <input type="text" name="address" value="<?php echo $user['address']; ?>">
+            <label>Postcode</label>
+            <input type="text" name="postcode" value="<?php echo $user['postcode']; ?>">
+            <label>City</label>
+            <input type="text" name="city" value="<?php echo $user['city']; ?>">
+            <label>State</label>
+            <select name="state" id="state" required>
+                <option value="">-- Please select state --</option>
+                <?php
+                $states = [
+                    "Johor", "Kedah", "Kelantan", "Melaka", "Negeri Sembilan", 
+                    "Pahang", "Pulau Pinang", "Perak", "Perlis", "Sabah", 
+                    "Sarawak", "Selangor", "Terengganu", 
+                    "Kuala Lumpur", "Labuan", "Putrajaya"
+                ];
+                foreach ($states as $state_option) {
+                    $selected = ($user['state'] === $state_option) ? "selected" : "";
+                    echo "<option value=\"$state_option\" $selected>$state_option</option>";
+                }
+                ?>
+            </select>
             <button type="submit" name="update_profile">Update Profile</button>
         </form>
     </div>
@@ -331,24 +239,18 @@ $(document).ready(function() {
         <h2>Change Password</h2>
         <?php if ($pass_message) echo "<div class='pass-message'>$pass_message</div>"; ?>
         <form method="post">
-            <div class="form-group password-container">
-                <label>Old Password</label>
+            <div style="position: relative;">
                 <input type="password" name="old_password" id="old_password" placeholder="Old Password" required>
                 <span class="toggle-password" onclick="togglePassword('old_password', this)">Show</span>
             </div>
-            
-            <div class="form-group password-container">
-                <label>New Password</label>
+            <div style="position: relative;">
                 <input type="password" name="new_password" id="new_password" placeholder="New Password" required>
                 <span class="toggle-password" onclick="togglePassword('new_password', this)">Show</span>
             </div>
-            
-            <div class="form-group password-container">
-                <label>Confirm New Password</label>
+            <div style="position: relative;">
                 <input type="password" name="confirm_password" id="confirm_password" placeholder="Confirm New Password" required>
                 <span class="toggle-password" onclick="togglePassword('confirm_password', this)">Show</span>
             </div>
-            
             <button type="submit" name="change_password">Change Password</button>
         </form>
     </div>
