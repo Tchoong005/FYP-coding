@@ -57,21 +57,58 @@ while ($row = mysqli_fetch_assoc($items_result)) {
 // 计算金额（分）
 $amount_in_cents = (int)($order['final_total'] * 100);
 
-// 创建PaymentIntent（如果支付未取消）
+// 创建 PaymentIntent（使用 $_SESSION 保存）
+$paymentIntent = null;
+
 if (!$payment_canceled) {
-    try {
-        $paymentIntent = \Stripe\PaymentIntent::create([
-            'amount' => $amount_in_cents,
-            'currency' => 'myr',
-            'metadata' => [
-                'order_id' => $order_id,
-                'user_id' => $user_id
-            ]
-        ]);
-    } catch (Exception $e) {
-        die("Error creating payment intent: " . $e->getMessage());
+    // 如果 session 里已有该订单对应的 token，尝试复用
+    if (isset($_SESSION['stripe_payment'][$order_id])) {
+        $client_secret = $_SESSION['stripe_payment'][$order_id]['client_secret'];
+        $intent_id = $_SESSION['stripe_payment'][$order_id]['payment_intent_id'];
+
+        try {
+            $paymentIntent = \Stripe\PaymentIntent::retrieve($intent_id);
+        } catch (Exception $e) {
+            // 如果 retrieve 失败，就重新生成
+            try {
+                $paymentIntent = \Stripe\PaymentIntent::create([
+                    'amount' => $amount_in_cents,
+                    'currency' => 'myr',
+                    'metadata' => [
+                        'order_id' => $order_id,
+                        'user_id' => $user_id
+                    ]
+                ]);
+                $_SESSION['stripe_payment'][$order_id] = [
+                    'payment_intent_id' => $paymentIntent->id,
+                    'client_secret' => $paymentIntent->client_secret
+                ];
+            } catch (Exception $e) {
+                die("Error creating payment intent: " . $e->getMessage());
+            }
+        }
+
+    } else {
+        // 如果 session 里没有，就第一次创建
+        try {
+            $paymentIntent = \Stripe\PaymentIntent::create([
+                'amount' => $amount_in_cents,
+                'currency' => 'myr',
+                'metadata' => [
+                    'order_id' => $order_id,
+                    'user_id' => $user_id
+                ]
+            ]);
+            $_SESSION['stripe_payment'][$order_id] = [
+                'payment_intent_id' => $paymentIntent->id,
+                'client_secret' => $paymentIntent->client_secret
+            ];
+        } catch (Exception $e) {
+            die("Error creating payment intent: " . $e->getMessage());
+        }
     }
 }
+
 
 // 计算购物车数量
 $cart_count = 0;
