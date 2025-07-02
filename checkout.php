@@ -1,12 +1,21 @@
+
 <?php
 session_start();
 include 'db.php';
 
-// 修复点1：确保在session_start()后立即生成CSRF令牌
+// Enable error reporting
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
+// 修改点1：确保session已正确启动后再生成CSRF令牌
+if (empty($_SESSION)) {
+    session_regenerate_id(true); // 防止会话固定攻击
+}
+
+// 修改点2：只在令牌不存在时生成新令牌
 if (!isset($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
-
 date_default_timezone_set('Asia/Kuala_Lumpur');
 
 // Check if user is logged in
@@ -80,19 +89,12 @@ foreach ($cart as $item) {
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // 修复点2：在验证前确保令牌存在
-    $submitted_token = $_POST['csrf_token'] ?? '';
-    $session_token = $_SESSION['csrf_token'] ?? '';
-    
-    // 验证CSRF令牌
-    if (empty($submitted_token)) {
-        $error = "CSRF token is missing. Please try submitting the form again.";
-        $show_message = true;
-    } elseif (!hash_equals($session_token, $submitted_token)) {
+    // Validate CSRF token
+    if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
         $error = "Invalid CSRF token. Please try submitting the form again.";
         $show_message = true;
     } else {
-        // 验证通过后重新生成CSRF令牌
+        // Regenerate CSRF token after successful verification
         $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
         
         // Update delivery method
@@ -909,35 +911,6 @@ $final_total = $total_price + $delivery_fee;
             flex: 1;
         }
         
-        /* 新增调试信息样式 */
-        .debug-info {
-            position: fixed;
-            bottom: 10px;
-            right: 10px;
-            background: rgba(0,0,0,0.7);
-            color: white;
-            padding: 10px;
-            border-radius: 5px;
-            font-size: 12px;
-            z-index: 10000;
-            display: none;
-        }
-        
-        /* 新增令牌刷新提示 */
-        .token-refresh {
-            position: fixed;
-            top: 70px;
-            right: 20px;
-            background: #4caf50;
-            color: white;
-            padding: 10px 15px;
-            border-radius: 4px;
-            font-size: 14px;
-            z-index: 1000;
-            display: none;
-            box-shadow: 0 3px 10px rgba(0,0,0,0.2);
-        }
-        
         @media (max-width: 768px) {
             .topbar {
                 padding: 12px 15px;
@@ -997,11 +970,6 @@ $final_total = $total_price + $delivery_fee;
     </div>
 </div>
 
-<!-- 令牌刷新提示 -->
-<div class="token-refresh" id="tokenRefresh">
-    <i class="fas fa-sync-alt"></i> CSRF Token has been refreshed
-</div>
-
 <!-- Message Overlay -->
 <div class="message-overlay" id="messageOverlay">
     <div class="message-box">
@@ -1009,14 +977,6 @@ $final_total = $total_price + $delivery_fee;
         <h3 id="messageTitle">Processing Order</h3>
         <p id="messageText">Please wait while we process your order...</p>
     </div>
-</div>
-
-<!-- 调试信息区域 -->
-<div class="debug-info" id="debugInfo">
-    <div><strong>CSRF Debug Info</strong></div>
-    <div>Session Token: <span id="sessionToken"></span></div>
-    <div>Form Token: <span id="formToken"></span></div>
-    <div>Token Match: <span id="tokenMatch"></span></div>
 </div>
 
 <main>
@@ -1064,8 +1024,7 @@ $final_total = $total_price + $delivery_fee;
         <?php endif; ?>
 
         <form id="paymentForm" method="POST" action="checkout.php">
-            <!-- 修复点3：确保令牌字段正确输出 -->
-            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
+            <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
             
             <h3>
                 <i class="fas fa-truck h3-icon"></i>
@@ -1216,14 +1175,6 @@ $final_total = $total_price + $delivery_fee;
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
     $(document).ready(function() {
-        // 页面加载时确保表单令牌与session令牌一致
-        $('input[name="csrf_token"]').val("<?php echo $_SESSION['csrf_token']; ?>");
-        
-        // 显示令牌刷新提示
-        <?php if (isset($_GET['token_refreshed'])): ?>
-            $('#tokenRefresh').fadeIn().delay(3000).fadeOut();
-        <?php endif; ?>
-        
         // Auto-fill address
         $('#fill-address').click(function() {
             var name = <?php echo json_encode($user_data['username'] ?? ''); ?>;
@@ -1328,17 +1279,8 @@ $final_total = $total_price + $delivery_fee;
             }
         }
         
-        // 表单提交时检查CSRF令牌
+        // Handle form submission
         $('#paymentForm').on('submit', function(e) {
-            const sessionToken = "<?php echo $_SESSION['csrf_token']; ?>";
-            const formToken = $('input[name="csrf_token"]').val();
-            
-            if (sessionToken !== formToken) {
-                e.preventDefault();
-                alert('CSRF token mismatch detected. Page will be reloaded.');
-                location.reload(true);
-            }
-            
             // Validate phone format
             const phone = $('#recipient_phone').val();
             if (!/^\d{10,15}$/.test(phone)) {
@@ -1395,27 +1337,6 @@ $final_total = $total_price + $delivery_fee;
             setTimeout(() => {
                 this.submit();
             }, 1500);
-        });
-        
-        // 显示CSRF令牌调试信息
-        function showDebugInfo() {
-            const sessionToken = "<?php echo $_SESSION['csrf_token']; ?>";
-            const formToken = $('input[name="csrf_token"]').val();
-            const match = sessionToken === formToken ? "✅ Match" : "❌ Mismatch";
-            
-            $('#sessionToken').text(sessionToken.substring(0, 8) + "...");
-            $('#formToken').text(formToken.substring(0, 8) + "...");
-            $('#tokenMatch').text(match);
-            
-            $('#debugInfo').show();
-        }
-        
-        // 按Ctrl+D显示调试信息
-        $(document).on('keydown', function(e) {
-            if (e.ctrlKey && e.key === 'd') {
-                showDebugInfo();
-                e.preventDefault();
-            }
         });
         
         // Auto-hide messages after 3 seconds
