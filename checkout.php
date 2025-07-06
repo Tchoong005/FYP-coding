@@ -24,19 +24,19 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
-// Initialize session data
+// 初始化会话数据
 $_SESSION['delivery_method'] = $_SESSION['delivery_method'] ?? 'delivery';
 $_SESSION['payment_method'] = $_SESSION['payment_method'] ?? 'credit_card';
 $_SESSION['checkout_info'] = $_SESSION['checkout_info'] ?? [];
 
-// Initialize variables
+// 初始化变量
 $user_id = (int)$_SESSION['user_id'];
 $cart = $_SESSION['cart'] ?? [];
 $error = '';
 $success = '';
 $show_message = false;
 
-// Redirect if cart is empty
+// 如果购物车为空则重定向
 if (empty($cart)) {
     header("Location: order_list.php");
     exit;
@@ -1153,10 +1153,6 @@ $final_total = $total_price + $delivery_fee;
                 <div class="security-info">
                     <i class="fas fa-lock"></i>
                     <span>Secure Payment</span>
-                </div>
-                <div class="security-info">
-                    <i class="fas fa-shield-alt"></i>
-                    <span>SSL Encryption</span>
                 </div>
             </div>
 
